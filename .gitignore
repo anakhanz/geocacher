@@ -1,0 +1,15 @@
+# File endings to ignore
+*.*~
+*.bak
+*.orij
+*.py~
+*.pyc
+*.rej
+*.swp
+*.gpx
+*.zip
+
+# Actual files to ignore
+MANIFEST
+build/*
+geocacher/data/version.txt
