@@ -7,6 +7,7 @@
 *.rej
 *.swp
 *.gpx
+*.loc
 *.zip
 
 # Actual files to ignore
