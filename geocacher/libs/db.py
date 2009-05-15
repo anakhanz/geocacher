@@ -21,6 +21,22 @@ class DB:
         fid.write("""<?xml version="1.0" encoding="UTF-8"?>""")
         ElementTree(self.root).write(fid,encoding="utf-8")
         fid.close()
+        
+    def addWpt(self, name,lat,lon,desc):
+        node = self.root
+        Geocacher.dbgPrint("Adding %s" % name,3)
+        try:
+            wpt = self.root.xpath(u"""waypoint[@name="%s"]""" % name)[0]
+            Geocacher.dbgPrint("%s Found, updating" % name,3)
+            wpt.attrib["lat"] = lat
+            wpt.attrib["lon"] = lon
+        except:
+            Geocacher.dbgPrint("%s Not Found, adding" % name,3)
+            wpt = Element("waypoint", name=name, lat=lat, lon=lon)
+            self.root.append(wpt)
+        if len(desc) != 0:
+            wpt.attrib["desc"] = desc
+        
 
 class Geocacher:
     __lockFile = "geocacher.lock"
@@ -131,7 +147,10 @@ class Geocacher:
                        'userId'    :''}}
         Geocacher.conf = dict4ini.DictIni( Geocacher.getConfFile("geocacher.conf"), values=d)
 
-##    @staticmethod
-##    def dbgPrint(message, level=1):
-##        if level >= Geocacher.debugLevel:
-##            print "Debug L%i: %s" % (level, message)
+    @staticmethod
+    def dbgPrint(message, level=1):
+        if level == 0:
+           print "Warning!   %s" % message
+        else:
+            if level <= Geocacher.debugLevel:
+                print "Debug L%i: %s" % (level, message)

@@ -8,6 +8,7 @@ import os
 import string
 import sys
 import time
+import traceback
 
 from lxml import etree
 from StringIO import StringIO
@@ -94,6 +95,10 @@ GTK: %d.%d.%d""" % (sys.version_info[:3] + gtk.pygtk_version + gtk.gtk_version))
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
             Geocacher.conf.common.lastFolder = dialog.get_current_folder()
+            fileName = dialog.get_filename()
+            Geocacher.dbgPrint("Got file", 3)
+            if os.path.splitext(fileName)[1] == '.gpx':
+                loadGpx(fileName)
             #loadFile(dialog.get_filename())
         dialog.destroy()
     
@@ -139,7 +144,7 @@ def escape(str):
     return str
 
 
-def loadFile(filename):
+def loadGpx(filename):
     NS = {'gpx': "http://www.topografix.com/GPX/1/0",
           'gs': "http://www.groundspeak.com/cache/1/0"}
     username = "anakhanz"
@@ -157,53 +162,63 @@ def loadFile(filename):
     
     for path in paths:
         i+=1
-        print "Name: %s" % path.xpath('gpx:name', namespaces=NS)[0].text
-        print "Time: %s" % path.xpath('gpx:time', namespaces=NS)[0].text
-        print "Lat: %s Lon: %s" % (path.attrib["lat"], path.attrib["lon"])
-        print "Description: %s" % path.xpath('gpx:desc', namespaces=NS)[0].text
-        print "URL Name: %s URL: %s" % (path.xpath('gpx:urlname', namespaces=NS)[0].text,
-                                        path.xpath('gpx:url', namespaces=NS)[0].text)
-        print "Symbol: %s" % path.xpath('gpx:sym', namespaces=NS)[0].text
-        print "Type: %s" % path.xpath('gpx:type', namespaces=NS)[0].text
+        name = path.xpath('gpx:name', namespaces=NS)[0].text
+        print "Name: %s" % name
+        lat = path.attrib["lat"]
+        lon = path.attrib["lon"]
+        try:
+            desc = path.xpath('gpx:desc', namespaces=NS)[0].text
+        except:
+            desc = ""
         
-        cachedetail_list = path.xpath('gs:cache', namespaces=NS)
-        if not cachedetail_list == None:
-            cachedetail = cachedetail_list[0]
-            print "ID: %s Avaliable: %s Archived: %s" % (
-                cachedetail.attrib["id"],
-                cachedetail.attrib["available"],
-                cachedetail.attrib["archived"])
-            print "Placed By: %s" % cachedetail.xpath('gs:placed_by', namespaces=NS)[0].text
-            print "Owner: %s id: %s" % (cachedetail.xpath('gs:owner', namespaces=NS)[0].text,
-                                        cachedetail.xpath('gs:owner', namespaces=NS)[0].attrib["id"])
-            print "Type: %s" % cachedetail.xpath('gs:type', namespaces=NS)[0].text
-            print "Container: %s" % cachedetail.xpath('gs:container', namespaces=NS)[0].text
-            print "Difficulty: %s" % cachedetail.xpath('gs:difficulty', namespaces=NS)[0].text
-            print "Terrain: %s" % cachedetail.xpath('gs:terrain', namespaces=NS)[0].text
-            print "Country: %s" % cachedetail.xpath('gs:country', namespaces=NS)[0].text
-            print "State: %s" % cachedetail.xpath('gs:state', namespaces=NS)[0].text
-            try:
-                print "Short Description: %s" % cachedetail.xpath('gs:short_description', namespaces=NS)[0].text # attrib html
-            except:
-                print "Problem with Short description"
-            try:
-                print "Long Description: %s" % cachedetail.xpath('gs:long_description', namespaces=NS)[0].text # attrib html
-            except:
-                print "Problem with Long description"
-            try:
-                print "Encoded Hints: %s" % cachedetail.xpath('gs:encoded_hints', namespaces=NS)[0].text
-            except:
-                print "Problem with hint"
-                
-            # Deal with the log
-            for log in cachedetail.xpath('gs:logs//gs:log', namespaces=NS):
-                logFinder = log.xpath('gs:finder', namespaces=NS)[0]
-                if logFinder.attrib["id"]==userid or logFinder.text == username:
-                    print "matches"
+        Geocacher.db.addWpt(name,lat,lon,desc)
+##        print "Time: %s" % path.xpath('gpx:time', namespaces=NS)[0].text
+##        print "URL Name: %s URL: %s" % (path.xpath('gpx:urlname', namespaces=NS)[0].text,
+##                                        path.xpath('gpx:url', namespaces=NS)[0].text)
+##        print "Symbol: %s" % path.xpath('gpx:sym', namespaces=NS)[0].text
+##        print "Type: %s" % path.xpath('gpx:type', namespaces=NS)[0].text
+##        
+##        cachedetail_list = path.xpath('gs:cache', namespaces=NS)
+##        if not cachedetail_list == None:
+##            cachedetail = cachedetail_list[0]
+##            print "ID: %s Avaliable: %s Archived: %s" % (
+##                cachedetail.attrib["id"],
+##                cachedetail.attrib["available"],
+##                cachedetail.attrib["archived"])
+##            print "Placed By: %s" % cachedetail.xpath('gs:placed_by', namespaces=NS)[0].text
+##            print "Owner: %s id: %s" % (cachedetail.xpath('gs:owner', namespaces=NS)[0].text,
+##                                        cachedetail.xpath('gs:owner', namespaces=NS)[0].attrib["id"])
+##            print "Type: %s" % cachedetail.xpath('gs:type', namespaces=NS)[0].text
+##            print "Container: %s" % cachedetail.xpath('gs:container', namespaces=NS)[0].text
+##            print "Difficulty: %s" % cachedetail.xpath('gs:difficulty', namespaces=NS)[0].text
+##            print "Terrain: %s" % cachedetail.xpath('gs:terrain', namespaces=NS)[0].text
+##            print "Country: %s" % cachedetail.xpath('gs:country', namespaces=NS)[0].text
+##            print "State: %s" % cachedetail.xpath('gs:state', namespaces=NS)[0].text
+##            try:
+##                print "Short Description: %s" % cachedetail.xpath('gs:short_description', namespaces=NS)[0].text # attrib html
+##            except:
+##                print "Problem with Short description"
+##            try:
+##                print "Long Description: %s" % cachedetail.xpath('gs:long_description', namespaces=NS)[0].text # attrib html
+##            except:
+##                print "Problem with Long description"
+##            try:
+##                print "Encoded Hints: %s" % cachedetail.xpath('gs:encoded_hints', namespaces=NS)[0].text
+##            except:
+##                print "Problem with hint"
+##                
+##            # Deal with the log
+##            for log in cachedetail.xpath('gs:logs//gs:log', namespaces=NS):
+##                logFinder = log.xpath('gs:finder', namespaces=NS)[0]
+##                if logFinder.attrib["id"]==userid or logFinder.text == username:
+##                    print "matches"
         
         print i
         print
     print len(paths)
+
+def loadLoc(filenane):
+    pass
 
 def main (debug, canModify):
     locked = not Geocacher.lockOn()
@@ -218,6 +233,7 @@ def main (debug, canModify):
             sys.excepthook = myExceptHook
             Geocacher.init(debug, canModify)
 
+# TODO: Add icon
 #            gtk.window_set_default_icon_from_file("data/gfx/ico.ico")
             window = Window()
 
@@ -232,8 +248,8 @@ JBrout %s by Rob Wallace (c)2009, Licence GPL2
 http://www.example.com""" % ("%prog",__version__)    
 
 if __name__ == "__main__":
-    try: # TODO: debug levels
-        parser = optparse.OptionParser(usage="Blah", version=("Geocaching 2222"))
+    try:
+        parser = optparse.OptionParser(usage=USAGE, version=("Geocaching "+__version__))
         parser.add_option("-d","--debug",action="store",type="int",dest="debug",
                             help="set debug level 0-9")
         parser.add_option("-v","--view",action="store_true",dest="view",
@@ -242,7 +258,6 @@ if __name__ == "__main__":
 
         (options, args) = parser.parse_args()
         
-        #main(debug, canModify)
         main(options.debug, not(options.viewOnly))
 
     except KeyboardInterrupt:

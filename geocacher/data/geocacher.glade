@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Sat May  9 22:47:16 2009 -->
+<!--Generated with glade3 3.4.5 on Fri May 15 22:46:35 2009 -->
 <glade-interface>
   <widget class="GtkWindow" id="geocacherMain">
     <property name="visible">True</property>
     <property name="title" translatable="yes">Geocacher</property>
     <signal name="delete_event" handler="on_geocacherMain_delete_event"/>
     <child>
-      <widget class="GtkVBox" id="vbox1">
+      <widget class="GtkVBox" id="vboxMain">
         <property name="visible">True</property>
         <child>
-          <widget class="GtkMenuBar" id="menubar1">
+          <widget class="GtkMenuBar" id="menubarMain">
             <property name="visible">True</property>
             <child>
               <widget class="GtkMenuItem" id="miFile">
@@ -89,7 +89,7 @@
           </packing>
         </child>
         <child>
-          <widget class="GtkToolbar" id="toolbar1">
+          <widget class="GtkToolbar" id="toolbarMain">
             <property name="visible">True</property>
           </widget>
           <packing>
@@ -98,7 +98,7 @@
           </packing>
         </child>
         <child>
-          <widget class="GtkScrolledWindow" id="scrolledwindow1">
+          <widget class="GtkScrolledWindow" id="swCaches">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="hscrollbar_policy">GTK_POLICY_AUTOMATIC</property>
@@ -112,7 +112,7 @@
           </packing>
         </child>
         <child>
-          <widget class="GtkStatusbar" id="statusbar1">
+          <widget class="GtkStatusbar" id="statusbarMain">
             <property name="visible">True</property>
             <property name="spacing">2</property>
           </widget>
@@ -143,22 +143,23 @@
             <property name="n_rows">3</property>
             <property name="n_columns">2</property>
             <child>
-              <widget class="GtkLabel" id="lblGeocachingCom">
+              <widget class="GtkLabel" id="lblUserName">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Geocaching.com user information</property>
+                <property name="xalign">0</property>
+                <property name="label" translatable="yes">User name</property>
               </widget>
               <packing>
-                <property name="right_attach">2</property>
+                <property name="top_attach">1</property>
+                <property name="bottom_attach">2</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkEntry" id="entUserId">
+              <widget class="GtkLabel" id="lblUserId">
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
+                <property name="xalign">0</property>
+                <property name="label" translatable="yes">User ID</property>
               </widget>
               <packing>
-                <property name="left_attach">1</property>
-                <property name="right_attach">2</property>
                 <property name="top_attach">2</property>
                 <property name="bottom_attach">3</property>
               </packing>
@@ -176,25 +177,24 @@
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="lblUserId">
+              <widget class="GtkEntry" id="entUserId">
                 <property name="visible">True</property>
-                <property name="xalign">0</property>
-                <property name="label" translatable="yes">User ID</property>
+                <property name="can_focus">True</property>
               </widget>
               <packing>
+                <property name="left_attach">1</property>
+                <property name="right_attach">2</property>
                 <property name="top_attach">2</property>
                 <property name="bottom_attach">3</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkLabel" id="lblUserName">
+              <widget class="GtkLabel" id="lblGeocachingCom">
                 <property name="visible">True</property>
-                <property name="xalign">0</property>
-                <property name="label" translatable="yes">User name</property>
+                <property name="label" translatable="yes">Geocaching.com user information</property>
               </widget>
               <packing>
-                <property name="top_attach">1</property>
-                <property name="bottom_attach">2</property>
+                <property name="right_attach">2</property>
               </packing>
             </child>
           </widget>
@@ -216,6 +216,10 @@
                 <property name="response_id">0</property>
                 <signal name="clicked" handler="on_butCancel_clicked"/>
               </widget>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+              </packing>
             </child>
             <child>
               <widget class="GtkButton" id="butOk">
@@ -228,6 +232,8 @@
                 <signal name="clicked" handler="on_butOk_clicked"/>
               </widget>
               <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
                 <property name="position">1</property>
               </packing>
             </child>
