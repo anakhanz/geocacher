@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
+debugLevel = 10
+
 import optparse
 import os
 import string
@@ -231,25 +233,17 @@ http://www.example.com""" % ("%prog",__version__)
 
 if __name__ == "__main__":
     try: # TODO: debug levels
-        parser = optparse.OptionParser(usage=USAGE, version=("Geocaching "+__version__))
-        parser.add_option("-d","--debug",action="store_true",dest="debug",
-                            help="run with extra debugging messages")
+        parser = optparse.OptionParser(usage="Blah", version=("Geocaching 2222"))
+        parser.add_option("-d","--debug",action="store",type="int",dest="debug",
+                            help="set debug level 0-9")
         parser.add_option("-v","--view",action="store_true",dest="view",
                             help="run in only view mode")
+        parser.set_defaults(debug=debugLevel,viewOnly=False)
 
         (options, args) = parser.parse_args()
-
-        if options.debug:
-            debug = True
-        else:
-            debug = False
-        if options.view:
-            canModify = False
-        else:
-            canModify = True
         
         #main(debug, canModify)
-        main(9, canModify)
+        main(options.debug, not(options.viewOnly))
 
     except KeyboardInterrupt:
         pass
