@@ -1,0 +1,61 @@
+
+Fields to be added:
+    In DB and UI
+        code
+        latitude
+        longitude
+
+    In DB
+        waypoint name
+        last user update
+        last gps date
+        symbol name
+        url
+        placed by
+        placed (date)
+        owner (name)
+        owner id
+        container
+        difficulty
+        terrain
+        cache type
+        state
+        country
+        locked
+        source
+        changed date
+        owner name
+    In UI only (calculated)
+        number of logs
+    To be Added
+        notes
+        logs
+        last log date
+        last found
+        found count
+        date found by me
+        travel bugs
+        My log
+        first 2 find
+        user flag
+        user data
+        user data 2
+        user data 3
+        user data 4
+    To be Added (calculated)
+        bearing/degrees
+        distance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
