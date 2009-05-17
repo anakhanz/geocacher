@@ -67,6 +67,7 @@ class DB:
         # Find the waypoints and process them
         for wpt in gpxDoc.xpath("//gpx:gpx//gpx:wpt", namespaces=NS):
             code = self.getTextFromPath(wpt,"gpx:name",NS)
+            # TODO: Add check that first two digits are GC and put those that are not aside to process as extra waypoints last!
             Geocacher.dbgPrint("Adding %s" % code,3)
             try:
                 cache = self.root.xpath(u"""cache[@code="%s"]""" % code)[0]
@@ -111,10 +112,63 @@ class DB:
                 updated |= self.updateAttrib(tag, "html", self.getAttribFromPath(wpt,"gs:cache//gs:long_description","html",NS,'False'))
                 (changed,tag) = self.updateNodeText(cache, "encoded_hints",self.getTextFromPath(wpt,"gs:cache//gs:encoded_hints",NS))
                 updated |= changed
-                # TODO: Travel Bugs see "Headlights"
-                # TODO: Extra waypoints
-                # TODO: Logs
-                # TODO: mark if found
+            # Always update Logs and Travel bugs
+            # Update Logs
+            cacheLogs = cache.xpath("log")
+            cacheLogIds = []
+            for cacheLog in cacheLogs:
+                cacheLogIds.append(cacheLog.attrib["id"])
+            Geocacher.dbgPrint(cacheLogIds,3)
+            foundUpdated = False
+            wptLogs = wpt.xpath("gs:cache//gs:logs//gs:log", namespaces=NS)
+            Geocacher.dbgPrint("%i Logs found in GPX file" % len(wptLogs), 3)
+            for wptLog in wptLogs:
+                id = wptLog.attrib["id"]
+                if id in cacheLogIds:
+                    Geocacher.dbgPrint("Log ID %s found" % id,3)
+                    cacheLog = cache.xpath(u"""log[@id="%s"]""" % id)[0]
+                    changed = False
+                else:
+                    Geocacher.dbgPrint("Log ID %s not found creating new" % id,3)
+                    cacheLog = Element("log", id=id)
+                    cache.append(cacheLog)
+                    changed = True
+                date = self.getTextFromPath(wptLog, "gs:date",NS)
+                type = self.getTextFromPath(wptLog, "gs:type",NS)
+                finderId = self.getAttribFromPath(wptLog, "gs:finder", "id", NS)
+                finderName = self.getTextFromPath(wptLog, "gs:finder",NS)
+                textEncoded = self.getAttribFromPath(wptLog, "gs:text", "encoded", NS, "False")
+                text = self.getTextFromPath(wptLog, "gs:text",NS)
+                changed |= self.updateAttrib(cacheLog, "date", date)
+                changed |= self.updateAttrib(cacheLog, "type", type)
+                changed |= self.updateAttrib(cacheLog, "finder_id", finderId)
+                changed |= self.updateAttrib(cacheLog, "finder_name", finderName)
+                (textChanged,tag) = self.updateNodeText(cacheLog, "text", text)
+                changed |= textChanged
+                changed |= self.updateAttrib(tag, "encoded", textEncoded)
+                # Update Own find details if this is the first log with changes
+                # in it that is of the "Found it" type and the finderId or
+                # finderName matches the users values
+                if ((not foundUpdated) and changed and type == "Found it" and(
+                   finderId == Geocacher.conf.gc.userId or
+                   finderName == Geocacher.conf.gc.userName)):
+                    Geocacher.dbgPrint("Updating Own log", 3)
+                    self.updateAttrib(cache, "found", "True")
+                    self.updateAttrib(cache, "found_date", date)
+                    (logChanged,tag) = self.updateNodeText(cache, "own_log", text)
+                    self.updateAttrib(tag, "encoded", textEncoded)
+                updated |= changed
+                # TODO: Travel Bugs see GCV5QK.gpx
+                #   gs:cache\\gs:travelbugs\\gs:travelbug
+                #   attribs: id, ref (use ref to match)
+                #   tag: name
+                # TODO: Extra waypoints see GC1P61C.gpx
+                #   extra waypoints appear to only be in single cache files and
+                #   are identified by the first two letters of the waypoint
+                #   not being "GC"
+                #   need to puth them asside when processing and then do after
+                #   all of the main cache updates
+
             if updated:
                 self.updateAttrib(cache, "gpx_date", iso8601.tostring(gpxDate))
                 self.updateAttrib(cache, "source", os.path.abspath(filename))
@@ -244,13 +298,13 @@ class DB:
             destNodes = root.xpath(destPath,namespaces=nameSpaces)
         if len(destNodes) > 0:
             Geocacher.dbgPrint("node '%s' found updating" % destPath,3)
-            destNode = destNode[0]
+            destNode = destNodes[0]
         else:
-            Geocacher.dbgPrint("node '%s' found creating" % destPath,3)
+            Geocacher.dbgPrint("node '%s' not found creating" % destPath,3)
             if nameSpaces == None:
-                destNode = Element("destTag")
+                destNode = Element(destPath)
             else:
-                destNode = Element("destTag",namespaces=nameSpaces)
+                destNode = Element(destPath,namespaces=nameSpaces)
             root.append(destNode)
         if destNode.text == newValue:
             return (False,destNode)

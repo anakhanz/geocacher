@@ -4,7 +4,6 @@ Fields to be added:
         code
         latitude
         longitude
-
     In DB
         waypoint name
         last user update
@@ -25,17 +24,18 @@ Fields to be added:
         source
         changed date
         owner name
-    In UI only (calculated)
-        number of logs
-    To be Added
-        notes
         logs
-        last log date
-        last found
-        found count
-        date found by me
-        travel bugs
         My log
+        date found by me
+    In UI only (calculated)
+
+    To be Added
+        corrected cordinates
+            Lat
+            Lon
+            Note
+        notes
+        travel bugs
         first 2 find
         user flag
         user data
@@ -45,7 +45,10 @@ Fields to be added:
     To be Added (calculated)
         bearing/degrees
         distance
-
+        number of logs
+        found count
+        last found
+        last log date
 
 
 
