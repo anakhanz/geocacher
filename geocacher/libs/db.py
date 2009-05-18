@@ -64,10 +64,18 @@ class DB:
             gpxDate = os.path.getmtime(filename)
             Geocacher.dbgPrint("No time in GPX file, using current time",1)
 
+        # Create list for extra points
+        extraWpts = []
+
         # Find the waypoints and process them
         for wpt in gpxDoc.xpath("//gpx:gpx//gpx:wpt", namespaces=NS):
             code = self.getTextFromPath(wpt,"gpx:name",NS)
-            # TODO: Add check that first two digits are GC and put those that are not aside to process as extra waypoints last!
+            # Check that first two digits are GC and put those that are not
+            # aside to process as extra waypoints later
+            if code[:2] !="GC":
+                extraWpts.append(wpt)
+                Geocacher.dbgPrint("%s is an extra waypoint storing to process later" % code,3)
+                continue
             Geocacher.dbgPrint("Adding %s" % code,3)
             try:
                 cache = self.root.xpath(u"""cache[@code="%s"]""" % code)[0]
@@ -157,28 +165,41 @@ class DB:
                     self.updateAttrib(cache, "found_date", date)
                     (logChanged,tag) = self.updateNodeText(cache, "own_log", text)
                     self.updateAttrib(tag, "encoded", textEncoded)
+                    updated |= logChanged
+            # Add/update and travel bugs from the wpt and create list of travel
+            # bug refs in the wpt
+            wptTbRefs = []
+            for wptTb in wpt.xpath("gs:cache//gs:travelbugs//gs:travelbug", namespaces=NS):
+                wptTbRef = wptTb.attrib["ref"]
+                wptTbRefs.append(wptTbRef)
+                try:
+                    cacheTb = cache.xpath(u"""travelbug[@ref="%s"]""" % wptTbRef)[0]
+                except:
+                    cacheTb = Element("travelbug",ref = wptTbRef)
+                    cache.append(cacheTb)
+                    updated = True
+                updated |= self.copyAttrib(cacheTb,"id",wptTb,"id")
+                (changed,tag) = self.updateNodeText(cacheTb,"Name",self.getTextFromPath(wptTb,"gs:name",NS))
                 updated |= changed
-                # TODO: Travel Bugs see GCV5QK.gpx
-                #   gs:cache\\gs:travelbugs\\gs:travelbug
-                #   attribs: id, ref (use ref to match)
-                #   tag: name
-                # TODO: Extra waypoints see GC1P61C.gpx
-                #   extra waypoints appear to only be in single cache files and
-                #   are identified by the first two letters of the waypoint
-                #   not being "GC"
-                #   need to puth them asside when processing and then do after
-                #   all of the main cache updates
+            # Go through the list of trave bugs in the cache and delete any
+            # that are not listed in the wpt
+            for cacheTb in cache.xpath("travelbug"):
+                if cacheTb.attrib["ref"] not in wptTbRefs:
+                    cacheTb.getparent().remove(cacheTb)
+                    updated = True
 
             if updated:
                 self.updateAttrib(cache, "gpx_date", iso8601.tostring(gpxDate))
                 self.updateAttrib(cache, "source", os.path.abspath(filename))
-
-    ##            # Deal with the log
-    ##            for log in cachedetail.xpath('gs:logs//gs:log', namespaces=NS):
-    ##                logFinder = log.xpath('gs:finder', namespaces=NS)[0]
-    ##                if logFinder.attrib["id"]==userid or logFinder.text == username:
-    ##                    print "matches"
-
+        for wpt in extraWpts:
+            # TODO: Extra waypoints see GC1P61C.gpx
+            #   extra waypoints appear to only be in single cache files and
+            #   are identified by the first two letters of the waypoint
+            #   not being "GC"
+            #   need to puth them asside when processing and then do after
+            #   all of the main cache updates
+            # match up the extra wpts with their cache and add/update
+            pass
 
     def loadLoc(self,filename,mode="update"):
         # Load LOC file
@@ -231,57 +252,61 @@ class DB:
             print "None"
             try:
                 ret = root.xpath(relativePath)[0].text
-                Geocacher.dbgPrint("'%s' found at path '%s'" % (ret,relativePath),3)
+                Geocacher.dbgPrint("'%s' found at path '%s'" % (ret,relativePath),9)
             except:
                 ret = default
-                Geocacher.dbgPrint("'%s' path not found" % relativePath,3)
+                Geocacher.dbgPrint("'%s' path not found" % relativePath,9)
         else:
             try:
                 ret = root.xpath(relativePath, namespaces=nameSpaces)[0].text
-                Geocacher.dbgPrint("'%s' found at path '%s'" % (ret,relativePath),3)
+                Geocacher.dbgPrint("'%s' found at path '%s'" % (ret,relativePath),9)
             except:
                 ret = default
-                Geocacher.dbgPrint("'%s' path not found" % relativePath,3)
+                Geocacher.dbgPrint("'%s' path not found" % relativePath,9)
         return ret
 
     def getAttrib(felf, root, attrib, default=None):
         try:
             ret = root.attrib[attrib]
-            Geocacher.dbgPrint("'%s' found at attribute '%s'" % (ret,attrib),3)
+            Geocacher.dbgPrint("'%s' found at attribute '%s'" % (ret,attrib),9)
         except:
             ret = default
-            Geocacher.dbgPrint("attribute '%s' not found" % attrib,3)
+            Geocacher.dbgPrint("attribute '%s' not found" % attrib,9)
         return ret
 
     def getAttribFromPath(self, root, relativePath, attrib, nameSpaces=None, default=None):
         if nameSpaces==None:
             try:
                 ret = root.xpath(relativePath)[0].attrib[attrib]
-                Geocacher.dbgPrint("'%s' found at attribute '%s' path '%s'" % (ret,attrib,relativePath),3)
+                Geocacher.dbgPrint("'%s' found at attribute '%s' path '%s'" % (ret,attrib,relativePath),9)
             except:
                 ret = default
-                Geocacher.dbgPrint("attribute '%s' not found at path '%s'" % (attrib,relativePath),3)
+                Geocacher.dbgPrint("attribute '%s' not found at path '%s'" % (attrib,relativePath),9)
         else:
             try:
                 ret = root.xpath(relativePath, namespaces=nameSpaces)[0].attrib[attrib]
-                Geocacher.dbgPrint("'%s' found at attribute %s path '%s'" % (ret,attrib,relativePath),3)
+                Geocacher.dbgPrint("'%s' found at attribute %s path '%s'" % (ret,attrib,relativePath),9)
             except:
                 ret = default
-                Geocacher.dbgPrint("attribute '%s' not found at path '%s'" % (attrib,relativePath),3)
+                Geocacher.dbgPrint("attribute '%s' not found at path '%s'" % (attrib,relativePath),9)
         return ret
 
     def copyAttrib(self, destPath, destAttrib, srcPath, srcAttrib, default=None):
         try:
             srcValue = srcPath.attrib[srcAttrib]
+            Geocacher.dbgPrint("'%s' found in source attribute '%s'" % (srcValue,srcAttrib),9)
         except:
             srcValue=None
+            Geocacher.dbgPrint("Source attribute '%s' not found" % (srcAttrib),9)
         return self.updateAttrib(destPath, destAttrib, srcValue)
 
     def updateAttrib(self, destPath, destAttrib, newValue):
         try:
             destValue = destPath.attrib[destAttrib]
+            Geocacher.dbgPrint("'%s' found in destination attribute '%s'" % (destValue,destAttrib),9)
         except:
             destValue=None
+            Geocacher.dbgPrint("Destination attribute '%s' not found" % (destAttrib),9)
         if destValue == newValue or newValue==None:
             return False
         else:
@@ -290,17 +315,17 @@ class DB:
 
     def updateNodeText(self,root, destPath, newValue, nameSpaces=None):
         if newValue == None:
-            Geocacher.dbgPrint("'None' value suppplied to update node text using blank",3)
+            Geocacher.dbgPrint("'None' value suppplied to update node text using blank",9)
             newValue=""
         if nameSpaces == None:
             destNodes = root.xpath(destPath)
         else:
             destNodes = root.xpath(destPath,namespaces=nameSpaces)
         if len(destNodes) > 0:
-            Geocacher.dbgPrint("node '%s' found updating" % destPath,3)
+            Geocacher.dbgPrint("node '%s' found updating" % destPath,9)
             destNode = destNodes[0]
         else:
-            Geocacher.dbgPrint("node '%s' not found creating" % destPath,3)
+            Geocacher.dbgPrint("node '%s' not found creating" % destPath,9)
             if nameSpaces == None:
                 destNode = Element(destPath)
             else:
@@ -317,7 +342,7 @@ class Geocacher:
 
     @staticmethod
     def lockOn():
-        """ create the lock file, return True if it can"""
+        """ create the lock file and return True if it can"""
         file = os.path.join(Geocacher.getHomeDir("geocacher"),Geocacher.__lockFile)
         if os.path.isfile(file):
             print file
@@ -328,7 +353,7 @@ class Geocacher:
 
     @staticmethod
     def lockOff():
-        """ delete the lockfile """
+        """ Delete the lockfile """
         file = os.path.join(Geocacher.getHomeDir("geocacher"),Geocacher.__lockFile)
         if os.path.isfile(file):
             os.unlink(file)

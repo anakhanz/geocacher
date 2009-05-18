@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-debugLevel = 10
+debugLevel = 5
 
 import optparse
 import os
@@ -159,7 +159,7 @@ GTK: %d.%d.%d""" % (sys.version_info[:3] + gtk.pygtk_version + gtk.gtk_version))
         self.on_geocacherMain_delete_event(widget,*args)
 
     def on_geocacherMain_delete_event(self,*args):
-
+        (Geocacher.conf.common.mainWiidth,Geocacher.conf.common.mainHeight) = self.main_widget.get_size()
         Geocacher.conf.save()
         Geocacher.db.save()
         self.quit()
