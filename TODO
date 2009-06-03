@@ -1,42 +1,7 @@
 
 Fields to be added:
-    In DB and UI
-        code
-        latitude
-        longitude
-    In DB
-        waypoint name
-        last user update
-        last gps date
-        symbol name
-        url
-        placed by
-        placed (date)
-        owner (name)
-        owner id
-        container
-        difficulty
-        terrain
-        cache type
-        state
-        country
-        locked
-        source
-        changed date
-        owner name
-        logs
-        My log
-        date found by me
-    In UI only (calculated)
-
     To be Added
-        corrected cordinates
-            Lat
-            Lon
-            Note
         notes
-        travel bugs
-        first 2 find
         user flag
         user data
         user data 2
