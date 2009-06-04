@@ -277,55 +277,6 @@ class CacheTypeRenderer(ImageRenderer):
         self.colSize = None
         self.rowSize = None
 
-
-##class CacheSizeRenderer(gridlib.PyGridCellRenderer):
-##    def __init__(self, table):
-##        gridlib.PyGridCellRenderer.__init__(self)
-##        self.table = table
-##        self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
-##                        'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
-##                        'Regular':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-regular.gif'), wx.BITMAP_TYPE_GIF),
-##                        'Large':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-large.gif'), wx.BITMAP_TYPE_GIF),
-##                        'Not chosen':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-not_chosen.gif'), wx.BITMAP_TYPE_GIF),
-##                        'Virtual':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-virtual.gif'), wx.BITMAP_TYPE_GIF),
-##                        'Other':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-other.gif'), wx.BITMAP_TYPE_GIF)}
-##
-##        self.colSize = None
-##        self.rowSize = None
-##
-##    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
-##        value = self.table.GetValue(row, col)
-##        if value not in self._images:
-##            value = 'Other'
-##            log.warn("Cache Size '%s' not in known sizes" % value)
-##        bmp = self._images[value]
-##        image = wx.MemoryDC()
-##        image.SelectObject(bmp)
-##
-##        # clear the background
-##        dc.SetBackgroundMode(wx.SOLID)
-##
-##        if isSelected:
-##            dc.SetBrush(wx.Brush(wx.BLUE, wx.SOLID))
-##            dc.SetPen(wx.Pen(wx.BLUE, 1, wx.SOLID))
-##        else:
-##            dc.SetBrush(wx.Brush(wx.WHITE, wx.SOLID))
-##            dc.SetPen(wx.Pen(wx.WHITE, 1, wx.SOLID))
-##        dc.DrawRectangleRect(rect)
-##
-##        # copy the image but only to the size of the grid cell
-##        width, height = bmp.GetWidth(), bmp.GetHeight()
-##
-##        if width > rect.width-2:
-##            width = rect.width-2
-##
-##        if height > rect.height-2:
-##            height = rect.height-2
-##
-##        dc.Blit(rect.x+1, rect.y+1, width, height,
-##                image,
-##                0, 0, wx.COPY, True)
-
 class CacheDataTable(gridlib.PyGridTableBase):
     def __init__(self):
         gridlib.PyGridTableBase.__init__(self)
