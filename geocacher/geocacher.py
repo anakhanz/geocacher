@@ -19,20 +19,9 @@ import wx
 import wx.grid             as  gridlib
 import wx.lib.gridmovers   as  gridmovers
 
-#====
-#import pygtk
-#pygtk.require('2.0')
-#====
-
-
-#import gtk
 import locale
 
-#from libs.gladeapp import GladeApp
 from libs.i18n import createGetText
-
-# make translation available in the gui/gtk
-#GladeApp.bindtextdomain("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
 
 # make translation available in the code
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
@@ -40,10 +29,6 @@ __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dir
 from libs.db import Geocacher
 from libs.gpx import gpxLoad
 from libs.loc import locLoad
-
-#from libs.commongtk import InputBox, InputQuestion, MessageBox
-
-#Simport gobject
 
 try:
     __version__ = open(os.path.join(os.path.dirname(__file__),
@@ -55,116 +40,6 @@ except:
 ##    sys.__excepthook__(type, value, tb)
 ##    lines = traceback.format_exception(type, value, tb)
 ##    MessageBox(None,string.join(lines),title=_("Geocacher Error"))
-##
-##class Window(GladeApp):
-##    glade=os.path.join(os.path.dirname(__file__), 'data/geocacher.glade')
-##    window = "geocacherMain"
-##
-##    def init(self):
-##        w = Geocacher.conf.common.mainWiidth or 700
-##        h = Geocacher.conf.common.mainHeight or 500
-##        self.main_widget.resize(w,h)
-##        self.tsCaches = gtk.ListStore(str, str, str)
-##
-##        self.tvCaches=gtk.TreeView(self.tsCaches)
-##
-##        self.nameColumn = gtk.TreeViewColumn(_('Name'))
-##        self.lonColumn = gtk.TreeViewColumn(_('Lon'))
-##        self.latColumn = gtk.TreeViewColumn(_('Lat'))
-##
-##        self.tvCaches.append_column(self.nameColumn)
-##        self.tvCaches.append_column(self.latColumn)
-##        self.tvCaches.append_column(self.lonColumn)
-##
-##        self.cellTxt = gtk.CellRendererText()
-##
-##        self.nameColumn.pack_start(self.cellTxt, True)
-##        self.lonColumn.pack_start(self.cellTxt, True)
-##        self.latColumn.pack_start(self.cellTxt, True)
-##
-##        self.nameColumn.add_attribute(self.cellTxt, 'text', 0)
-##        self.lonColumn.add_attribute(self.cellTxt, 'text', 1)
-##        self.latColumn.add_attribute(self.cellTxt, 'text', 2)
-##        self.nameColumn.set_reorderable(False)
-##        self.lonColumn.set_reorderable(True)
-##        self.latColumn.set_reorderable(True)
-##
-##        try:
-##            self.tvCaches.set_grid_lines(gtk.TREE_VIEW_GRID_LINES_BOTH)
-##        except:
-##            pass
-##
-##        self.swCaches.add(self.tvCaches)
-##
-##        self.swCaches.show_all()
-##
-##        self.reloadCaches()
-##
-##    def reloadCaches(self):
-##        self.tsCaches.clear()
-##        for cache in Geocacher.db.getCacheList():
-##            self.addCache(cache)
-##
-##    def addCache(self, cache):
-##        row = (cache.code,cache.lat,cache.lon)
-##        self.tsCaches.append(row)
-##
-##    def on_miHelpAbout_activate(self,*args):
-##        import Image
-##        about = gtk.AboutDialog()
-##        about.set_name('Geocacher')
-##        about.set_version(__version__)
-##        about.set_copyright('Copyright 2009 Rob Wallace')
-##        about.set_license(open("data/gpl.txt").read())
-##        about.set_authors(["Rob Wallace"])
-##        about.set_website('http://example.com')
-##        about.set_comments(
-##"""Library Versions:
-##Python: %d.%d.%d
-##PyGTK: %d.%d.%d
-##GTK: %d.%d.%d""" % (sys.version_info[:3] + gtk.pygtk_version + gtk.gtk_version))
-##        def close(w, res):
-##            if res == gtk.RESPONSE_CANCEL:
-##                w.destroy()
-##        about.connect("response", close)
-##        #~ about.set_comments('handle your photos')
-##        about.show()
-##
-##    def on_miLoadWpts_activate(self,*args):
-##        # TODO: set file types
-##        dialog = gtk.FileChooserDialog(_('Select source folder'),
-##                self.main_widget,
-##                gtk.FILE_CHOOSER_ACTION_OPEN,
-##                (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-##                gtk.STOCK_OPEN, gtk.RESPONSE_OK))
-##        dialog.set_default_response(gtk.RESPONSE_OK)
-##        if os.path.isdir(Geocacher.conf.common.lastFolder):
-##            dialog.set_current_folder(Geocacher.conf.common.lastFolder)
-##        response = dialog.run()
-##        if response == gtk.RESPONSE_OK:
-##            Geocacher.conf.common.lastFolder = dialog.get_current_folder()
-##            fileName = dialog.get_filename()
-##            Geocacher.dbgPrint("Got file", 3)
-##            if os.path.splitext(fileName)[1] == '.gpx':
-##                gpxLoad(fileName,Geocacher.db,mode="replace")
-##            elif os.path.splitext(fileName)[1] == '.loc':
-##                Geocacher.db.loadLoc(fileName,mode="replace")
-##            self.reloadCaches()
-##        dialog.destroy()
-##
-##    def on_miPreferences_activate(self,widget,*args):
-##        winPrefs = Preferences()
-##        winPrefs.loop()
-##        # TODO: force update of main window on preferences update
-##
-##    def on_miQuit_activate(self,widget,*args):
-##        self.on_geocacherMain_delete_event(widget,*args)
-##
-##    def on_geocacherMain_delete_event(self,*args):
-##        (Geocacher.conf.common.mainWiidth,Geocacher.conf.common.mainHeight) = self.main_widget.get_size()
-##        Geocacher.conf.save()
-##        Geocacher.db.save()
-##        self.quit()
 ##
 ##class Preferences(GladeApp):
 ##    glade=os.path.join(os.path.dirname(__file__), 'data/geocacher.glade')
@@ -184,15 +59,6 @@ except:
 ##
 ##    def on_preferences_delete_event(self,*args):
 ##        self.quit()
-
-def escape(str):
-    # you can also use
-    # from xml.sax.saxutils import escape
-    # Caution: you have to escape '&' first!
-    str = str.replace(u'&',u'&amp;')
-    str = str.replace(u'<',u'&lt;')
-    str = str.replace(u'>',u'&gt;')
-    return str
 
 class ImageRenderer(gridlib.PyGridCellRenderer):
     def __init__(self, table):
@@ -581,10 +447,6 @@ def main (debug, canModify):
                                style=wx.YES_NO|wx.ICON_WARNING
                                )
         if dlg.ShowModal() == wx.ID_YES:
-##        if InputQuestion (None,
-##                _("Geocacher appears to already be running are you sure you wish to run another copy"),
-##                title=_("Geocacher Already Running"),
-##                buttons=(gtk.STOCK_NO, gtk.RESPONSE_CANCEL, gtk.STOCK_YES, gtk.RESPONSE_OK)):
             locked = False
     if not locked:
         try:
@@ -592,10 +454,6 @@ def main (debug, canModify):
             Geocacher.init(debug, canModify)
 
 # TODO: Add icon
-#            gtk.window_set_default_icon_from_file("data/gfx/ico.ico")
-            #window = Window()
-
-            #window.loop()
 
             frame = MainWindow(None,-1,"Geocacher")
             app.MainLoop()

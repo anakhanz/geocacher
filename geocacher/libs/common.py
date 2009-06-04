@@ -60,3 +60,12 @@ def getAttribFromPath(root, relativePath, attrib, nameSpaces=None, default=None)
         except:
             ret = default
     return ret
+
+def escape(str):
+    # you can also use
+    # from xml.sax.saxutils import escape
+    # Caution: you have to escape '&' first!
+    str = str.replace(u'&',u'&amp;')
+    str = str.replace(u'<',u'&lt;')
+    str = str.replace(u'>',u'&gt;')
+    return str
