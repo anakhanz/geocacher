@@ -5,8 +5,6 @@ from lxml.etree import Element,ElementTree
 import os
 import string
 
-from __main__ import Geocacher
-
 from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
 from libs.common import getTextFromPath,getAttribFromPath
 
@@ -166,7 +164,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
         # that are not listed in the wpt
         for cacheTbRef in cacheTbRefs:
             if not(cacheTbRef in wptTbRefs):
-                cache.getTravelBugByName(cacheTbRef).delete()
+                cache.getTravelBugByRef(cacheTbRef).delete()
                 updated = True
 
         if updated:

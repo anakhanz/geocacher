@@ -45,6 +45,7 @@ def getTextFromPath(root, relativePath, nameSpaces=None, default=None):
         except:
             ret = default
             logging.debug("'%s' path not found" % relativePath)
+    if ret == None: ret = default
     return ret
 
 def getAttribFromPath(root, relativePath, attrib, nameSpaces=None, default=None):

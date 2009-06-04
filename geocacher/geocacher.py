@@ -194,53 +194,203 @@ def escape(str):
     str = str.replace(u'>',u'&gt;')
     return str
 
+class ImageRenderer(gridlib.PyGridCellRenderer):
+    def __init__(self, table):
+        gridlib.PyGridCellRenderer.__init__(self)
+        self.table = table
+        self._images = {}
+        self._default = None
+
+        self.colSize = None
+        self.rowSize = None
+
+    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+        value = self.table.GetValue(row, col)
+        if value not in self._images:
+            logging.warn("Image not defined for '%s'" % value)
+            value = self._default
+        bmp = self._images[value]
+        image = wx.MemoryDC()
+        image.SelectObject(bmp)
+
+        # clear the background
+        dc.SetBackgroundMode(wx.SOLID)
+
+        if isSelected:
+            dc.SetBrush(wx.Brush(wx.BLUE, wx.SOLID))
+            dc.SetPen(wx.Pen(wx.BLUE, 1, wx.SOLID))
+        else:
+            dc.SetBrush(wx.Brush(wx.WHITE, wx.SOLID))
+            dc.SetPen(wx.Pen(wx.WHITE, 1, wx.SOLID))
+        dc.DrawRectangleRect(rect)
+
+        # copy the image but only to the size of the grid cell
+        width, height = bmp.GetWidth(), bmp.GetHeight()
+
+        if width > rect.width-2:
+            width = rect.width-2
+
+        if height > rect.height-2:
+            height = rect.height-2
+
+        dc.Blit(rect.x+1, rect.y+1, width, height,
+                image,
+                0, 0, wx.COPY, True)
+
+class CacheSizeRenderer(ImageRenderer):
+    def __init__(self, table):
+        gridlib.PyGridCellRenderer.__init__(self)
+        self.table = table
+        self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
+                        'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
+                        'Regular':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-regular.gif'), wx.BITMAP_TYPE_GIF),
+                        'Large':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-large.gif'), wx.BITMAP_TYPE_GIF),
+                        'Not chosen':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-not_chosen.gif'), wx.BITMAP_TYPE_GIF),
+                        'Virtual':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-virtual.gif'), wx.BITMAP_TYPE_GIF),
+                        'Other':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-other.gif'), wx.BITMAP_TYPE_GIF)}
+        self._default='Other'
+
+        self.colSize = None
+        self.rowSize = None
+
+class CacheTypeRenderer(ImageRenderer):
+    def __init__(self, table):
+        gridlib.PyGridCellRenderer.__init__(self)
+        self.table = table
+        self._images = {'Traditional Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-traditional.gif'), wx.BITMAP_TYPE_GIF),
+                        'Ape':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-ape.gif'), wx.BITMAP_TYPE_GIF),
+                        'CITO':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-cito.gif'), wx.BITMAP_TYPE_GIF),
+                        'Earthcache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-earthcache.gif'), wx.BITMAP_TYPE_GIF),
+                        'Event':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-event.gif'), wx.BITMAP_TYPE_GIF),
+                        'Maze':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-gps_maze.gif'), wx.BITMAP_TYPE_GIF),
+                        'Letterbox Hybrid':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-letterbox.gif'), wx.BITMAP_TYPE_GIF),
+                        'Mega':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-mega.gif'), wx.BITMAP_TYPE_GIF),
+                        'Multi-cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-multi-cache.gif'), wx.BITMAP_TYPE_GIF),
+                        'Unknown Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-mystery.gif'), wx.BITMAP_TYPE_GIF),
+                        'Reverse':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-reverse.gif'), wx.BITMAP_TYPE_GIF),
+                        'Virtual Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-virtual.gif'), wx.BITMAP_TYPE_GIF),
+                        'Webcam':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-webcam.gif'), wx.BITMAP_TYPE_GIF),
+                        'WhereIGo':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-whereigo.gif'), wx.BITMAP_TYPE_GIF)
+                        }
+        self._default='Traditional Cache'
+
+        self.colSize = None
+        self.rowSize = None
+
+
+##class CacheSizeRenderer(gridlib.PyGridCellRenderer):
+##    def __init__(self, table):
+##        gridlib.PyGridCellRenderer.__init__(self)
+##        self.table = table
+##        self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
+##                        'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
+##                        'Regular':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-regular.gif'), wx.BITMAP_TYPE_GIF),
+##                        'Large':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-large.gif'), wx.BITMAP_TYPE_GIF),
+##                        'Not chosen':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-not_chosen.gif'), wx.BITMAP_TYPE_GIF),
+##                        'Virtual':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-virtual.gif'), wx.BITMAP_TYPE_GIF),
+##                        'Other':wx.Bitmap(os.path.join(os.path.dirname(__file__),'data','gfx','sz-other.gif'), wx.BITMAP_TYPE_GIF)}
+##
+##        self.colSize = None
+##        self.rowSize = None
+##
+##    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+##        value = self.table.GetValue(row, col)
+##        if value not in self._images:
+##            value = 'Other'
+##            log.warn("Cache Size '%s' not in known sizes" % value)
+##        bmp = self._images[value]
+##        image = wx.MemoryDC()
+##        image.SelectObject(bmp)
+##
+##        # clear the background
+##        dc.SetBackgroundMode(wx.SOLID)
+##
+##        if isSelected:
+##            dc.SetBrush(wx.Brush(wx.BLUE, wx.SOLID))
+##            dc.SetPen(wx.Pen(wx.BLUE, 1, wx.SOLID))
+##        else:
+##            dc.SetBrush(wx.Brush(wx.WHITE, wx.SOLID))
+##            dc.SetPen(wx.Pen(wx.WHITE, 1, wx.SOLID))
+##        dc.DrawRectangleRect(rect)
+##
+##        # copy the image but only to the size of the grid cell
+##        width, height = bmp.GetWidth(), bmp.GetHeight()
+##
+##        if width > rect.width-2:
+##            width = rect.width-2
+##
+##        if height > rect.height-2:
+##            height = rect.height-2
+##
+##        dc.Blit(rect.x+1, rect.y+1, width, height,
+##                image,
+##                0, 0, wx.COPY, True)
+
 class CacheDataTable(gridlib.PyGridTableBase):
     def __init__(self):
         gridlib.PyGridTableBase.__init__(self)
 
-        self.identifiers = ['code','lon','lat','name','found']
+        self.identifiers = ['code','lon','lat','name','found','type','size']
 
         self.colLabels = {
             'code':_('Code'),
             'lon':_("Longitude"),
             'lat':_('Latitude'),
             'name':_('Name'),
-            'found':_('Found By Me')}
+            'found':_('Found By Me'),
+            'type':_('Type'),
+            'size':_('Size')}
+
+        #sizeRenderer = CacheSizeRenderer(self)
 
         self.dataTypes = {
             'code':gridlib.GRID_VALUE_STRING,
             'lon':gridlib.GRID_VALUE_FLOAT + ':6,6',
             'lat':gridlib.GRID_VALUE_FLOAT + ':6,6',
             'name':gridlib.GRID_VALUE_STRING,
-            'found':gridlib.GRID_VALUE_BOOL}
+            'found':gridlib.GRID_VALUE_BOOL,
+            'type':gridlib.GRID_VALUE_STRING,
+            'size':gridlib.GRID_VALUE_STRING}
+
+        self.renderers = {
+            'size':CacheSizeRenderer,
+            'type':CacheTypeRenderer}
 
         self.data = []
-        self.reloadCaches()
 
     def reloadCaches(self):
-        existingRecords=len(self.data)
-        print existingRecords
-        if existingRecords!=0:
-
-            del self.data[:existingRecords]
-            msg = gridlib.GridTableMessage(self,            # The table
-                    gridlib.GRIDTABLE_NOTIFY_ROWS_DELETED,
-                    existingRecords,0                                       # how many
-                    )
-            view = self.GetView()
+        oldNumRows=len(self.data)
+        self.data = []
+        grid = self.GetView()
         for cache in Geocacher.db.getCacheList():
-            self.addCache(cache)
+            self.__addRow(cache)
+        newNumRows=len(self.data)
+        if newNumRows < oldNumRows:
+            msg = wx.grid.GridTableMessage(
+                self,                     # the table
+                wx.grid.GRIDTABLE_NOTIFY_ROWS_DELETED,
+                newNumRows,               # position
+                oldNumRows - newNumRows)  # how many
+            grid.ProcessTableMessage(msg)
 
-    def addCache(self, cache):
-        row = {'code':cache.code,'lon':cache.lon,'lat':cache.lat,'name':cache.name,'found':cache.found}
+        elif newNumRows >  oldNumRows:
+            msg = wx.grid.GridTableMessage(
+                    self,                     # the table
+                    wx.grid.GRIDTABLE_NOTIFY_ROWS_APPENDED,
+                    newNumRows - oldNumRows)  # how many
+            grid.ProcessTableMessage(msg)
+
+        msg = wx.grid.GridTableMessage(
+                self,
+                wx.grid.GRIDTABLE_REQUEST_VIEW_GET_VALUES)
+        grid.ProcessTableMessage(msg)
+        self._updateColAttrs(grid)
+
+    def __addRow(self, cache):
+        row = {'code':cache.code,'lon':cache.lon,'lat':cache.lat,
+                'name':cache.name,'found':cache.found,'type':cache.type,
+                'size':cache.container}
         self.data.append(row)
-        msg = gridlib.GridTableMessage(self,            # The table
-                gridlib.GRIDTABLE_NOTIFY_ROWS_APPENDED, # what we did to it
-                1                                       # how many
-                )
-
-        view = self.GetView()
-        if view != None: view.ProcessTableMessage(msg)
 
     def GetNumberRows(self):
         return len(self.data)
@@ -308,6 +458,33 @@ class CacheDataTable(gridlib.PyGridTableBase):
 
             grid.EndBatch()
 
+    def _updateColAttrs(self, grid):
+        """
+        wx.Grid -> update the column attributes to add the
+        appropriate renderer given the column name.  (renderers
+        are stored in the self.plugins dictionary)
+
+        Otherwise default to the default renderer.
+        """
+        col = 0
+
+        for identifier in self.identifiers:
+            attr = gridlib.GridCellAttr()
+            if identifier in self.renderers:
+                renderer = self.renderers[identifier](self)
+
+                if renderer.colSize:
+                    grid.SetColSize(col, renderer.colSize)
+
+                if renderer.rowSize:
+                    grid.SetDefaultRowSize(renderer.rowSize)
+
+                attr.SetReadOnly(True)
+                attr.SetRenderer(renderer)
+
+            grid.SetColAttr(col, attr)
+            col += 1
+
 class CacheGrid(gridlib.Grid):
     def __init__(self, parent):
         gridlib.Grid.__init__(self, parent, -1)
@@ -318,6 +495,8 @@ class CacheGrid(gridlib.Grid):
         # table and will destroy it when done.  Otherwise you would need to keep
         # a reference to it and call it's Destroy method later.
         self.SetTable(table, True)
+
+        table.reloadCaches()
 
         # Enable Column moving
         gridmovers.GridColMover(self)
@@ -476,7 +655,7 @@ def main (debug, canModify):
         logging.warn(_('Geocacher appears to already be running, if not delete the file listed above.'))
         sys.exit(1)
 USAGE = """%s [options]
-JBrout %s by Rob Wallace (c)2009, Licence GPL2
+Geocacher %s by Rob Wallace (c)2009, Licence GPL2
 http://www.example.com""" % ("%prog",__version__)
 
 if __name__ == "__main__":
