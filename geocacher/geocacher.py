@@ -36,29 +36,6 @@ try:
 except:
     __version__ = "src"
 
-##def myExceptHook(type, value, tb):
-##    sys.__excepthook__(type, value, tb)
-##    lines = traceback.format_exception(type, value, tb)
-##    MessageBox(None,string.join(lines),title=_("Geocacher Error"))
-##
-##class Preferences(GladeApp):
-##    glade=os.path.join(os.path.dirname(__file__), 'data/geocacher.glade')
-##    window = "preferences"
-##
-##    def init(self):
-##        self.entUserName.set_text(Geocacher.conf.gc.userName)
-##        self.entUserId.set_text(Geocacher.conf.gc.userId)
-##
-##    def on_butOk_clicked(self,widget,*args):
-##        Geocacher.conf.gc.userName = self.entUserName.get_text()
-##        Geocacher.conf.gc.userId = self.entUserId.get_text()
-##        self.on_preferences_delete_event(widget,*args)
-##
-##    def on_butCancel_clicked(self,widget,*args):
-##        self.on_preferences_delete_event(widget,*args)
-##
-##    def on_preferences_delete_event(self,*args):
-##        self.quit()
 
 class ImageRenderer(gridlib.PyGridCellRenderer):
     def __init__(self, table):
@@ -336,14 +313,57 @@ class CacheGrid(gridlib.Grid):
 
     def reloadCaches(self):
         self.GetTable().reloadCaches()
+class PreferencesWindow(wx.Frame):
+    """Preferences Dialog"""
+    def __init__(self,parent,id,prefs):
+        """Creates the Preferences Frame"""
+        self._prefs = prefs
+        wx.Frame.__init__(self,parent,wx.ID_ANY,_("Preferences"),#size = (w,h),
+                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
+        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
+
+        gcGrid = wx.FlexGridSizer(rows=2,cols=2)
+        label = wx.StaticText(self,wx.ID_ANY,"User Name")
+        gcGrid.Add(label, 0,wx.EXPAND)
+        self.gcUserName = wx.TextCtrl(self,wx.ID_ANY,self._prefs.gc.userName)
+        gcGrid.Add(self.gcUserName, 0,wx.EXPAND)
+        label = wx.StaticText(self,wx.ID_ANY,"User ID")
+        gcGrid.Add(label, 0,wx.EXPAND)
+        self.gcUserId = wx.TextCtrl(self,wx.ID_ANY,self._prefs.gc.userId)
+        gcGrid.Add(self.gcUserId, 0,wx.EXPAND)
+        mainBox.Add(gcGrid, 0, wx.EXPAND)
+        # Ok and Cancel Buttons
+        okButton = wx.Button(self,wx.ID_OK)
+        self.Bind(wx.EVT_BUTTON, self.OnOk,okButton)
+        cancelButton = wx.Button(self,wx.ID_CANCEL)
+        self.Bind(wx.EVT_BUTTON, self.OnCancel,cancelButton)
+        buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
+        buttonBox.Add(okButton, 0, wx.EXPAND)
+        buttonBox.Add(cancelButton, 0, wx.EXPAND)
+
+        mainBox.Add(buttonBox, 0, wx.EXPAND)
+        self.SetSizer(mainBox)
+        self.SetAutoLayout(True)
+
+
+        self.Show(True)
+
+    def OnCancel(self, event=None):
+        self.Destroy()
+
+    def OnOk(self, event=None):
+        print "Ok"
+        self._prefs.gc.userName = self.gcUserName.GetValue()
+        self._prefs.gc.userId = self.gcUserId.GetValue()
+        self.Destroy()
 
 class MainWindow(wx.Frame):
     """Main Frame holding the Panel."""
-    def __init__(self,parent,id,title):
+    def __init__(self,parent,id):
         """Create the main frame"""
         w = Geocacher.conf.common.mainWiidth or 700
         h = Geocacher.conf.common.mainHeight or 500
-        wx.Frame.__init__(self,parent,wx.ID_ANY,title,size = (w,h),
+        wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (w,h),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
 
@@ -428,6 +448,7 @@ class MainWindow(wx.Frame):
 
     def OnPrefs(self, event=None):
         print "Editing preferences"
+        prefsFrame = PreferencesWindow(self,wx.ID_ANY,Geocacher.conf)
 
     def OnQuit(self, event=None):
         """Exit application."""
@@ -450,12 +471,11 @@ def main (debug, canModify):
             locked = False
     if not locked:
         try:
-            #sys.excepthook = myExceptHook
             Geocacher.init(debug, canModify)
 
 # TODO: Add icon
 
-            frame = MainWindow(None,-1,"Geocacher")
+            frame = MainWindow(None,-1)
             app.MainLoop()
 
         finally:
