@@ -29,6 +29,7 @@ __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dir
 from libs.db import Geocacher
 from libs.gpx import gpxLoad
 from libs.loc import locLoad
+from libs.latlon import distance, cardinalBearing
 
 try:
     __version__ = open(os.path.join(os.path.dirname(__file__),
@@ -104,7 +105,7 @@ class CacheTypeRenderer(ImageRenderer):
                         'Ape':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-ape.gif'), wx.BITMAP_TYPE_GIF),
                         'CITO':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-cito.gif'), wx.BITMAP_TYPE_GIF),
                         'Earthcache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-earthcache.gif'), wx.BITMAP_TYPE_GIF),
-                        'Event':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-event.gif'), wx.BITMAP_TYPE_GIF),
+                        'Event Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-event.gif'), wx.BITMAP_TYPE_GIF),
                         'Maze':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-gps_maze.gif'), wx.BITMAP_TYPE_GIF),
                         'Letterbox Hybrid':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-letterbox.gif'), wx.BITMAP_TYPE_GIF),
                         'Mega':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-mega.gif'), wx.BITMAP_TYPE_GIF),
@@ -124,27 +125,90 @@ class CacheDataTable(gridlib.PyGridTableBase):
     def __init__(self):
         gridlib.PyGridTableBase.__init__(self)
 
-        self.identifiers = ['code','lon','lat','name','found','type','size']
+        # TODO: read active column ID's fom config
+        self.identifiers = ['code','id','lat','lon','name','found','type',
+        'size','distance','bearing','oLat','oLon','cLat','cLon','corrected',
+        'available','archived','state','country','owner','placedBy','placed',
+        'user_date','gpx_date','locked','found','found_date','dnf','dnf_date',
+        'source','user_flag','user_data1','user_data2','user_data3',
+        'user_data4']
 
         self.colLabels = {
-            'code':_('Code'),
-            'lon':_("Longitude"),
-            'lat':_('Latitude'),
-            'name':_('Name'),
-            'found':_('Found By Me'),
-            'type':_('Type'),
-            'size':_('Size')}
+            'code'        :_('Code'),
+            'id'          :_('ID'),
+            'lat'         :_('Latitude'),
+            'lon'         :_("Longitude"),
+            'name'        :_('Name'),
+            'url'         :_('URL'),
+            'found'       :_('Found By Me'),
+            'type'        :_('Type'),
+            'size'        :_('Size'),
+            'distance'    :_('Distance'),
+            'bearing'     :_('Bearing'),
+            'oLat'        :_('Origional Latitude'),
+            'oLon'        :_("Origional Longitude"),
+            'cLat'        :_('Corrected Latitude'),
+            'cLon'        :_("Corrected Longitude"),
+            'corrected'   :_('Corrected Cordinates'),
+            'available'   :_('Avaliable'),
+            'archived'    :_('Archived'),
+            'state'       :_('State'),
+            'country'     :_('Country'),
+            'owner'       :_('Owner'),
+            'placedBy'    :_('Placed By'),
+            'placed'      :_('Date Placed'),
+            'user_date'   :_('Last User Update'),
+            'gpx_date'    :_('Last GPX Update'),
+            'locked'      :_('Locked'),
+            'found'       :_('Found'),
+            'found_date'  :_('Date Found'),
+            'dnf'         :_('DNF'),
+            'dnf_date'    :_('DNF Date'),
+            'source'      :_(''),
+            'user_flag'   :_('User Flag'),
+            'user_data1'  :_('ud1'),# TODO: read user data column names from config
+            'user_data2'  :_('ud2'),
+            'user_data3'  :_('ud3'),
+            'user_data4'  :_('ud4')}
 
         #sizeRenderer = CacheSizeRenderer(self)
 
         self.dataTypes = {
-            'code':gridlib.GRID_VALUE_STRING,
-            'lon':gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'lat':gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'name':gridlib.GRID_VALUE_STRING,
-            'found':gridlib.GRID_VALUE_BOOL,
-            'type':gridlib.GRID_VALUE_STRING,
-            'size':gridlib.GRID_VALUE_STRING}
+            'code'        :gridlib.GRID_VALUE_STRING,
+            'id'          :gridlib.GRID_VALUE_STRING,
+            'lat'         :gridlib.GRID_VALUE_FLOAT + ':6,6',
+            'lon'         :gridlib.GRID_VALUE_FLOAT + ':6,6',
+            'name'        :gridlib.GRID_VALUE_STRING,
+            'found'       :gridlib.GRID_VALUE_BOOL,
+            'type'        :gridlib.GRID_VALUE_STRING,
+            'size'        :gridlib.GRID_VALUE_STRING,
+            'distance'    :gridlib.GRID_VALUE_STRING,
+            'bearing'     :gridlib.GRID_VALUE_STRING,
+            'oLat'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
+            'oLon'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
+            'cLat'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
+            'cLon'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
+            'corrected'   :gridlib.GRID_VALUE_BOOL,
+            'available'   :gridlib.GRID_VALUE_BOOL,
+            'archived'    :gridlib.GRID_VALUE_BOOL,
+            'state'       :gridlib.GRID_VALUE_STRING,
+            'country'     :gridlib.GRID_VALUE_STRING,
+            'owner'       :gridlib.GRID_VALUE_STRING,
+            'placedBy'    :gridlib.GRID_VALUE_STRING,
+            'placed'      :gridlib.GRID_VALUE_DATETIME,
+            'user_date'   :gridlib.GRID_VALUE_DATETIME,
+            'gpx_date'    :gridlib.GRID_VALUE_DATETIME,
+            'locked'      :gridlib.GRID_VALUE_BOOL,
+            'found'       :gridlib.GRID_VALUE_BOOL,
+            'found_date'  :gridlib.GRID_VALUE_DATETIME,
+            'dnf'         :gridlib.GRID_VALUE_BOOL,
+            'dnf_date'    :gridlib.GRID_VALUE_DATETIME,
+            'source'      :gridlib.GRID_VALUE_STRING,
+            'user_flag'   :gridlib.GRID_VALUE_BOOL,
+            'user_data1'  :gridlib.GRID_VALUE_STRING,
+            'user_data2'  :gridlib.GRID_VALUE_STRING,
+            'user_data3'  :gridlib.GRID_VALUE_STRING,
+            'user_data4'  :gridlib.GRID_VALUE_STRING}
 
         self.renderers = {
             'size':CacheSizeRenderer,
@@ -181,9 +245,34 @@ class CacheDataTable(gridlib.PyGridTableBase):
         self._updateColAttrs(grid)
 
     def __addRow(self, cache):
-        row = {'code':cache.code,'lon':cache.lon,'lat':cache.lat,
-                'name':cache.name,'found':cache.found,'type':cache.type,
-                'size':cache.container}
+        if cache.corrected == True:
+            lat = cache.cLat
+            lon = cache.cLon
+        else:
+            lat = cache.lat
+            lon = cache.lon
+        # TODO: load home lat form config
+        hLat = -41-(16.301/60)
+        hLon = 174+(45.461/60)
+
+        # TODO: allow for unit as miles
+        dist = '%0.2f km' % distance(hLat,hLon,lat,lon)
+        cBear = cardinalBearing(hLat,hLon,lat,lon)
+
+        row = {'code':cache.code,'id':cache.id,'lon':lon,'lat':lat,
+                'name':cache.name,'url':cache.url,'found':cache.found,
+                'type':cache.type,'size':cache.container,'distance':dist,
+                'bearing':cBear,'oLat':cache.lat,'oLon':cache.lon,
+                'cLat':cache.clat,'cLon':cache.clon,'corrected':cache.corrected,
+                'available':cache.available,'archived':cache.archived,
+                'state':cache.state,'country':cache.country,
+                'owner':cache.owner,'placedBy':cache.placed_by,'placed':cache.placed,
+                'user_date':cache.user_date,'gpx_date':cache.gpx_date,
+                'locked':cache.locked,'found':cache.found,'found_date':cache.found_date,
+                'dnf':cache.dnf,'dnf_date':cache.dnf_date,'source':cache.source,
+                'user_flag':cache.user_flag,'user_data1':cache.user_data1,
+                'user_data2':cache.user_data2,'user_data3':cache.user_data3,
+                'user_data4':cache.user_data4}
         self.data.append(row)
 
     def GetNumberRows(self):

@@ -89,11 +89,17 @@ class DB:
                         dnf=False,
                         dnf_date=None,
                         own_log="",
-                        own_log_encoded="",
+                        own_log_encoded=False,
                         source="",
                         corrected=False,
                         clat=0,
-                        clon=0):
+                        clon=0,
+                        user_comments="",
+                        user_flag=False,
+                        user_data1="",
+                        user_data2="",
+                        user_data3="",
+                        user_data4=""):
         newCache=Element("cache",code=code,
                             id         = "%s" % id,
                             lat        = "%f" % lat,
@@ -124,7 +130,12 @@ class DB:
                             source     = "%s" % source,
                             corrected  = boolToText(corrected),
                             clat       = "%f" % clat,
-                            clon       = "%f" % clon)
+                            clon       = "%f" % clon,
+                            user_flag  = boolToText(user_flag),
+                            user_data1 = "%s" % user_data1,
+                            user_data2 = "%s" % user_data2,
+                            user_data3 = "%s" % user_data3,
+                            user_data4 = "%s" % user_data4)
         sDesc = Element("short_description",html=boolToText(short_desc_html))
         sDesc.text = short_desc
         newCache.append(sDesc)
@@ -134,8 +145,12 @@ class DB:
         hints = Element("encoded_hints")
         hints.text = encoded_hints
         newCache.append(hints)
-        ownLog = Element("own_log",encoded=boolToText(own_log))
+        ownLog = Element("own_log",encoded=boolToText(own_log_encoded))
+        ownLog.text=own_log
         newCache.append(ownLog)
+        userComments = Element("user_comments")
+        userComments.text = user_comments
+        newCache.append(userComments)
         self.root.append(newCache)
         return Cache(newCache)
 
@@ -185,7 +200,7 @@ class Cache(object):
     def __getLocked(self):    textToBool(self.__node.attrib["locked"])
     locked = property(__getLocked)
 
-    def __getUser_date(self):    return textToDateTime(elf.__node.attrib["user_date"])
+    def __getUser_date(self):    return textToDateTime(self.__node.attrib["user_date"])
     user_date = property(__getUser_date)
 
     def setUserDate(self,dt):
@@ -207,7 +222,7 @@ class Cache(object):
         self.__node.attrib["symbol"] = t
 
     def __getPlaced(self):
-        return textToDate(self.__node.attrib["placed"])
+        return textToDateTime(self.__node.attrib["placed"])
     placed = property(__getPlaced)
 
     def setPlaced(self,dt):
@@ -274,7 +289,7 @@ class Cache(object):
         assert type(b) == bool
         self.__node.attrib["available"] = boolToText(b)
 
-    def __getArchived(self):    TextToBool(self.__node.attrib["archived"])
+    def __getArchived(self):    textToBool(self.__node.attrib["archived"])
     archived = property(__getArchived)
 
     def setArchived(self,b):
@@ -415,6 +430,49 @@ class Cache(object):
     def setSource(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["source"] = t
+
+    def __getUser_comments(self):
+        return self.__node.xpath("user_comments")[0].text
+    user_comments = property(__getUser_comments)
+
+    def setUser_comments(self,t):
+        assert type(t)==unicode or type(t)==str
+        self.__node.xpath("user_comments")[0].text = t
+
+    def __getUser_flag(self):    textToBool(self.__node.attrib["user_flag"])
+    user_flag = property(__getUser_flag)
+
+    def setUser_flag(self,b):
+        assert type(b) == bool
+        self.__node.attrib["user_flag"] = boolToText(b)
+
+    def __getUser_data1(self):    return self.__node.attrib["user_data1"]
+    user_data1 = property(__getUser_data1)
+
+    def setUser_data1(self,t):
+        assert type(t)==unicode or type(t)==str
+        self.__node.attrib["user_data1"] = t
+
+    def __getUser_data2(self):    return self.__node.attrib["user_data2"]
+    user_data2 = property(__getUser_data2)
+
+    def setUser_data2(self,t):
+        assert type(t)==unicode or type(t)==str
+        self.__node.attrib["user_data2"] = t
+
+    def __getUser_data3(self):    return self.__node.attrib["user_data3"]
+    user_data3 = property(__getUser_data3)
+
+    def setUser_data3(self,t):
+        assert type(t)==unicode or type(t)==str
+        self.__node.attrib["user_data3"] = t
+
+    def __getUser_data4(self):    return self.__node.attrib["user_data4"]
+    user_data4 = property(__getUser_data4)
+
+    def setUser_data4(self,t):
+        assert type(t)==unicode or type(t)==str
+        self.__node.attrib["user_data4"] = t
 
     def getLogList(self):
         logNodes = self.__node.xpath("log")
