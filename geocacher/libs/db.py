@@ -19,6 +19,7 @@ class DB:
         except:
             self.root = Element("db",version="1")
             version=1
+            self.addLocation('Default')
         self.file = file
 
     def save(self):
@@ -50,17 +51,10 @@ class DB:
         else:
             return None
 
-    def getCaches(self):
-        """Returns a list of alll Cache objects"""
-        caches = []
-        for cacheNode in self.root.xpath(u"cache"):
-            cacheList.append(Cache(cacheNode))
-        return caches
-
     def addCache(self,code,
                         id="aa",
-                        lat=0,
-                        lon=0,
+                        lat=0.0,
+                        lon=0.0,
                         name="",
                         url="",
                         locked=False,
@@ -72,8 +66,8 @@ class DB:
                         owner="",
                         owner_id="",
                         container="Not Listed",
-                        difficulty=0,
-                        terrain=0,
+                        difficulty=0.0,
+                        terrain=0.0,
                         type="Traditional Cache",
                         available=True,
                         archived=False,
@@ -92,8 +86,8 @@ class DB:
                         own_log_encoded=False,
                         source="",
                         corrected=False,
-                        clat=0,
-                        clon=0,
+                        clat=0.0,
+                        clon=0.0,
                         user_comments="",
                         user_flag=False,
                         user_data1="",
@@ -153,6 +147,34 @@ class DB:
         newCache.append(userComments)
         self.root.append(newCache)
         return Cache(newCache)
+
+    def getLocationList(self):
+        """Returns a list of locations"""
+        locationList = []
+        for locationNode in self.root.xpath(u"location"):
+            locationList.append(Location(locationNode))
+        return cacheList
+
+    def getLocationNameList(self):
+        """Returns a list of cache locations"""
+        locationCodeList = []
+        for locationNode in self.root.xpath(u"location"):
+            locationCodeList.append(locationNode.attrib["name"])
+        return cacheCodeList
+
+    def getLocationByName(self,name):
+        """Returns the cache with the given code if found, otherwise 'None'"""
+        locations = self.root.xpath(u"""location[@name="%s"]""" % name)
+        if len(locations) > 0:
+            return Location(locations[0])
+        else:
+            return None
+
+    def addLocation(self,name,lat=0.0,lon=0.0,comment=""):
+        newLocation = Element('location',name=name, lat="%f" % lat, lon="%f" % lon)
+        newLocation.text = comment
+        self.root.append(newLocation)
+        return Location(newLocation)
 
 class Cache(object):
     def __init__(self,n):
@@ -719,6 +741,42 @@ class AddWaypoint(object):
     def delete(self):
         self.__node.getparent().remove(self.__node)
 
+class Location(object):
+    def __init__(self,n):
+        assert n.tag =="location"
+        self.__node = n
+
+    def __getName(self):    return self.__node.attrib["name"]
+    name = property(__getName)
+
+    def setName(self,t):
+        assert type(t) == uniceode or type(t)==str
+        self.__node.attrib["name"] = t
+
+    def __getLat(self):    return float(self.__node.attrib["lat"])
+    lat = property(__getLat)
+
+    def setLat(self,f):
+        assert type(f) == float
+        self.__node.attrib["lat"] = "%f" % f
+
+    def __getLon(self):    return float(self.__node.attrib["lon"])
+    lon = property(__getLon)
+
+    def setLon(self,f):
+        assert type(f) == float
+        self.__node.attrib["lon"] = "%f" % f
+
+    def __getCmt(self):    return self.__node.txt
+    cmt = property(__getCmt)
+
+    def setCmt(self,t):
+        assert type(t) == unicode or type(t)==str
+        self.__node.text = t
+
+    def delete(self):
+        self.__node.getparent().remove(self.__node)
+
 class Geocacher:
     __lockFile = "geocacher.lock"
 
@@ -823,9 +881,18 @@ class Geocacher:
         # load/initalise the database
         Geocacher.db = DB( Geocacher.getConfFile("db.xml") )
         # load/initalise the program configuration
-        d = {'common':{'mainWidth' :700,
-                       'mainHeigt' :500,
-                       'lastFolder':Geocacher.getHomeDir()},
+        d = {'common':{'mainWidth'  :700,
+                       'mainHeigt'  :500,
+                       'lastFolder' :Geocacher.getHomeDir(),
+                       'cacheCols'  :['code','id','lat','lon','name','found',
+                                      'type','size','distance','bearing'],
+                       'sortCol'    :'code',
+                       'userData1'  :'User Data 1',
+                       'userData2'  :'User Data 2',
+                       'userData3'  :'User Data 3',
+                       'userData4'  :'User Data 4',
+                       'miles'      :False,
+                       'CurrentLoc' :'Default'},
              'gc'    :{'userName'  :'',
                        'userId'    :''}}
         Geocacher.conf = dict4ini.DictIni( Geocacher.getConfFile("geocacher.conf"), values=d)

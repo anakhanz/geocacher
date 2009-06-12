@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
+# TODO: Add GPX export
+# TODO: Add geocaching.com zip file import (either loc or GPX)
+# TODO: Add export to GPS (using gpsBabel)
+# TODO: Add lat/lon correction tool
+# TODO: Add selection of Current home location
+# TODO: Add icon to main Window
+# TODO: Add configuration of User Data Column names
+# TODO: Add viewing of data that is not displayed in the table
+
 debugLevel = 5
 import logging
 import optparse
@@ -16,8 +25,8 @@ except:
     pass
 
 import wx
-import wx.grid             as  gridlib
-import wx.lib.gridmovers   as  gridmovers
+import wx.grid             as  Grid
+import wx.lib.gridmovers   as  Gridmovers
 
 import locale
 
@@ -38,9 +47,9 @@ except:
     __version__ = "src"
 
 
-class ImageRenderer(gridlib.PyGridCellRenderer):
-    def __init__(self, table):
-        gridlib.PyGridCellRenderer.__init__(self)
+class ImageRenderer(Grid.PyGridCellRenderer):
+    def __init__(self, table, conf):
+        Grid.PyGridCellRenderer.__init__(self)
         self.table = table
         self._images = {}
         self._default = None
@@ -82,8 +91,8 @@ class ImageRenderer(gridlib.PyGridCellRenderer):
                 0, 0, wx.COPY, True)
 
 class CacheSizeRenderer(ImageRenderer):
-    def __init__(self, table):
-        gridlib.PyGridCellRenderer.__init__(self)
+    def __init__(self, table, conf):
+        Grid.PyGridCellRenderer.__init__(self)
         self.table = table
         self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
                         'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
@@ -98,8 +107,8 @@ class CacheSizeRenderer(ImageRenderer):
         self.rowSize = None
 
 class CacheTypeRenderer(ImageRenderer):
-    def __init__(self, table):
-        gridlib.PyGridCellRenderer.__init__(self)
+    def __init__(self, table, conf):
+        Grid.PyGridCellRenderer.__init__(self)
         self.table = table
         self._images = {'Traditional Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-traditional.gif'), wx.BITMAP_TYPE_GIF),
                         'Ape':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-ape.gif'), wx.BITMAP_TYPE_GIF),
@@ -121,18 +130,20 @@ class CacheTypeRenderer(ImageRenderer):
         self.colSize = None
         self.rowSize = None
 
-class CacheDataTable(gridlib.PyGridTableBase):
-    def __init__(self):
-        gridlib.PyGridTableBase.__init__(self)
+class CacheDataTable(Grid.PyGridTableBase):
+    def __init__(self, conf, db):
+        self.conf = conf
+        self.db = db
+        Grid.PyGridTableBase.__init__(self)
 
-        # TODO: read active column ID's fom config
-        self.identifiers = ['code','id','lat','lon','name','found','type',
-        'size','distance','bearing','oLat','oLon','cLat','cLon','corrected',
-        'available','archived','state','country','owner','placedBy','placed',
-        'user_date','gpx_date','locked','found','found_date','dnf','dnf_date',
-        'source','user_flag','user_data1','user_data2','user_data3',
-        'user_data4']
+        self.colNames = self.conf.common.cacheCols or \
+                           ['code','id','lat','lon','name','found','type',
+                            'size','distance','bearing']
 
+        # TODO: Add 'Number of logs' to table columns
+        # TODO: Add 'Last Found' to table columns
+        # TODO: Add 'Found Count' to table columns
+        # TODO: Add 'Last Log Date' to table columns
         self.colLabels = {
             'code'        :_('Code'),
             'id'          :_('ID'),
@@ -164,99 +175,84 @@ class CacheDataTable(gridlib.PyGridTableBase):
             'found_date'  :_('Date Found'),
             'dnf'         :_('DNF'),
             'dnf_date'    :_('DNF Date'),
-            'source'      :_(''),
+            'source'      :_('Source'),
             'user_flag'   :_('User Flag'),
-            'user_data1'  :_('ud1'),# TODO: read user data column names from config
-            'user_data2'  :_('ud2'),
-            'user_data3'  :_('ud3'),
-            'user_data4'  :_('ud4')}
-
-        #sizeRenderer = CacheSizeRenderer(self)
+            'user_data1'  :self.conf.common.userData1 or _('User Data 1'),
+            'user_data2'  :self.conf.common.userData2 or _('User Data 2'),
+            'user_data3'  :self.conf.common.userData3 or _('User Data 3'),
+            'user_data4'  :self.conf.common.userData4 or _('User Data 4')}
 
         self.dataTypes = {
-            'code'        :gridlib.GRID_VALUE_STRING,
-            'id'          :gridlib.GRID_VALUE_STRING,
-            'lat'         :gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'lon'         :gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'name'        :gridlib.GRID_VALUE_STRING,
-            'found'       :gridlib.GRID_VALUE_BOOL,
-            'type'        :gridlib.GRID_VALUE_STRING,
-            'size'        :gridlib.GRID_VALUE_STRING,
-            'distance'    :gridlib.GRID_VALUE_STRING,
-            'bearing'     :gridlib.GRID_VALUE_STRING,
-            'oLat'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'oLon'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'cLat'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'cLon'        :gridlib.GRID_VALUE_FLOAT + ':6,6',
-            'corrected'   :gridlib.GRID_VALUE_BOOL,
-            'available'   :gridlib.GRID_VALUE_BOOL,
-            'archived'    :gridlib.GRID_VALUE_BOOL,
-            'state'       :gridlib.GRID_VALUE_STRING,
-            'country'     :gridlib.GRID_VALUE_STRING,
-            'owner'       :gridlib.GRID_VALUE_STRING,
-            'placedBy'    :gridlib.GRID_VALUE_STRING,
-            'placed'      :gridlib.GRID_VALUE_DATETIME,
-            'user_date'   :gridlib.GRID_VALUE_DATETIME,
-            'gpx_date'    :gridlib.GRID_VALUE_DATETIME,
-            'locked'      :gridlib.GRID_VALUE_BOOL,
-            'found'       :gridlib.GRID_VALUE_BOOL,
-            'found_date'  :gridlib.GRID_VALUE_DATETIME,
-            'dnf'         :gridlib.GRID_VALUE_BOOL,
-            'dnf_date'    :gridlib.GRID_VALUE_DATETIME,
-            'source'      :gridlib.GRID_VALUE_STRING,
-            'user_flag'   :gridlib.GRID_VALUE_BOOL,
-            'user_data1'  :gridlib.GRID_VALUE_STRING,
-            'user_data2'  :gridlib.GRID_VALUE_STRING,
-            'user_data3'  :gridlib.GRID_VALUE_STRING,
-            'user_data4'  :gridlib.GRID_VALUE_STRING}
+            'code'        :Grid.GRID_VALUE_STRING,
+            'id'          :Grid.GRID_VALUE_STRING,
+            'lat'         :Grid.GRID_VALUE_FLOAT + ':6,6',
+            'lon'         :Grid.GRID_VALUE_FLOAT + ':6,6',
+            'name'        :Grid.GRID_VALUE_STRING,
+            'found'       :Grid.GRID_VALUE_BOOL,
+            'type'        :Grid.GRID_VALUE_STRING,
+            'size'        :Grid.GRID_VALUE_STRING,
+            'distance'    :Grid.GRID_VALUE_STRING,
+            'bearing'     :Grid.GRID_VALUE_STRING,
+            'oLat'        :Grid.GRID_VALUE_FLOAT + ':6,6',
+            'oLon'        :Grid.GRID_VALUE_FLOAT + ':6,6',
+            'cLat'        :Grid.GRID_VALUE_FLOAT + ':6,6',
+            'cLon'        :Grid.GRID_VALUE_FLOAT + ':6,6',
+            'corrected'   :Grid.GRID_VALUE_BOOL,
+            'available'   :Grid.GRID_VALUE_BOOL,
+            'archived'    :Grid.GRID_VALUE_BOOL,
+            'state'       :Grid.GRID_VALUE_STRING,
+            'country'     :Grid.GRID_VALUE_STRING,
+            'owner'       :Grid.GRID_VALUE_STRING,
+            'placedBy'    :Grid.GRID_VALUE_STRING,
+            'placed'      :Grid.GRID_VALUE_DATETIME,
+            'user_date'   :Grid.GRID_VALUE_DATETIME,
+            'gpx_date'    :Grid.GRID_VALUE_DATETIME,
+            'locked'      :Grid.GRID_VALUE_BOOL,
+            'found'       :Grid.GRID_VALUE_BOOL,
+            'found_date'  :Grid.GRID_VALUE_DATETIME,
+            'dnf'         :Grid.GRID_VALUE_BOOL,
+            'dnf_date'    :Grid.GRID_VALUE_DATETIME,
+            'source'      :Grid.GRID_VALUE_STRING,
+            'user_flag'   :Grid.GRID_VALUE_BOOL,
+            'user_data1'  :Grid.GRID_VALUE_STRING,
+            'user_data2'  :Grid.GRID_VALUE_STRING,
+            'user_data3'  :Grid.GRID_VALUE_STRING,
+            'user_data4'  :Grid.GRID_VALUE_STRING}
 
         self.renderers = {
-            'size':CacheSizeRenderer,
-            'type':CacheTypeRenderer}
+            'size'        :CacheSizeRenderer,
+            'type'        :CacheTypeRenderer}
 
-        self.data = []
+        self._sortCol = self.conf.common.sortCol or 'code'
 
-    def reloadCaches(self):
-        oldNumRows=len(self.data)
+        self.ReloadCaches()
+
+        self._rows = self.GetNumberRows()
+        self._cols = self.GetNumberCols()
+
+    def ReloadCaches(self):
         self.data = []
-        grid = self.GetView()
         for cache in Geocacher.db.getCacheList():
             self.__addRow(cache)
-        newNumRows=len(self.data)
-        if newNumRows < oldNumRows:
-            msg = wx.grid.GridTableMessage(
-                self,                     # the table
-                wx.grid.GRIDTABLE_NOTIFY_ROWS_DELETED,
-                newNumRows,               # position
-                oldNumRows - newNumRows)  # how many
-            grid.ProcessTableMessage(msg)
-
-        elif newNumRows >  oldNumRows:
-            msg = wx.grid.GridTableMessage(
-                    self,                     # the table
-                    wx.grid.GRIDTABLE_NOTIFY_ROWS_APPENDED,
-                    newNumRows - oldNumRows)  # how many
-            grid.ProcessTableMessage(msg)
-
-        msg = wx.grid.GridTableMessage(
-                self,
-                wx.grid.GRIDTABLE_REQUEST_VIEW_GET_VALUES)
-        grid.ProcessTableMessage(msg)
-        self._updateColAttrs(grid)
+        self.DoSort()
 
     def __addRow(self, cache):
+        # TODO: move cache correction logic into DB module
         if cache.corrected == True:
             lat = cache.cLat
             lon = cache.cLon
         else:
             lat = cache.lat
             lon = cache.lon
-        # TODO: load home lat form config
-        hLat = -41-(16.301/60)
-        hLon = 174+(45.461/60)
 
-        # TODO: allow for unit as miles
-        dist = '%0.2f km' % distance(hLat,hLon,lat,lon)
+        location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
+        hLat = location.lat
+        hLon = location.lon
+
+        if self.conf.common.miles or False:
+            dist = '%0.2f Mi' % distance(hLat,hLon,lat,lon,miles=True)
+        else:
+            dist = '%0.2f km' % distance(hLat,hLon,lat,lon)
         cBear = cardinalBearing(hLat,hLon,lat,lon)
 
         row = {'code':cache.code,'id':cache.id,'lon':lon,'lat':lat,
@@ -279,30 +275,33 @@ class CacheDataTable(gridlib.PyGridTableBase):
         return len(self.data)
 
     def GetNumberCols(self):
-        return len(self.identifiers)
+        return len(self.colNames)
 
     def IsEmptyCell(self, row, col):
-        id = self.identifiers[col]
+        id = self.colNames[col]
         return not self.data[row][id]
 
     def GetValue(self, row, col):
-        id = self.identifiers[col]
+        id = self.colNames[col]
         return self.data[row][id]
 
     def SetValue(self, row, col, value):
-        id = self.identifiers[col]
+        id = self.colNames[col]
         self.data[row][id] = value
 
     def GetColLabelValue(self, col):
-        id = self.identifiers[col]
+        id = self.colNames[col]
         return self.colLabels[id]
 
+    def GetColLabelValueByName(self, name):
+        return self.colLabels[name]
+
     def GetTypeName(self, row, col):
-        id = self.identifiers[col]
+        id = self.colNames[col]
         return self.dataTypes[id]
 
     def CanGetValueAs(self, row, col, typeName):
-        id = self.identifiers[col]
+        id = self.colNames[col]
         colType = self.dataTypes[id].split(':')[0]
         if typeName == colType:
             return True
@@ -310,36 +309,129 @@ class CacheDataTable(gridlib.PyGridTableBase):
             return False
 
     def CanSetValueAs(self, row, col, typeName):
-        id = self.identifiers[col]
+        id = self.cols[col]
         return self.CanGetValueAs(row, id, typeName)
+
+    def AppendColumn(self,col):
+        self.colNames.append(col)
+
+    def InsertColumn(self,pos,col):
+        self.colNames.insert(pos-1,col)
 
     def MoveColumn(self,frm,to):
         grid = self.GetView()
 
         if grid:
-            # Move the identifiers
-            old = self.identifiers[frm]
-            del self.identifiers[frm]
+            # Move the cols
+            old = self.colNames[frm]
+            del self.colNames[frm]
 
             if to > frm:
-                self.identifiers.insert(to-1,old)
+                self.colNames.insert(to-1,old)
             else:
-                self.identifiers.insert(to,old)
+                self.colNames.insert(to,old)
 
             # Notify the grid
             grid.BeginBatch()
 
-            msg = gridlib.GridTableMessage(
-                    self, gridlib.GRIDTABLE_NOTIFY_COLS_INSERTED, to, 1
+            msg = Grid.GridTableMessage(
+                    self, Grid.GRIDTABLE_NOTIFY_COLS_INSERTED, to, 1
                     )
             grid.ProcessTableMessage(msg)
 
-            msg = gridlib.GridTableMessage(
-                    self, gridlib.GRIDTABLE_NOTIFY_COLS_DELETED, frm, 1
+            msg = Grid.GridTableMessage(
+                    self, Grid.GRIDTABLE_NOTIFY_COLS_DELETED, frm, 1
                     )
             grid.ProcessTableMessage(msg)
 
             grid.EndBatch()
+
+    def DeleteCols(self, cols):
+        """
+        cols -> delete the columns from the dataset
+        cols hold the column indices
+        """
+        # we'll cheat here and just remove the name from the
+        # list of column names.  The data will remain but
+        # it won't be shown
+        deleteCount = 0
+        cols = cols[:]
+        cols.sort()
+
+        for i in cols:
+            self.colNames.pop(i-deleteCount)
+            # we need to advance the delete count
+            # to make sure we delete the right columns
+            deleteCount += 1
+
+        if not len(self.colNames):
+            self.data = []
+
+    def ResetView(self, grid):
+        """
+        (Grid) -> Reset the grid view.   Call this to
+        update the grid if rows and columns have been added or deleted
+        """
+        grid.BeginBatch()
+
+        for current, new, delmsg, addmsg in [
+            (self._rows, self.GetNumberRows(), Grid.GRIDTABLE_NOTIFY_ROWS_DELETED, Grid.GRIDTABLE_NOTIFY_ROWS_APPENDED),
+            (self._cols, self.GetNumberCols(), Grid.GRIDTABLE_NOTIFY_COLS_DELETED, Grid.GRIDTABLE_NOTIFY_COLS_APPENDED),
+        ]:
+
+            if new < current:
+                msg = Grid.GridTableMessage(self,delmsg,new,current-new)
+                grid.ProcessTableMessage(msg)
+            elif new > current:
+                msg = Grid.GridTableMessage(self,addmsg,new-current)
+                grid.ProcessTableMessage(msg)
+
+        grid.EndBatch()
+
+        self._rows = self.GetNumberRows()
+        self._cols = self.GetNumberCols()
+        # update the column rendering plugins
+        self._updateColAttrs(grid)
+
+        # update the scrollbars and the displayed part of the grid
+        grid.AdjustScrollbars()
+        grid.ForceRefresh()
+
+    def DeleteRows(self, rows):
+        """
+        rows -> delete the rows from the dataset
+        rows hold the row indices
+        """
+        deleteCount = 0
+        rows = rows[:]
+        rows.sort()
+
+        for i in rows:
+            self.data.pop(i-deleteCount)
+            # we need to advance the delete count
+            # to make sure we delete the right rows
+            deleteCount += 1
+
+    def SortColumn(self, col):
+        """
+        col -> sort the data based on the column indexed by col
+        """
+        # TODO : Decending sort
+        name = self.colNames[col]
+        self._sortCol = self.colNames[col]
+        self.DoSort()
+
+    def DoSort(self):
+        _data = []
+
+        for row in self.data:
+            _data.append((row.get(self._sortCol, None), row))
+
+        _data.sort()
+        self.data = []
+
+        for sortvalue, row in _data:
+            self.data.append(row)
 
     def _updateColAttrs(self, grid):
         """
@@ -349,15 +441,15 @@ class CacheDataTable(gridlib.PyGridTableBase):
 
         Otherwise default to the default renderer.
         """
-        col = 0
+        colNum = 0
 
-        for identifier in self.identifiers:
-            attr = gridlib.GridCellAttr()
-            if identifier in self.renderers:
-                renderer = self.renderers[identifier](self)
+        for colName in self.colNames:
+            attr = Grid.GridCellAttr()
+            if colName in self.renderers:
+                renderer = self.renderers[colName](self, self.conf)
 
                 if renderer.colSize:
-                    grid.SetColSize(col, renderer.colSize)
+                    grid.SetColSize(colNum, renderer.colSize)
 
                 if renderer.rowSize:
                     grid.SetDefaultRowSize(renderer.rowSize)
@@ -365,45 +457,160 @@ class CacheDataTable(gridlib.PyGridTableBase):
                 attr.SetReadOnly(True)
                 attr.SetRenderer(renderer)
 
-            grid.SetColAttr(col, attr)
-            col += 1
+            grid.SetColAttr(colNum, attr)
+            colNum += 1
 
-class CacheGrid(gridlib.Grid):
-    def __init__(self, parent):
-        gridlib.Grid.__init__(self, parent, -1)
+    def GetCols(self):
+        return self.colNames
 
-        table = CacheDataTable()
+    def GetAllCols(self):
+        return self.colLabels.keys()
+
+    def GetSortCol(self):
+        return self._sortCol
+
+class CacheGrid(Grid.Grid):
+    # TODO: add icon to Sorted Column Name
+    def __init__(self, parent, conf, db):
+        Grid.Grid.__init__(self, parent, -1)
+
+        self._table = CacheDataTable(conf, db)
 
         # The second parameter means that the grid is to take ownership of the
         # table and will destroy it when done.  Otherwise you would need to keep
         # a reference to it and call it's Destroy method later.
-        self.SetTable(table, True)
+        self.SetTable(self._table, True)
 
-        table.reloadCaches()
+        self._table.ReloadCaches()
 
         # Enable Column moving
-        gridmovers.GridColMover(self)
-        self.Bind(gridmovers.EVT_GRID_COL_MOVE, self.OnColMove, self)
+        Gridmovers.GridColMover(self)
+        self.Bind(Gridmovers.EVT_GRID_COL_MOVE, self.OnColMove, self)
+        self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnLabelRightClicked)
 
-        self.SetRowLabelSize(0)
+        self.SetRowLabelSize(10)
         self.SetMargins(0,0)
+        self.Reset()
 
     # Event method called when a column move needs to take place
     def OnColMove(self,evt):
         frm = evt.GetMoveColumn()       # Column being moved
         to = evt.GetBeforeColumn()      # Before which column to insert
-        self.GetTable().MoveColumn(frm,to)
+        self._table.MoveColumn(frm,to)
+        self.Reset()
 
     # Event method called when a row move needs to take place
     def OnRowMove(self,evt):
         frm = evt.GetMoveRow()          # Row being moved
         to = evt.GetBeforeRow()         # Before which row to insert
-        self.GetTable().MoveRow(frm,to)
+        self._table.MoveRow(frm,to)
 
-    def reloadCaches(self):
-        self.GetTable().reloadCaches()
+    def OnLabelRightClicked(self, evt):
+        # Did we click on a row or a column?
+        row, col = evt.GetRow(), evt.GetCol()
+        if row == -1: self.ColPopup(col, evt)
+        elif col == -1: self.RowPopup(row, evt)
+
+    def RowPopup(self, row, evt):
+        """(row, evt) -> display a popup menu when a row label is right clicked"""
+        addID = wx.NewId()
+        deleteID = wx.NewId()
+        x = self.GetRowSize(row)/2
+
+        if not self.GetSelectedRows():
+            self.SelectRow(row)
+
+        menu = wx.Menu()
+        xo, yo = evt.GetPosition()
+        menu.Append(addID, "Add Cache")
+        menu.Append(deleteID, "Delete Cache(s)")
+
+        def add(event, self=self, row=row):
+            # TODO implement manually adding cache
+            #self._table.AddCache(cache)
+            #self.Reset()
+            print "adding cache not yet implemented"
+
+        def delete(event, self=self, row=row):
+            rows = self.GetSelectedRows()
+            self._table.DeleteRows(rows)
+            self.reset()
+
+        self.Bind(wx.EVT_MENU, add, id=appendID)
+        self.Bind(wx.EVT_MENU, delete, id=deleteID)
+        self.PopupMenu(menu)
+        menu.Destroy()
+        return
+
+
+    def ColPopup(self, col, evt):
+        """(col, evt) -> display a popup menu when a column label is
+        right clicked"""
+        x = self.GetColSize(col)/2
+        appMenu = wx.Menu()
+        activeColNames = self._table.GetCols()
+        colIds={}
+        for colName in self._table.GetAllCols():
+            if colName not in activeColNames:
+                colId = wx.NewId()
+                colIds[colId]=colName
+                appMenu.Append(colId, self._table.GetColLabelValueByName(colName))
+        menu = wx.Menu()
+        id1 = wx.NewId()
+        sortID = wx.NewId()
+
+        xo, yo = evt.GetPosition()
+        self.SelectCol(col)
+        colNames = self.GetSelectedCols()
+        self.Refresh()
+        menu.Append(id1, _("Delete Col(s)"))
+        menu.Append(sortID, _("Sort Column"))
+        menu.AppendMenu(wx.ID_ANY, _("Append Column"), appMenu)
+
+        def delete(event, self=self, col=col):
+            cols = self.GetSelectedCols()
+            self._table.DeleteCols(cols)
+            self.Reset()
+
+        def sort(event, self=self, col=col):
+            self._table.SortColumn(col)
+            self.Reset()
+
+        def append(event, self=self, colIds=colIds):
+            print event.Id
+            print colIds[event.Id]
+            self._table.AppendColumn(colIds[event.Id])
+            self.Reset()
+
+        self.Bind(wx.EVT_MENU, delete, id=id1)
+
+        if len(colNames) == 1:
+            self.Bind(wx.EVT_MENU, sort, id=sortID)
+        for colId in colIds:
+            self.Bind(wx.EVT_MENU, append, id=colId)
+
+        self.PopupMenu(menu)
+        menu.Destroy()
+        return
+
+    def Reset(self):
+        """reset the view based on the data in the table.  Call
+        this when rows are added or destroyed"""
+        self._table.ResetView(self)
+
+    def ReloadCaches(self):
+        self.GetTable().ReloadCaches()
+        self.Reset()
+
+    def GetCols(self):
+        return self._table.GetCols()
+
+    def GetSortCol(self):
+        return self._table.GetSortCol()
+
 class PreferencesWindow(wx.Frame):
     """Preferences Dialog"""
+    # TODO: Add configuration of home locations
     def __init__(self,parent,id,prefs):
         """Creates the Preferences Frame"""
         self._prefs = prefs
@@ -448,10 +655,12 @@ class PreferencesWindow(wx.Frame):
 
 class MainWindow(wx.Frame):
     """Main Frame holding the Panel."""
-    def __init__(self,parent,id):
+    def __init__(self,parent,id, conf, db):
         """Create the main frame"""
-        w = Geocacher.conf.common.mainWiidth or 700
-        h = Geocacher.conf.common.mainHeight or 500
+        self.conf = conf
+        self.db = db
+        w = self.conf.common.mainWiidth or 700
+        h = self.conf.common.mainHeight or 500
         wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (w,h),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
@@ -487,7 +696,7 @@ class MainWindow(wx.Frame):
 
         self.SetMenuBar(MenuBar)
 
-        self.cacheGrid = CacheGrid(self)
+        self.cacheGrid = CacheGrid(self, self.conf, self.db)
 
         self.Show(True)
 
@@ -508,8 +717,8 @@ class MainWindow(wx.Frame):
                    "LOC file (*.loc)|*.loc|"\
                    "Compressed GPX File (*.zip)|*.zip|"\
                    "All files (*.*)|*.*"
-        if os.path.isdir(Geocacher.conf.common.lastFolder):
-            dir = Geocacher.conf.common.lastFolder
+        if os.path.isdir(self.conf.common.lastFolder):
+            dir = self.conf.common.lastFolder
         else:
             dir = os.getcwd()
         dlg = wx.FileDialog(
@@ -521,29 +730,31 @@ class MainWindow(wx.Frame):
             )
 
         if dlg.ShowModal() == wx.ID_OK:
-            Geocacher.conf.common.lastFolder = dlg.GetDirectory()
+            self.conf.common.lastFolder = dlg.GetDirectory()
             paths = dlg.GetPaths()
             for path in paths:
                 if os.path.splitext(path)[1] == '.gpx':
-                    gpxLoad(path,Geocacher.db,mode="replace",
-                            userId=Geocacher.conf.gc.userId,
-                            userName=Geocacher.conf.gc.userName)
+                    gpxLoad(path,self.db,mode="replace",
+                            userId=self.conf.gc.userId,
+                            userName=self.conf.gc.userName)
                 elif os.path.splitext(path)[1] == '.loc':
-                    locLoad(path,Geocacher.db,mode="replace")
-            self.cacheGrid.reloadCaches()
+                    locLoad(path,self.db,mode="replace")
+            self.cacheGrid.ReloadCaches()
 
         dlg.Destroy()
 
 
     def OnPrefs(self, event=None):
         print "Editing preferences"
-        prefsFrame = PreferencesWindow(self,wx.ID_ANY,Geocacher.conf)
+        prefsFrame = PreferencesWindow(self,wx.ID_ANY,self.conf)
 
     def OnQuit(self, event=None):
         """Exit application."""
-        (Geocacher.conf.common.mainWiidth,Geocacher.conf.common.mainHeight) = self.GetSizeTuple()
-        Geocacher.conf.save()
-        Geocacher.db.save()
+        (self.conf.common.mainWiidth,self.conf.common.mainHeight) = self.GetSizeTuple()
+        self.conf.common.cacheCols = self.cacheGrid.GetCols()
+        self.conf.common.sortCol = self.cacheGrid.GetSortCol()
+        self.conf.save()
+        self.db.save()
         self.Destroy()
 
 
@@ -562,9 +773,7 @@ def main (debug, canModify):
         try:
             Geocacher.init(debug, canModify)
 
-# TODO: Add icon
-
-            frame = MainWindow(None,-1)
+            frame = MainWindow(None,-1,Geocacher.conf, Geocacher.db)
             app.MainLoop()
 
         finally:
