@@ -3,7 +3,10 @@
 from datetime import datetime
 from lxml.etree import Element,ElementTree,XML
 import os
+import shutil
 import string
+import tempfile
+import zipfile
 
 from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
 from libs.common import getTextFromPath,getAttribFromPath
@@ -210,31 +213,8 @@ def gpxExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple
     if len(caches) == 0:
         return
 
-    time = dateTimeToText(datetime.now())
-    minLat = caches[0].lat
-    minLon = caches[0].lon
-    maxLat = caches[0].lat
-    maxLon = caches[0].lon
-    for cache in caches:
-        if cache.lat < minLat: minLat=cache.lat
-        if cache.lon < minLon: minLon=cache.lon
-        if cache.lat > maxLat: maxLat=cache.lat
-        if cache.lon > maxLon: maxLon=cache.lon
-    gpx_base = '<?xml version="1.0" encoding="utf-8"?>'\
-    '<gpx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '\
-    'xmlns:xsd="http://www.w3.org/2001/XMLSchema" version="1.0" '\
-    'creator="Geocacher" '\
-    'xsi:schemaLocation="http://www.topografix.com/GPX/1/0 '\
-    'http://www.topografix.com/GPX/1/0/gpx.xsd '\
-    'http://www.groundspeak.com/cache/1/0 '\
-    'http://www.groundspeak.com/cache/1/0/cache.xsd" '\
-    'xmlns="http://www.topografix.com/GPX/1/0" '\
-    'xmlns:groundspeak="http://www.groundspeak.com/cache/1/0">'\
-    '<time>%s</time>'\
-    '<bounds minlat="%f" minlon="%f" maxlat="%f" maxlon="%f" /></gpx>'\
-     % (time,minLat,minLon,maxLat,maxLon)
+    root = gpxInit(caches)
 
-    root = XML(gpx_base)
     for cache in caches:
         wpt = Element("wpt", lat='%f' % cache.lat, lon='%f' % cache.lon)
         root.append(wpt)
@@ -292,8 +272,8 @@ def gpxExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple
             gsOwner = Element(GS + 'owner', id=cache.owner_id)
             gsOwner.text = cache.owner
             gsCache.append(gsOwner)
-            gsType = Element(GS + 'type', id=cache.type)
-            gsType.text = cache.owner
+            gsType = Element(GS + 'type')
+            gsType.text = cache.type
             gsCache.append(gsType)
             gsContainer = Element(GS + 'container')
             gsContainer.text = cache.container
@@ -347,35 +327,136 @@ def gpxExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple
                     gsTbName.text = tb.name
                     gsTb.append(gsTbName)
         if addWpts:
-            for addWpt in cache.getAddWaypoints():
-                wpt = Element('wpt', lat=str(addWpt.lat), lon=str(addWpt.lon))
-                root.append(wpt)
-                time = Element('time')
-                time.text = dateTimeToText(addWpt.time)
-                root.append(time)
-                name = Element('name')
-                name.text = addWpt.code
-                wpt.append(cmt)
-                cmt = Element('cmt')
-                cmt.text = addWpt.cmt
-                wpt.append(cmt)
-                desc = Element('desc')
-                desc.text = addWpt.name
-                wpt.append(desc)
-                url = Element('url')
-                url.text = addWpt.url
-                wpt.append(url)
-                urlname = Element('urlname')
-                urlname.text = addWpt.name
-                wpt.append(urlname)
-                sym = Element('sym')
-                sym.text = addWpt.sym
-                wpt.append(sym)
-                type = Element('type')
-                type.text = 'Waypoint|%s' % addWpt.sym
-                wpt.append(type)
+            gpxExportAddWptProcess(root, cache)
 
+    gpxSave(filename,root)
+
+def gpxExportAddWptProcess(root, cache):
+    for addWpt in cache.getAddWaypoints():
+        wpt = Element('wpt', lat=str(addWpt.lat), lon=str(addWpt.lon))
+        root.append(wpt)
+        time = Element('time')
+        time.text = dateTimeToText(addWpt.time)
+        wpt.append(time)
+        name = Element('name')
+        name.text = addWpt.code
+        wpt.append(name)
+        cmt = Element('cmt')
+        cmt.text = addWpt.cmt
+        wpt.append(cmt)
+        desc = Element('desc')
+        desc.text = addWpt.name
+        wpt.append(desc)
+        url = Element('url')
+        url.text = addWpt.url
+        wpt.append(url)
+        urlname = Element('urlname')
+        urlname.text = addWpt.name
+        wpt.append(urlname)
+        sym = Element('sym')
+        sym.text = addWpt.sym
+        wpt.append(sym)
+        type = Element('type')
+        type.text = 'Waypoint|%s' % addWpt.sym
+        wpt.append(type)
+
+def gpxExportAddWpt(filename,caches):
+    if len(caches) == 0:
+        return
+    root = gpxInit(caches)
+    for cache in caches:
+        gpxExportAddWptProcess(root, cache)
+    if len(root.xpath("wpt")) == 0:
+        return False
+    else:
+        gpxSave(filename,root)
+    return True
+
+def gpxInit(caches):
+    time = dateTimeToText(datetime.now())
+    minLat = caches[0].lat
+    minLon = caches[0].lon
+    maxLat = caches[0].lat
+    maxLon = caches[0].lon
+    for cache in caches:
+        if cache.lat < minLat: minLat=cache.lat
+        if cache.lon < minLon: minLon=cache.lon
+        if cache.lat > maxLat: maxLat=cache.lat
+        if cache.lon > maxLon: maxLon=cache.lon
+    gpx_base = '<?xml version="1.0" encoding="utf-8"?>'\
+    '<gpx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '\
+    'xmlns:xsd="http://www.w3.org/2001/XMLSchema" version="1.0" '\
+    'creator="Geocacher" '\
+    'xsi:schemaLocation="http://www.topografix.com/GPX/1/0 '\
+    'http://www.topografix.com/GPX/1/0/gpx.xsd '\
+    'http://www.groundspeak.com/cache/1/0 '\
+    'http://www.groundspeak.com/cache/1/0/cache.xsd" '\
+    'xmlns="http://www.topografix.com/GPX/1/0" '\
+    'xmlns:groundspeak="http://www.groundspeak.com/cache/1/0">'\
+    '<time>%s</time>'\
+    '<bounds minlat="%f" minlon="%f" maxlat="%f" maxlon="%f" /></gpx>'\
+     % (time,minLat,minLon,maxLat,maxLon)
+
+    return XML(gpx_base)
+
+def gpxSave(filename,root):
     fid = open(filename,"w")
     fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
     ElementTree(root).write(fid,encoding="utf-8")
     fid.close()
+
+def zipLoad(filename,DB,mode="update",userName="",userId=""):
+    # Load zipped GPX file(s)
+    # TODO: implement returning of changes from zipped GPX file for reporting to user
+    if os.path.isfile(filename):
+        tempDir = tempfile.mkdtemp()
+        archive = zipfile.ZipFile(filename, mode='r')
+        archive.extractall(tempDir)
+        archive.close()
+        addWptFiles=[]
+        for file in os.listdir(tempDir):
+            if file.rfind('-wpts') >= 0:
+                addWptFiles.append(file)
+            else:
+                gpxLoad(os.path.join(tempDir,file),DB,mode=mode,userName=userName,userId=userId)
+                print 'n'
+        for file in addWptFiles:
+            gpxLoad(os.path.join(tempDir,file),DB,mode=mode,userName=userName,userId=userId)
+            print 'a'
+        shutil.rmtree(tempDir)
+    else:
+        return
+
+def zipExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple=False,full=False, addWptsSeperate=False):
+    assert os.path.isdir(os.path.split(filename)[0])
+
+    if len(caches) == 0:
+        return
+
+    if os.path.isfile(filename):
+        os.remove(filename)
+
+    gs = (gs and (not simple)) or full
+    logs = (logs and (not simple)) or full
+    tbs = (tbs and (not simple)) or full
+    addWpts = addWpts and (not simple) or full
+
+    baseName = os.path.splitext(os.path.basename(filename))[0]
+
+    tempDir = tempfile.mkdtemp()
+    archive = zipfile.ZipFile(filename, mode='w', compression=zipfile.ZIP_DEFLATED)
+
+    gpxFileName = os.path.join(tempDir, baseName+'.gpx')
+    gpxExport(gpxFileName,caches,gs=gs,logs=logs,tbs=tbs,addWpts=addWpts and not addWptsSeperate)
+    archive.write(gpxFileName, os.path.basename(gpxFileName).encode("utf_8"))
+
+    if addWpts and addWptsSeperate:
+
+        gpxAddFileName = os.path.join(tempDir, baseName+'-wpts.gpx')
+        if gpxExportAddWpt(gpxAddFileName,caches):
+            archive.write(gpxAddFileName, os.path.basename(gpxAddFileName).encode("utf_8"))
+
+    archive.close()
+
+    shutil.rmtree(tempDir)
+

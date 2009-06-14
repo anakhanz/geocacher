@@ -7,10 +7,7 @@ from string import digits
 
 def boolToText(bool):
     '''Converts a text string to a boolean'''
-    if bool:
-        return "True"
-    else:
-        return "False"
+    return str(bool)
 
 
 def textToBool(t):

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-# TODO: Add GPX export
 # TODO: Add geocaching.com zip file import (either loc or GPX)
 # TODO: Add export to GPS (using gpsBabel)
 # TODO: Add lat/lon correction tool
@@ -36,7 +35,7 @@ from libs.i18n import createGetText
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
 
 from libs.db import Geocacher
-from libs.gpx import gpxLoad, gpxExport
+from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
 from libs.loc import locLoad, locExport
 from libs.latlon import distance, cardinalBearing
 
@@ -141,6 +140,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         # TODO: Add 'Last Found' to table columns
         # TODO: Add 'Found Count' to table columns
         # TODO: Add 'Last Log Date' to table columns
+        # TODO: Add Travel Bugs to columns
         self.colLabels = {
             'code'        :_('Code'),
             'id'          :_('ID'),
@@ -485,7 +485,7 @@ class CacheGrid(Grid.Grid):
         self.Bind(Gridmovers.EVT_GRID_COL_MOVE, self.OnColMove, self)
         self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnLabelRightClicked)
 
-        self.SetRowLabelSize(10)
+        self.SetRowLabelSize(20)
         self.SetMargins(0,0)
         self.Reset()
 
@@ -756,6 +756,10 @@ class MainWindow(wx.Frame):
                             userName=self.conf.gc.userName)
                 elif os.path.splitext(path)[1] == '.loc':
                     locLoad(path,self.db,mode="replace")
+                elif os.path.splitext(path)[1] == '.zip':
+                    zipLoad(path,self.db,mode="replace",
+                            userId=self.conf.gc.userId,
+                            userName=self.conf.gc.userName)
             self.cacheGrid.ReloadCaches()
         dlg.Destroy()
 
@@ -778,7 +782,7 @@ class MainWindow(wx.Frame):
             )
         if os.path.isfile(self.conf.export.lastFile):
             dlg.SetPath(self.conf.export.lastFile)
-        ext = os.path.splitext(self.conf.load.lastFile)[1]
+        ext = os.path.splitext(self.conf.export.lastFile)[1]
         if ext != '':
             if ext == '.gpx':
                 dlg.SetFilterIndex(0)
@@ -808,7 +812,7 @@ class MainWindow(wx.Frame):
                                )
                 if question.ShowModal() == wx.ID_NO:
                     return
-            self.conf.load.lastFile = path
+            self.conf.export.lastFile = path
             # TODO:add filtering of caches based on selection etc
             caches = self.db.getCacheList()
             if dlg.GetFilterIndex() == 0:
@@ -817,8 +821,8 @@ class MainWindow(wx.Frame):
             elif dlg.GetFilterIndex() == 1:
                 locExport(path, caches)
             elif dlg.GetFilterIndex() == 2:
-                # TODO: implement zip export
-                pass
+                # TODO: implement zip export extra options
+                zipExport(path, caches, full=True, addWptsSeperate=True)
         dlg.Destroy()
 
 

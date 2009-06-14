@@ -724,7 +724,7 @@ class AddWaypoint(object):
         assert type(dt)==datetime.datetime
         self.__node.attrib["time"] = dateTimeToText(dt)
 
-    def __getCmt(self):    return self.__node.txt
+    def __getCmt(self):    return self.__node.text
     cmt = property(__getCmt)
 
     def setCmt(self,t):
