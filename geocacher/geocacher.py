@@ -36,8 +36,8 @@ from libs.i18n import createGetText
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
 
 from libs.db import Geocacher
-from libs.gpx import gpxLoad
-from libs.loc import locLoad
+from libs.gpx import gpxLoad, gpxExport
+from libs.loc import locLoad, locExport
 from libs.latlon import distance, cardinalBearing
 
 try:
@@ -56,6 +56,7 @@ class ImageRenderer(Grid.PyGridCellRenderer):
 
         self.colSize = None
         self.rowSize = None
+        self.__init2__(conf)
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
@@ -91,9 +92,7 @@ class ImageRenderer(Grid.PyGridCellRenderer):
                 0, 0, wx.COPY, True)
 
 class CacheSizeRenderer(ImageRenderer):
-    def __init__(self, table, conf):
-        Grid.PyGridCellRenderer.__init__(self)
-        self.table = table
+    def __init2__(self, conf):
         self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
                         'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
                         'Regular':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-regular.gif'), wx.BITMAP_TYPE_GIF),
@@ -101,15 +100,13 @@ class CacheSizeRenderer(ImageRenderer):
                         'Not chosen':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-not_chosen.gif'), wx.BITMAP_TYPE_GIF),
                         'Virtual':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-virtual.gif'), wx.BITMAP_TYPE_GIF),
                         'Other':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-other.gif'), wx.BITMAP_TYPE_GIF)}
-        self._default='Other'
+        self._default='Not chosen'
 
         self.colSize = None
         self.rowSize = None
 
 class CacheTypeRenderer(ImageRenderer):
-    def __init__(self, table, conf):
-        Grid.PyGridCellRenderer.__init__(self)
-        self.table = table
+    def __init2__(self, conf):
         self._images = {'Traditional Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-traditional.gif'), wx.BITMAP_TYPE_GIF),
                         'Ape':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-ape.gif'), wx.BITMAP_TYPE_GIF),
                         'CITO':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-cito.gif'), wx.BITMAP_TYPE_GIF),
@@ -550,11 +547,15 @@ class CacheGrid(Grid.Grid):
         appMenu = wx.Menu()
         activeColNames = self._table.GetCols()
         colIds={}
+        colDispName=[]
         for colName in self._table.GetAllCols():
             if colName not in activeColNames:
-                colId = wx.NewId()
-                colIds[colId]=colName
-                appMenu.Append(colId, self._table.GetColLabelValueByName(colName))
+                colDispName.append([self._table.GetColLabelValueByName(colName), colName])
+        colDispName.sort()
+        for colDisp,colName in colDispName:
+            colId = wx.NewId()
+            colIds[colId]=colName
+            appMenu.Append(colId, colDisp)
         menu = wx.Menu()
         id1 = wx.NewId()
         sortID = wx.NewId()
@@ -674,6 +675,10 @@ class MainWindow(wx.Frame):
 
         item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints"))
         self.Bind(wx.EVT_MENU, self.OnLoadWpt, item)
+
+        item = FileMenu.Append(wx.ID_ANY, text=_("&Export Waypoints"))
+        self.Bind(wx.EVT_MENU, self.OnExportWpt, item)
+
         item = FileMenu.Append(wx.ID_EXIT, text=_("&Quit"))
         self.Bind(wx.EVT_MENU, self.OnQuit, item)
 
@@ -712,15 +717,16 @@ class MainWindow(wx.Frame):
         wx.AboutBox(HelpAbout)
 
     def OnLoadWpt(self, event=None):
-        print "Loading waypoints"
         wildcard = "GPX File (*.gpx)|*.gpx|"\
                    "LOC file (*.loc)|*.loc|"\
                    "Compressed GPX File (*.zip)|*.zip|"\
                    "All files (*.*)|*.*"
-        if os.path.isdir(self.conf.common.lastFolder):
-            dir = self.conf.common.lastFolder
+
+        if os.path.isdir(self.conf.load.lastFolder):
+            dir = self.conf.load.lastFolder
         else:
             dir = os.getcwd()
+
         dlg = wx.FileDialog(
             self, message=_("Choose a file to load"),
             defaultDir=dir,
@@ -728,10 +734,21 @@ class MainWindow(wx.Frame):
             wildcard=wildcard,
             style=wx.OPEN | wx.MULTIPLE
             )
+        if os.path.isfile(self.conf.load.lastFile):
+            dlg.SetPath(self.conf.load.lastFile)
+        ext = os.path.splitext(self.conf.load.lastFile)[1]
+        if ext != '':
+            if ext == '.gpx':
+                dlg.SetFilterIndex(0)
+            elif ext == '.loc':
+                dlg.SetFilterIndex(1)
+            elif ext == '.zip':
+                dlg.SetFilterIndex(2)
 
         if dlg.ShowModal() == wx.ID_OK:
-            self.conf.common.lastFolder = dlg.GetDirectory()
+            self.conf.load.lastFolder = dlg.GetDirectory()
             paths = dlg.GetPaths()
+            self.conf.load.lastFile = paths[0]
             for path in paths:
                 if os.path.splitext(path)[1] == '.gpx':
                     gpxLoad(path,self.db,mode="replace",
@@ -740,7 +757,68 @@ class MainWindow(wx.Frame):
                 elif os.path.splitext(path)[1] == '.loc':
                     locLoad(path,self.db,mode="replace")
             self.cacheGrid.ReloadCaches()
+        dlg.Destroy()
 
+    def OnExportWpt(self, event=None):
+        wildcard = "GPX File (*.gpx)|*.gpx|"\
+                   "LOC file (*.loc)|*.loc|"\
+                   "Compressed GPX File (*.zip)|*.zip|"\
+
+        if os.path.isdir(self.conf.export.lastFolder):
+            dir = self.conf.export.lastFolder
+        else:
+            dir = os.getcwd()
+
+        dlg = wx.FileDialog(
+            self, message=_("Choose a file to export as"),
+            defaultDir=dir,
+            defaultFile="",
+            wildcard=wildcard,
+            style=wx.SAVE
+            )
+        if os.path.isfile(self.conf.export.lastFile):
+            dlg.SetPath(self.conf.export.lastFile)
+        ext = os.path.splitext(self.conf.load.lastFile)[1]
+        if ext != '':
+            if ext == '.gpx':
+                dlg.SetFilterIndex(0)
+            elif ext == '.loc':
+                dlg.SetFilterIndex(1)
+            elif ext == '.zip':
+                dlg.SetFilterIndex(2)
+
+        if dlg.ShowModal() == wx.ID_OK:
+            self.conf.export.lastFolder = dlg.GetDirectory()
+            path = dlg.GetPath()
+            if dlg.GetFilterIndex() == 0:
+                if os.path.splitext(path)[1] != '.gpx':
+                    path = path + '.gpx'
+            elif dlg.GetFilterIndex() == 1:
+                if os.path.splitext(path)[1] != '.loc':
+                    path = path + '.loc'
+            elif dlg.GetFilterIndex() == 2:
+                if os.path.splitext(path)[1] != '.zip':
+                    path = path + '.zip'
+
+            if os.path.isfile(path):
+                question = wx.MessageDialog(None,
+                               message=path + _(" already exists are you sure you want to replace it ?"),
+                               caption=_("File Already Exists"),
+                               style=wx.YES_NO|wx.ICON_WARNING
+                               )
+                if question.ShowModal() == wx.ID_NO:
+                    return
+            self.conf.load.lastFile = path
+            # TODO:add filtering of caches based on selection etc
+            caches = self.db.getCacheList()
+            if dlg.GetFilterIndex() == 0:
+                # TODO implement gpx export extra options
+                gpxExport(path, caches, full=True)
+            elif dlg.GetFilterIndex() == 1:
+                locExport(path, caches)
+            elif dlg.GetFilterIndex() == 2:
+                # TODO: implement zip export
+                pass
         dlg.Destroy()
 
 

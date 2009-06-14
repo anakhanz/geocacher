@@ -50,5 +50,22 @@ def locLoad(filename,DB,mode="update"):
             cache.setGpx_date(locDate)
             cache.setSource(os.path.abspath(filename))
 
-def exportLoc(self,filename,caches):
-    print "GPX file export not yet implemented"
+def locExport(filename,caches):
+    if len(caches) == 0:
+        return
+    root = Element("loc",version="1.0", src="Geocacher")
+    for cache in caches:
+        waypoint = Element("waypoint")
+        root.append(waypoint)
+        name = Element("name", id=cache.code)
+        name.text = cache.name + " by " +cache.placed_by
+        waypoint.append(name)
+        type = Element("type")
+        type.text = cache.symbol.lower()
+        waypoint.append(type)
+        link = Element("link", text="Cache Details")
+        link.text = cache.url
+        waypoint.append(link)
+    fid = open(filename,"w")
+    ElementTree(root).write(fid,encoding="utf-8")
+    fid.close()

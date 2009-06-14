@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 
 from datetime import datetime
-from lxml.etree import Element,ElementTree
+from lxml.etree import Element,ElementTree,XML
 import os
 import string
 
@@ -200,12 +200,182 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                 cache.setGpx_date(gpxDate)
                 cache.setSource(os.path.abspath(filename))
 
-def exportGpx(self,filename,caches,gs=False,logs=False,tbs=False,addWpt=False,simple=False,full=False):
-    assert simple != full
+def gpxExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple=False,full=False):
     assert os.path.isdir(os.path.split(filename)[0])
     gs = (gs and (not simple)) or full
     logs = (logs and (not simple)) or full
     tbs = (tbs and (not simple)) or full
-    print "GPX file export not yet implemented"
-    # TODO: implement GPX export
-    addWpt = addWpt and (not simple) or full
+    addWpts = addWpts and (not simple) or full
+
+    if len(caches) == 0:
+        return
+
+    time = dateTimeToText(datetime.now())
+    minLat = caches[0].lat
+    minLon = caches[0].lon
+    maxLat = caches[0].lat
+    maxLon = caches[0].lon
+    for cache in caches:
+        if cache.lat < minLat: minLat=cache.lat
+        if cache.lon < minLon: minLon=cache.lon
+        if cache.lat > maxLat: maxLat=cache.lat
+        if cache.lon > maxLon: maxLon=cache.lon
+    gpx_base = '<?xml version="1.0" encoding="utf-8"?>'\
+    '<gpx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '\
+    'xmlns:xsd="http://www.w3.org/2001/XMLSchema" version="1.0" '\
+    'creator="Geocacher" '\
+    'xsi:schemaLocation="http://www.topografix.com/GPX/1/0 '\
+    'http://www.topografix.com/GPX/1/0/gpx.xsd '\
+    'http://www.groundspeak.com/cache/1/0 '\
+    'http://www.groundspeak.com/cache/1/0/cache.xsd" '\
+    'xmlns="http://www.topografix.com/GPX/1/0" '\
+    'xmlns:groundspeak="http://www.groundspeak.com/cache/1/0">'\
+    '<time>%s</time>'\
+    '<bounds minlat="%f" minlon="%f" maxlat="%f" maxlon="%f" /></gpx>'\
+     % (time,minLat,minLon,maxLat,maxLon)
+
+    root = XML(gpx_base)
+    for cache in caches:
+        wpt = Element("wpt", lat='%f' % cache.lat, lon='%f' % cache.lon)
+        root.append(wpt)
+        if cache.gpx_date == None and cache.user_date == None:
+            cacheTime = datetime.now()
+        elif cache.gpx_date == None:
+            cacheTime=cache.user_date
+        elif cache.user_date == None:
+            cacheTime=cache.gpx_date
+        elif cache.gpx_date < cache.user_date:
+            cacheTime=cache.user_date
+        else:
+            cacheTime=cache.gpx_date
+        time = Element('time')
+        time.text = dateTimeToText(cacheTime)
+        wpt.append(time)
+        name = Element('name')
+        name.text = cache.code
+        wpt.append(name)
+        desc = Element('desc')
+        desc.text = '%s by %s, %s (%0.1f/%0.1f)' % (cache.name, cache.placed_by,
+                                              cache.type, cache.difficulty,
+                                              cache.terrain)
+        wpt.append(desc)
+        if cache.url != '':
+            url = Element('url')
+            url.text = cache.url
+            wpt.append(url)
+            urlname = Element('urlname')
+            urlname.text = cache.name
+            wpt.append(urlname)
+        sym = Element('sym')
+        if cache.found:
+            sym.text = 'Geocache Found'
+        else:
+            sym.text = 'Geocache'
+        wpt.append(sym)
+        type = Element('type')
+        type.text = 'Geocache|%s' % cache.type
+        wpt.append(type)
+        if gs:
+            GS_NAMESPACE = "http://www.groundspeak.com/cache/1/0"
+            GS = "{%s}" %GS_NAMESPACE
+            NSMAP = {'groundspeak': GS_NAMESPACE}
+            gsCache = Element(GS + 'cache',id=cache.id,
+                                available=str(cache.available),
+                                archived=str(cache.archived))
+            wpt.append(gsCache)
+            gsName = Element(GS + 'name')
+            gsName.text = cache.name
+            gsCache.append(gsName)
+            gsPlaced_by = Element(GS + 'placed_by')
+            gsPlaced_by.text = cache.placed_by
+            gsCache.append(gsPlaced_by)
+            gsOwner = Element(GS + 'owner', id=cache.owner_id)
+            gsOwner.text = cache.owner
+            gsCache.append(gsOwner)
+            gsType = Element(GS + 'type', id=cache.type)
+            gsType.text = cache.owner
+            gsCache.append(gsType)
+            gsContainer = Element(GS + 'container')
+            gsContainer.text = cache.container
+            gsCache.append(gsContainer)
+            gsDifficulty = Element(GS + 'difficulty')
+            gsDifficulty.text = '%0.1f' % cache.difficulty
+            gsCache.append(gsDifficulty)
+            gsTerrain = Element(GS + 'terrain')
+            gsTerrain.text = '%0.1f' % cache.terrain
+            gsCache.append(gsTerrain)
+            gsCountry = Element(GS + 'country')
+            gsCountry.text = cache.country
+            gsCache.append(gsCountry)
+            gsState = Element(GS + 'state')
+            gsState.text = cache.state
+            gsCache.append(gsState)
+            gsShort_desc = Element(GS + 'short_description', html=str(cache.short_desc_html))
+            gsShort_desc.text = cache.short_desc
+            gsCache.append(gsShort_desc)
+            gsLong_desc = Element(GS + 'long_description', html=str(cache.long_desc_html))
+            gsLong_desc.text = cache.long_desc
+            gsCache.append(gsLong_desc)
+            gsHints = Element(GS + 'encoded_hints')
+            gsHints.text = cache.encoded_hints
+            gsCache.append(gsHints)
+            if logs:
+                gsLogs = Element(GS + 'logs')
+                gsCache.append(gsLogs)
+                for log in cache.getLogs():
+                    gsLog = Element(GS + 'log', id=log.id)
+                    gsLogs.append(gsLog)
+                    gsLogDate = Element(GS + 'date')
+                    gsLogDate.text = dateTimeToText(log.date)
+                    gsLog.append(gsLogDate)
+                    gsLogType = Element(GS + 'type')
+                    gsLogType.text = log.type
+                    gsLog.append(gsLogType)
+                    gsLogFinder = Element(GS + 'finder', id=log.finder_id)
+                    gsLogFinder.text = log.finder_name
+                    gsLog.append(gsLogFinder)
+                    gsLogText = Element(GS + 'text', encoded=str(log.encoded))
+                    gsLogText.text = log.text
+                    gsLog.append(gsLogText)
+            if tbs:
+                gsTbs = Element(GS + 'travelbugs')
+                gsCache.append(gsTbs)
+                for tb in cache.getTravelBugs():
+                    gsTb = Element(GS + 'travelbug', id=tb.id, ref=tb.ref)
+                    gsTbs.append(gsTb)
+                    gsTbName = Element(GS + 'name')
+                    gsTbName.text = tb.name
+                    gsTb.append(gsTbName)
+        if addWpts:
+            for addWpt in cache.getAddWaypoints():
+                wpt = Element('wpt', lat=str(addWpt.lat), lon=str(addWpt.lon))
+                root.append(wpt)
+                time = Element('time')
+                time.text = dateTimeToText(addWpt.time)
+                root.append(time)
+                name = Element('name')
+                name.text = addWpt.code
+                wpt.append(cmt)
+                cmt = Element('cmt')
+                cmt.text = addWpt.cmt
+                wpt.append(cmt)
+                desc = Element('desc')
+                desc.text = addWpt.name
+                wpt.append(desc)
+                url = Element('url')
+                url.text = addWpt.url
+                wpt.append(url)
+                urlname = Element('urlname')
+                urlname.text = addWpt.name
+                wpt.append(urlname)
+                sym = Element('sym')
+                sym.text = addWpt.sym
+                wpt.append(sym)
+                type = Element('type')
+                type.text = 'Waypoint|%s' % addWpt.sym
+                wpt.append(type)
+
+    fid = open(filename,"w")
+    fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
+    ElementTree(root).write(fid,encoding="utf-8")
+    fid.close()

@@ -25,7 +25,7 @@ class DB:
     def save(self):
         """Save the DB"""
         fid = open(self.file,"w")
-        fid.write("""<?xml version="1.0" encoding="UTF-8"?>""")
+        fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
         ElementTree(self.root).write(fid,encoding="utf-8")
         fid.close()
 
@@ -65,7 +65,7 @@ class DB:
                         placed_by="",
                         owner="",
                         owner_id="",
-                        container="Not Listed",
+                        container="Not chosen",
                         difficulty=0.0,
                         terrain=0.0,
                         type="Traditional Cache",
@@ -496,7 +496,7 @@ class Cache(object):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["user_data4"] = t
 
-    def getLogList(self):
+    def getLogs(self):
         logNodes = self.__node.xpath("log")
         logs=[]
         for logNode in logNodes:
@@ -883,7 +883,6 @@ class Geocacher:
         # load/initalise the program configuration
         d = {'common':{'mainWidth'  :700,
                        'mainHeigt'  :500,
-                       'lastFolder' :Geocacher.getHomeDir(),
                        'cacheCols'  :['code','id','lat','lon','name','found',
                                       'type','size','distance','bearing'],
                        'sortCol'    :'code',
@@ -893,6 +892,10 @@ class Geocacher:
                        'userData4'  :'User Data 4',
                        'miles'      :False,
                        'CurrentLoc' :'Default'},
+             'export':{'lastFolder' :Geocacher.getHomeDir(),
+                       'lastFile'   :''},
+             'load'  :{'lastFolder' :Geocacher.getHomeDir(),
+                       'lastFile'   :''},
              'gc'    :{'userName'  :'',
                        'userId'    :''}}
         Geocacher.conf = dict4ini.DictIni( Geocacher.getConfFile("geocacher.conf"), values=d)
