@@ -402,12 +402,24 @@ class CacheDataTable(Grid.PyGridTableBase):
         deleteCount = 0
         rows = rows[:]
         rows.sort()
+        toDelStr =""
+        for row in rows:
+            if toDelStr == "":
+                toDelStr = self.data[row]['code']
+            else:
+                toDelStr = toDelStr + ', ' + self.data[row]['code']
 
-        for i in rows:
-            self.data.pop(i-deleteCount)
-            # we need to advance the delete count
-            # to make sure we delete the right rows
-            deleteCount += 1
+        dlg = wx.MessageDialog(None,
+                               message=_("Are you sure you wish to delete the following: ") + toDelStr,
+                               caption=_("Geocacher Delete Caches?"),
+                               style=wx.YES_NO|wx.ICON_QUESTION)
+        if dlg.ShowModal() == wx.ID_YES:
+            for row in rows:
+                self.db.getCacheByCode(self.data[row]['code']).delete()
+                self.data.pop(row-deleteCount)
+                # we need to advance the delete count
+                # to make sure we delete the right rows
+                deleteCount += 1
 
     def SortColumn(self, col):
         """
@@ -531,9 +543,9 @@ class CacheGrid(Grid.Grid):
         def delete(event, self=self, row=row):
             rows = self.GetSelectedRows()
             self._table.DeleteRows(rows)
-            self.reset()
+            self.Reset()
 
-        self.Bind(wx.EVT_MENU, add, id=appendID)
+        self.Bind(wx.EVT_MENU, add, id=addID)
         self.Bind(wx.EVT_MENU, delete, id=deleteID)
         self.PopupMenu(menu)
         menu.Destroy()
