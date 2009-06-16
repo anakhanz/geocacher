@@ -419,10 +419,8 @@ def zipLoad(filename,DB,mode="update",userName="",userId=""):
                 addWptFiles.append(file)
             else:
                 gpxLoad(os.path.join(tempDir,file),DB,mode=mode,userName=userName,userId=userId)
-                print 'n'
         for file in addWptFiles:
             gpxLoad(os.path.join(tempDir,file),DB,mode=mode,userName=userName,userId=userId)
-            print 'a'
         shutil.rmtree(tempDir)
     else:
         return

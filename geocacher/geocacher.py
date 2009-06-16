@@ -685,6 +685,7 @@ class MainWindow(wx.Frame):
 
         FileMenu = wx.Menu()
 
+        # TODO: add option to add folder of files (as seperate menu Item)
         item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints"))
         self.Bind(wx.EVT_MENU, self.OnLoadWpt, item)
 
@@ -729,6 +730,7 @@ class MainWindow(wx.Frame):
         wx.AboutBox(HelpAbout)
 
     def OnLoadWpt(self, event=None):
+        # TODO: split file processing & import type selection from file selection
         wildcard = "GPX File (*.gpx)|*.gpx|"\
                    "LOC file (*.loc)|*.loc|"\
                    "Compressed GPX File (*.zip)|*.zip|"\
@@ -761,19 +763,34 @@ class MainWindow(wx.Frame):
             self.conf.load.lastFolder = dlg.GetDirectory()
             paths = dlg.GetPaths()
             self.conf.load.lastFile = paths[0]
-            for path in paths:
-                if os.path.splitext(path)[1] == '.gpx':
-                    gpxLoad(path,self.db,mode="replace",
-                            userId=self.conf.gc.userId,
-                            userName=self.conf.gc.userName)
-                elif os.path.splitext(path)[1] == '.loc':
-                    locLoad(path,self.db,mode="replace")
-                elif os.path.splitext(path)[1] == '.zip':
-                    zipLoad(path,self.db,mode="replace",
-                            userId=self.conf.gc.userId,
-                            userName=self.conf.gc.userName)
-            self.cacheGrid.ReloadCaches()
-        dlg.Destroy()
+            options = [_('Update'),_('Replace')]
+            dlg = wx.SingleChoiceDialog(self, _('Load option'),
+                                        _('Type of file load'),
+                                        choices=options,
+                                        style=wx.CHOICEDLG_STYLE)
+            if self.conf.load.type == 'replace':
+                dlg.SetSelection(1)
+            else:
+                dlg.SetSelection(0)
+            if dlg.ShowModal() == wx.ID_OK:
+                if dlg.GetSelection() == 0:
+                    self.conf.load.type = 'update'
+                else:
+                    self.conf.load.type = 'replace'
+
+                for path in paths:
+                    if os.path.splitext(path)[1] == '.gpx':
+                        gpxLoad(path,self.db,mode=self.conf.load.type,
+                                userId=self.conf.gc.userId,
+                                userName=self.conf.gc.userName)
+                    elif os.path.splitext(path)[1] == '.loc':
+                        locLoad(path,self.db,mode=self.conf.load.type)
+                    elif os.path.splitext(path)[1] == '.zip':
+                        zipLoad(path,self.db,mode=self.conf.load.type,
+                                userId=self.conf.gc.userId,
+                                userName=self.conf.gc.userName)
+                self.cacheGrid.ReloadCaches()
+            dlg.Destroy()
 
     def OnExportWpt(self, event=None):
         wildcard = "GPX File (*.gpx)|*.gpx|"\
@@ -807,14 +824,13 @@ class MainWindow(wx.Frame):
             self.conf.export.lastFolder = dlg.GetDirectory()
             path = dlg.GetPath()
             if dlg.GetFilterIndex() == 0:
-                if os.path.splitext(path)[1] != '.gpx':
-                    path = path + '.gpx'
+                type = '.gpx'
             elif dlg.GetFilterIndex() == 1:
-                if os.path.splitext(path)[1] != '.loc':
-                    path = path + '.loc'
+                type = '.loc'
             elif dlg.GetFilterIndex() == 2:
-                if os.path.splitext(path)[1] != '.zip':
-                    path = path + '.zip'
+                type = '.zip'
+            if os.path.splitext(path)[1] != type:
+                    path = path + type
 
             if os.path.isfile(path):
                 question = wx.MessageDialog(None,
@@ -824,15 +840,16 @@ class MainWindow(wx.Frame):
                                )
                 if question.ShowModal() == wx.ID_NO:
                     return
+
             self.conf.export.lastFile = path
-            # TODO:add filtering of caches based on selection etc
+            # TODO: add filtering of caches based on selection etc
             caches = self.db.getCacheList()
-            if dlg.GetFilterIndex() == 0:
-                # TODO implement gpx export extra options
+            if type == '.gpx':
+                # TODO: implement gpx export extra options
                 gpxExport(path, caches, full=True)
-            elif dlg.GetFilterIndex() == 1:
+            elif type == '.loc':
                 locExport(path, caches)
-            elif dlg.GetFilterIndex() == 2:
+            elif type == '.zip':
                 # TODO: implement zip export extra options
                 zipExport(path, caches, full=True, addWptsSeperate=True)
         dlg.Destroy()

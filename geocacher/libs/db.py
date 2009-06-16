@@ -895,7 +895,8 @@ class Geocacher:
              'export':{'lastFolder' :Geocacher.getHomeDir(),
                        'lastFile'   :''},
              'load'  :{'lastFolder' :Geocacher.getHomeDir(),
-                       'lastFile'   :''},
+                       'lastFile'   :'',
+                       'type'       :'update'},
              'gc'    :{'userName'  :'',
                        'userId'    :''}}
         Geocacher.conf = dict4ini.DictIni( Geocacher.getConfFile("geocacher.conf"), values=d)
