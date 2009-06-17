@@ -203,9 +203,9 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                 cache.setGpx_date(gpxDate)
                 cache.setSource(os.path.abspath(filename))
 
-def gpxExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple=False,full=False):
+def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple=False,full=False):
     assert os.path.isdir(os.path.split(filename)[0])
-    gs = (gs and (not simple)) or full
+    gc = (gc and (not simple)) or full
     logs = (logs and (not simple)) or full
     tbs = (tbs and (not simple)) or full
     addWpts = addWpts and (not simple) or full
@@ -255,7 +255,7 @@ def gpxExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple
         type = Element('type')
         type.text = 'Geocache|%s' % cache.type
         wpt.append(type)
-        if gs:
+        if gc:
             GS_NAMESPACE = "http://www.groundspeak.com/cache/1/0"
             GS = "{%s}" %GS_NAMESPACE
             NSMAP = {'groundspeak': GS_NAMESPACE}
@@ -425,7 +425,7 @@ def zipLoad(filename,DB,mode="update",userName="",userId=""):
     else:
         return
 
-def zipExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple=False,full=False, addWptsSeperate=False):
+def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple=False,full=False, sepAddWpts=False):
     assert os.path.isdir(os.path.split(filename)[0])
 
     if len(caches) == 0:
@@ -434,7 +434,7 @@ def zipExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple
     if os.path.isfile(filename):
         os.remove(filename)
 
-    gs = (gs and (not simple)) or full
+    gc = (gc and (not simple)) or full
     logs = (logs and (not simple)) or full
     tbs = (tbs and (not simple)) or full
     addWpts = addWpts and (not simple) or full
@@ -445,10 +445,10 @@ def zipExport(filename,caches,gs=False,logs=False,tbs=False,addWpts=False,simple
     archive = zipfile.ZipFile(filename, mode='w', compression=zipfile.ZIP_DEFLATED)
 
     gpxFileName = os.path.join(tempDir, baseName+'.gpx')
-    gpxExport(gpxFileName,caches,gs=gs,logs=logs,tbs=tbs,addWpts=addWpts and not addWptsSeperate)
+    gpxExport(gpxFileName,caches,gc=gc,logs=logs,tbs=tbs,addWpts=addWpts and not sepAddWpts)
     archive.write(gpxFileName, os.path.basename(gpxFileName).encode("utf_8"))
 
-    if addWpts and addWptsSeperate:
+    if addWpts and sepAddWpts:
 
         gpxAddFileName = os.path.join(tempDir, baseName+'-wpts.gpx')
         if gpxExportAddWpt(gpxAddFileName,caches):

@@ -661,10 +661,150 @@ class PreferencesWindow(wx.Frame):
         self.Destroy()
 
     def OnOk(self, event=None):
-        print "Ok"
         self._prefs.gc.userName = self.gcUserName.GetValue()
         self._prefs.gc.userId = self.gcUserId.GetValue()
         self.Destroy()
+
+class ExportOptions(wx.Dialog):
+    '''Get the import options from the user'''
+    def __init__(self,parent,id,type='simple',gc=False,logs=False,tbs=False,addWpts=False,sepAddWpts=True,zip=False):
+        """Creates the Preferences Frame"""
+        wx.Dialog.__init__(self,parent,wx.ID_ANY,_('GPX File Export options'),
+                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
+
+        self.zip = zip
+        self.options = [[  'simple',    'full',    'custom'],
+                        [_('Simple'), _('Full'), _('Custom')]]
+
+        self.type= wx.RadioBox(self, wx.ID_ANY,
+                                label=_("Export Type"),
+                                choices = self.options[1],
+                                style=wx.RA_VERTICAL)
+
+        extsStaticBox = wx.StaticBox(self, wx.ID_ANY, 'Additional infromation')
+        self.gc = wx.CheckBox(self, wx.ID_ANY, _('Geocaching.com Extensions'))
+
+        self.logs = wx.CheckBox(self, wx.ID_ANY, _('Include Logs'))
+        self.tbs = wx.CheckBox(self, wx.ID_ANY, _('Include Travel Bugs'))
+        self.addWpts = wx.CheckBox(self, wx.ID_ANY, _('Include Additional Waypoints'))
+        self.sepAddWpts = wx.CheckBox(self, wx.ID_ANY, _('Additioal Waypoints in seperate file'))
+
+        extsBox = wx.StaticBoxSizer(extsStaticBox, wx.VERTICAL)
+        extsBox.Add(self.logs,    0, wx.EXPAND, 5)
+        extsBox.Add(self.tbs,     0, wx.EXPAND, 5)
+        extsBox.Add(self.addWpts, 0, wx.EXPAND, 5)
+
+        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
+        mainBox.Add(self.type, 0, wx.EXPAND)
+        mainBox.Add(self.gc, 0, wx.EXPAND)
+        mainBox.Add(extsBox, 0, wx.EXPAND, 15)
+        mainBox.Add(self.sepAddWpts, 0, wx.EXPAND)
+
+        # Ok and Cancel Buttons
+        okButton = wx.Button(self,wx.ID_OK)
+        cancelButton = wx.Button(self,wx.ID_CANCEL)
+        buttonBox = wx.StdDialogButtonSizer()
+        buttonBox.AddButton(okButton)
+        buttonBox.AddButton(cancelButton)
+        buttonBox.Realize()
+
+        self.Bind(wx.EVT_BUTTON,   self.OnExit,          okButton)
+        self.Bind(wx.EVT_BUTTON,   self.OnExit,          cancelButton)
+        self.Bind(wx.EVT_RADIOBOX, self.OnChangeType,    self.type)
+        self.Bind(wx.EVT_CHECKBOX, self.OnToggleGc,      self.gc)
+        self.Bind(wx.EVT_CHECKBOX, self.OnToggleAddWpts, self.addWpts)
+
+        mainBox.Add(buttonBox, 0, wx.EXPAND)
+        self.SetSizer(mainBox)
+        self.SetAutoLayout(True)
+
+        self.gc.Disable()
+        self.logs.Disable()
+        self.tbs.Disable()
+        self.addWpts.Disable()
+        self.sepAddWpts.Disable()
+        if type == self.options[0][0]:
+            self.type.SetSelection(0)
+        elif type == self.options[0][1]:
+            self.type.SetSelection(1)
+            if zip:
+                self.sepAddWpts.Enable()
+                self.sepAddWpts.SetValue(sepAddWpts)
+        else:
+            self.type.SetSelection(2)
+            self.gc.Enable()
+            self.gc.SetValue(gc)
+            if self.gc.GetValue():
+                self.logs.Enable()
+                self.logs.SetValue(logs)
+                self.tbs.Enable()
+                self.tbs.SetValue(tbs)
+                self.addWpts.Enable()
+                self.addWpts.SetValue(addWpts)
+                if zip and self.addWpts.GetValue():
+                    self.sepAddWpts.Enable()
+                    self.sepAddWpts.SetValue(sepAddWpts)
+
+        #self.Show(True)
+
+    def OnChangeType(self, event=None):
+        if self.type.GetSelection() == 2:
+            self.gc.Enable()
+        else:
+            self.gc.SetValue(False)
+            self.gc.Disable()
+            self.logs.SetValue(False)
+            self.logs.Disable()
+            self.tbs.SetValue(False)
+            self.tbs.Disable()
+            self.addWpts.SetValue(False)
+            self.addWpts.Disable()
+            if self.type.GetSelection() == 1 and self.zip:
+                self.sepAddWpts.Enable()
+            else:
+                self.sepAddWpts.SetValue(False)
+                self.sepAddWpts.Disable()
+
+    def OnToggleGc(self, event=None):
+        if self.gc.GetValue():
+            self.logs.Enable()
+            self.tbs.Enable()
+            self.addWpts.Enable()
+        else:
+            self.logs.SetValue(False)
+            self.logs.Disable()
+            self.tbs.SetValue(False)
+            self.tbs.Disable()
+            self.addWpts.SetValue(False)
+            self.addWpts.Disable()
+            self.sepAddWpts.SetValue(False)
+            self.sepAddWpts.Disable()
+
+    def OnToggleAddWpts(self, event=None):
+        if self.zip and self.addWpts.GetValue():
+            self.sepAddWpts.Enable()
+
+    def OnExit(self, event=None):
+        self.Destroy()
+        wx.Dialog.EndModal(self, event.GetId())
+
+    def GetType(self):
+        return self.options[0][self.type.GetSelection()]
+
+    def GetGc(self):
+        return self.gc.GetValue()
+
+    def GetLogs(self):
+        return self.logs.GetValue()
+
+    def GetTbs(self):
+        return self.tbs.GetValue()
+
+    def GetAddWpts(self):
+        return self.addWpts.GetValue()
+
+    def GetSepAddWpts(self):
+        return self.sepAddWpts.GetValue()
 
 class MainWindow(wx.Frame):
     """Main Frame holding the Panel."""
@@ -825,10 +965,12 @@ class MainWindow(wx.Frame):
             path = dlg.GetPath()
             if dlg.GetFilterIndex() == 0:
                 type = '.gpx'
+                zip = False
             elif dlg.GetFilterIndex() == 1:
                 type = '.loc'
             elif dlg.GetFilterIndex() == 2:
                 type = '.zip'
+                zip = True
             if os.path.splitext(path)[1] != type:
                     path = path + type
 
@@ -839,19 +981,57 @@ class MainWindow(wx.Frame):
                                style=wx.YES_NO|wx.ICON_WARNING
                                )
                 if question.ShowModal() == wx.ID_NO:
+                    question.destroy()
                     return
-
-            self.conf.export.lastFile = path
-            # TODO: add filtering of caches based on selection etc
-            caches = self.db.getCacheList()
-            if type == '.gpx':
-                # TODO: implement gpx export extra options
-                gpxExport(path, caches, full=True)
-            elif type == '.loc':
+            if type == '.loc':
                 locExport(path, caches)
-            elif type == '.zip':
-                # TODO: implement zip export extra options
-                zipExport(path, caches, full=True, addWptsSeperate=True)
+            else:
+
+                opts = ExportOptions(self, wx.ID_ANY,
+                        type       = self.conf.export.type        or 'simple',
+                        gc         = self.conf.export.gc          or False,
+                        logs       = self.conf.export.logs        or False,
+                        tbs        = self.conf.export.tbs         or False,
+                        addWpts    = self.conf.export.addWpts     or False,
+                        sepAddWpts = self.conf.export.sepAddWptsv or True,
+                        zip = zip)
+                if opts.ShowModal() ==wx.ID_OK:
+                    if opts.GetType() == 'full':
+                        full   = True
+                        simple = False
+                    elif opts.GetType() == 'simple':
+                        full   = False
+                        simple = True
+                    else:
+                        full   = False
+                        simple = False
+                    self.conf.export.lastFile = path
+                    self.conf.export.type    = opts.GetType()
+                    self.conf.export.gc    = opts.GetGc()
+                    self.conf.export.logs    = opts.GetLogs()
+                    self.conf.export.tbs     = opts.GetTbs()
+                    self.conf.export.addWpts = opts.GetAddWpts()
+                    # TODO: add filtering of caches based on selection etc
+                    caches = self.db.getCacheList()
+                    if type == '.gpx':
+                        gpxExport(path, caches,
+                                        full       = full,
+                                        simple     = simple,
+                                        gc         = opts.GetGc(),
+                                        logs       = opts.GetLogs(),
+                                        tbs        = opts.GetTbs(),
+                                        addWpts    = opts.GetAddWpts())
+                    elif type == '.zip':
+                        self.conf.export.sepAddWpts = opts.GetSepAddWpts()
+                        zipExport(path, caches,
+                                        full       = full,
+                                        simple     = simple,
+                                        gc         = opts.GetGc(),
+                                        logs       = opts.GetLogs(),
+                                        tbs        = opts.GetTbs(),
+                                        addWpts    = opts.GetAddWpts(),
+                                        sepAddWpts = opts.GetSepAddWpts())
+                opts.Destroy()
         dlg.Destroy()
 
 
