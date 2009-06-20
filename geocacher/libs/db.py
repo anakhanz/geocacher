@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-
+'''Module to implement the persistant data stores'''
 import datetime
 from lxml.etree import Element,ElementTree
 import os
@@ -10,9 +10,10 @@ from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
 from libs.common import getTextFromPath,getAttribFromPath
 
 class DB:
+    '''Database for all non configuration data in the geocacher application'''
 
     def __init__(self,file):
-        """Load the DB or initalise if missing"""
+        '''Load the DB or initalise if missing'''
         try:
             self.root = ElementTree(file=file).getroot()
             version = int(self.root.attrib["version"])
@@ -23,28 +24,28 @@ class DB:
         self.file = file
 
     def save(self):
-        """Save the DB"""
+        '''Save the DB'''
         fid = open(self.file,"w")
         fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
         ElementTree(self.root).write(fid,encoding="utf-8")
         fid.close()
 
     def getCacheList(self):
-        """Returns a list of caches"""
+        '''Returns a list of caches'''
         cacheList = []
         for cacheNode in self.root.xpath(u"cache"):
             cacheList.append(Cache(cacheNode))
         return cacheList
 
     def getCacheCodeList(self):
-        """Returns a list of cache codes"""
+        '''Returns a list of cache codes'''
         cacheCodeList = []
         for cacheNode in self.root.xpath(u"cache"):
             cacheCodeList.append(cacheNode.attrib["code"])
         return cacheCodeList
 
     def getCacheByCode(self,code):
-        """Returns the cache with the given code if found, otherwise 'None'"""
+        '''Returns the cache with the given code if found, otherwise "None"'''
         caches = self.root.xpath(u"""cache[@code="%s"]""" % code)
         if len(caches) > 0:
             return Cache(caches[0])
@@ -94,6 +95,7 @@ class DB:
                         user_data2="",
                         user_data3="",
                         user_data4=""):
+        '''Creates a new cache with the given data'''
         newCache=Element("cache",code=code,
                             id         = "%s" % id,
                             lat        = "%f" % lat,
@@ -149,21 +151,21 @@ class DB:
         return Cache(newCache)
 
     def getLocationList(self):
-        """Returns a list of locations"""
+        '''Returns a list of home locations'''
         locationList = []
         for locationNode in self.root.xpath(u"location"):
             locationList.append(Location(locationNode))
         return cacheList
 
     def getLocationNameList(self):
-        """Returns a list of cache locations"""
+        '''Returns a list of home location names'''
         locationCodeList = []
         for locationNode in self.root.xpath(u"location"):
             locationCodeList.append(locationNode.attrib["name"])
         return cacheCodeList
 
     def getLocationByName(self,name):
-        """Returns the cache with the given code if found, otherwise 'None'"""
+        '''Returns the location with the given name if found, otherwise "None"'''
         locations = self.root.xpath(u"""location[@name="%s"]""" % name)
         if len(locations) > 0:
             return Location(locations[0])
@@ -171,6 +173,7 @@ class DB:
             return None
 
     def addLocation(self,name,lat=0.0,lon=0.0,comment=""):
+        '''Adds a new location with the given data'''
         newLocation = Element('location',name=name, lat="%f" % lat, lon="%f" % lon)
         newLocation.text = comment
         self.root.append(newLocation)
@@ -219,7 +222,7 @@ class Cache(object):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["url"] = t
 
-    def __getLocked(self):    textToBool(self.__node.attrib["locked"])
+    def __getLocked(self):    return textToBool(self.__node.attrib["locked"])
     locked = property(__getLocked)
 
     def __getUser_date(self):    return textToDateTime(self.__node.attrib["user_date"])
@@ -261,7 +264,7 @@ class Cache(object):
     def __getOwner(self):    return self.__node.attrib["owner"]
     owner = property(__getOwner)
 
-    def setOwner(self,t):
+    def setOwner(self,t):textToBool
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["owner"] = t
 
@@ -304,14 +307,14 @@ class Cache(object):
         # TODO: add assertion that the type is a valid one
         self.__node.attrib["type"] = t
 
-    def __getAvailable(self):    textToBool(self.__node.attrib["available"])
+    def __getAvailable(self):    return textToBool(self.__node.attrib["available"])
     available = property(__getAvailable)
 
     def setAvailable(self,b):
         assert type(b) == bool
         self.__node.attrib["available"] = boolToText(b)
 
-    def __getArchived(self):    textToBool(self.__node.attrib["archived"])
+    def __getArchived(self):    return textToBool(self.__node.attrib["archived"])
     archived = property(__getArchived)
 
     def setArchived(self,b):
@@ -372,7 +375,7 @@ class Cache(object):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("encoded_hints")[0].text = t
 
-    def __getFound(self):    textToBool(self.__node.attrib["found"])
+    def __getFound(self):    return textToBool(self.__node.attrib["found"])
     found = property(__getFound)
 
     def setFound(self,b):
@@ -387,7 +390,7 @@ class Cache(object):
         assert type(dt)==datetime.datetime
         self.__node.attrib["found_date"] = dateTimeToText(dt)
 
-    def __getDnf(self):    textToBool(self.__node.attrib["dnf"])
+    def __getDnf(self):    return textToBool(self.__node.attrib["dnf"])
     dnf = property(__getDnf)
 
     def setDnf(self,b):
@@ -402,8 +405,7 @@ class Cache(object):
         assert type(dt)==datetime.datetime
         self.__node.attrib["dnf_date"] = dateTimeToText(dt)
 
-    def __getOwn_log(self):
-        return self.__node.xpath("own_log")[0].text
+    def __getOwn_log(self):    return self.__node.xpath("own_log")[0].text
     own_log = property(__getOwn_log)
 
     def setOwn_log(self,t):
@@ -418,7 +420,8 @@ class Cache(object):
         assert type(b)==bool
         self.__node.xpath("own_log")[0].attrib["encoded"] = boolToText(b)
 
-    def __getCorrected(self):    textToBool(self.__node.attrib["corrected"])
+    def __getCorrected(self):
+        return textToBool(self.__node.attrib["corrected"])
     corrected = property(__getCorrected)
 
     def setCorrected(self,b):
@@ -461,7 +464,8 @@ class Cache(object):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("user_comments")[0].text = t
 
-    def __getUser_flag(self):    return textToBool(self.__node.attrib["user_flag"])
+    def __getUser_flag(self):
+        return textToBool(self.__node.attrib["user_flag"])
     user_flag = property(__getUser_flag)
 
     def setUser_flag(self,b):
@@ -497,6 +501,7 @@ class Cache(object):
         self.__node.attrib["user_data4"] = t
 
     def getLogs(self):
+        '''Returns the logs associated with the cache'''
         logNodes = self.__node.xpath("log")
         logs=[]
         for logNode in logNodes:
@@ -504,6 +509,7 @@ class Cache(object):
         return logs
 
     def getLogIdList(self):
+        '''Returns a list of the ID's of the logs associated with the cache'''
         logNodes = self.__node.xpath("log")
         logIds=[]
         for logNode in logNodes:
@@ -511,7 +517,7 @@ class Cache(object):
         return logIds
 
     def getLogById(self,id):
-        """Returns the log with the given id if found, otherwise 'None'"""
+        '''Returns the log with the given id if found, otherwise "None"'''
         assert type(id)==unicode or type(id)==str
         logs = self.__node.xpath(u"""log[@id="%s"]""" % id)
         if len(logs) > 0:
@@ -519,18 +525,30 @@ class Cache(object):
         else:
             return None
 
-    def addLog(self,id,date=None,type=u"",finder_id=u"",finder_name=u"",encoded=False,text=u""):
+    def addLog(self,id,
+                    date        = None,
+                    type        = u"",
+                    finder_id   = u"",
+                    finder_name = u"",
+                    encoded     = False,
+                    text        = u""):
+        '''Adds a log to the cache with the given information'''
         if date == None:
             dateText = u""
         else:
             dateText = dateTimeToText(date)
-        log = Element("log",id=id,date=dateText,type=type,finder_id=finder_id,
-        finder_name=finder_name,encoded=boolToText(encoded))
+        log = Element("log",id          = id,
+                            date        = dateText,
+                            type        = type,
+                            finder_id   =finder_id,
+                            finder_name = finder_name,
+                            encoded     = boolToText(encoded))
         log.text = text
         self.__node.append(log)
         return Log(log)
 
     def getTravelBugs(self):
+        '''Returns a list of the travel bugs in the cache'''
         bugNodes = self.__node.xpath("travelbug")
         bugs=[]
         for bugNode in bugNodes:
@@ -538,6 +556,7 @@ class Cache(object):
         return bugs
 
     def getTravelBugRefs(self):
+        '''Returns a list of th ref's of the travel bugs in the cache'''
         bugNodes = self.__node.xpath("travelbug")
         bugRefs=[]
         for bugNode in bugNodes:
@@ -545,7 +564,7 @@ class Cache(object):
         return bugRefs
 
     def getTravelBugByRef(self,ref):
-        """Returns the travel bug with the given ref if found, otherwise 'None'"""
+        '''Returns the travel bug with the given ref if found, otherwise "None"'''
         assert type(ref)==unicode or type(ref)==str
         bugs = self.__node.xpath(u"""travelbug[@ref="%s"]""" % ref)
         if len(bugs) > 0:
@@ -554,12 +573,14 @@ class Cache(object):
             return None
 
     def addTravelBug(self,ref,id=u"",name=u""):
+        '''Adds a travel bug tto the cache with the given information'''
         travelbug = Element("travelbug",ref=ref,id=id)
         travelbug.text = name
         self.__node.append(travelbug)
         return TravelBug(travelbug)
 
     def getAddWaypoints(self):
+        '''Returns a list of the additional waypoints associated with the cache'''
         addWptNodes = self.__node.xpath("add_wpt")
         addWpts=[]
         for addWptNode in addWptNodes:
@@ -567,6 +588,7 @@ class Cache(object):
         return addWpts
 
     def getAddWaypointCodes(self):
+        '''Returns a list of the codes of the waypoints associated with the cache'''
         addWptNodes = self.__node.xpath("add_wpt")
         addWptCodes=[]
         for addWptNode in addWptNodes:
@@ -574,7 +596,7 @@ class Cache(object):
         return addWptCodes
 
     def getAddWaypointByCode(self,code):
-        """Returns the additional waypoint with the given code if found, otherwise 'None'"""
+        '''Returns the additional waypoint with the given code if found, otherwise "None"'''
         assert type(code)==unicode or type(code)==str
         addWpts = self.__node.xpath(u"""add_wpt[@code="%s"]""" % code)
         if len(addWpts) > 0:
@@ -583,7 +605,14 @@ class Cache(object):
             return None
 
 
-    def addAddWaypoint(self,code,lat=0,lon=0,name=u"",url="",time=None,cmt=u"",sym=u""):
+    def addAddWaypoint(self,code,lat  = 0,
+                                 lon  = 0,
+                                 name = u"",
+                                 url  = "",
+                                 time = None,
+                                 cmt  = u"",
+                                 sym  = u""):
+        '''Adds an additional waypoint to the cache with the given information'''
         if time == None:
             timeText = u""
         else:
@@ -782,7 +811,7 @@ class Geocacher:
 
     @staticmethod
     def lockOn():
-        """ create the lock file and return True if it can"""
+        ''' create the lock file and return True if it can'''
         file = os.path.join(Geocacher.getHomeDir("geocacher"),Geocacher.__lockFile)
         if os.path.isfile(file):
             print file
@@ -793,18 +822,18 @@ class Geocacher:
 
     @staticmethod
     def lockOff():
-        """ Delete the lockfile """
+        ''' Delete the lockfile '''
         file = os.path.join(Geocacher.getHomeDir("geocacher"),Geocacher.__lockFile)
         if os.path.isfile(file):
             os.unlink(file)
 
     @staticmethod
     def getHomeDir(mkdir=None):
-        """
+        '''
         Return the "Home dir" of the system (if it exists), or None
         (if mkdir is set : it will create a subFolder "mkdir" if the path exist,
         and will append to it (the newfolder can begins with a "." or not))
-        """
+        '''
         maskDir=False
         try:
             #windows NT,2k,XP,etc. fallback
@@ -857,20 +886,21 @@ class Geocacher:
 
     @staticmethod
     def getConfFile(name):
+        '''Return the path to the configuration file named name'''
         if os.path.isfile(name):
             # the file exists in the local "./"
             # so we use it first
             return name
         else:
             # the file doesn't exist in the local "./"
-            # it must exist in the "jbrout" config dir
+            # it must exist in the "geocacher" config dir
             home = Geocacher.getHomeDir("geocacher")
             if home:
-                # there is a "jbrout" config dir
+                # there is a "geocacher" config dir
                 # the file must be present/created in this dir
                 return os.path.join(home,name)
             else:
-                # there is not a "jbrout" config dir
+                # there is not a "geocacher" config dir
                 # the file must be present/created in this local "./"
                 return name
 
@@ -880,6 +910,7 @@ class Geocacher:
         # load/initalise the database
         Geocacher.db = DB( Geocacher.getConfFile("db.xml") )
         # load/initalise the program configuration
+        # Set default values for configuration items
         d = {'common':{'mainWidth'  :700,
                        'mainHeigt'  :500,
                        'cacheCols'  :['code','id','lat','lon','name','found',
