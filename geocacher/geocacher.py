@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-# TODO: Add geocaching.com zip file import (either loc or GPX)
 # TODO: Add export to GPS (using gpsBabel)
 # TODO: Add lat/lon correction tool
 # TODO: Add selection of Current home location
 # TODO: Add icon to main Window
 # TODO: Add configuration of User Data Column names
 # TODO: Add viewing of data that is not displayed in the table
+# TODO: Add view only mode
 
-debugLevel = 5
 import logging
 import optparse
 import os
@@ -282,6 +281,18 @@ class CacheDataTable(Grid.PyGridTableBase):
         id = self.colNames[col]
         return self.data[row][id]
 
+    def GetRowCode(self, row):
+        return self.data[row]['code']
+
+    def GetRowCache(self, row):
+        return self.db.getCacheByCode(self.GetRowCode(row))
+
+    def GetRowCaches(self, rows):
+        caches = []
+        for row in rows:
+            caches.append(self.GetRowCache(row))
+        return caches
+
     def SetValue(self, row, col, value):
         id = self.colNames[col]
         self.data[row][id] = value
@@ -551,6 +562,11 @@ class CacheGrid(Grid.Grid):
         menu.Destroy()
         return
 
+    def NumSelectedRows(self):
+        return len(self.GetSelectedRows())
+
+    def GetSelectedCaches(self):
+        return self._table.GetRowCaches(self.GetSelectedRows())
 
     def ColPopup(self, col, evt):
         """(col, evt) -> display a popup menu when a column label is
@@ -590,8 +606,6 @@ class CacheGrid(Grid.Grid):
             self.Reset()
 
         def append(event, self=self, colIds=colIds):
-            print event.Id
-            print colIds[event.Id]
             self._table.AppendColumn(colIds[event.Id])
             self.Reset()
 
@@ -668,7 +682,7 @@ class PreferencesWindow(wx.Frame):
 class ExportOptions(wx.Dialog):
     '''Get the import options from the user'''
     def __init__(self,parent,id,type='simple',gc=False,logs=False,tbs=False,addWpts=False,sepAddWpts=True,zip=False):
-        """Creates the Preferences Frame"""
+        '''Creates the Preferences Frame'''
         wx.Dialog.__init__(self,parent,wx.ID_ANY,_('GPX File Export options'),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
 
@@ -745,8 +759,6 @@ class ExportOptions(wx.Dialog):
                     self.sepAddWpts.Enable()
                     self.sepAddWpts.SetValue(sepAddWpts)
 
-        #self.Show(True)
-
     def OnChangeType(self, event=None):
         if self.type.GetSelection() == 2:
             self.gc.Enable()
@@ -807,7 +819,7 @@ class ExportOptions(wx.Dialog):
         return self.sepAddWpts.GetValue()
 
 class MainWindow(wx.Frame):
-    """Main Frame holding the Panel."""
+    """Main Frame"""
     def __init__(self,parent,id, conf, db):
         """Create the main frame"""
         self.conf = conf
@@ -820,9 +832,17 @@ class MainWindow(wx.Frame):
 
         self.CreateStatusBar()
 
-        # Build the menu bar
+        self.buildMenu()
+
+        self.cacheGrid = CacheGrid(self, self.conf, self.db)
+
+        self.Show(True)
+
+    def buildMenu(self):
+        '''Builds the menu'''
         MenuBar = wx.MenuBar()
 
+        # Build file menu and bind functions
         FileMenu = wx.Menu()
 
         # TODO: add option to add folder of files (as seperate menu Item)
@@ -835,9 +855,9 @@ class MainWindow(wx.Frame):
         item = FileMenu.Append(wx.ID_EXIT, text=_("&Quit"))
         self.Bind(wx.EVT_MENU, self.OnQuit, item)
 
-
         MenuBar.Append(FileMenu, _("&File"))
 
+        # Build preferences menu and bind functions
         PrefsMenu = wx.Menu()
 
         item = PrefsMenu.Append(wx.ID_ANY, text=_("&Preferences"))
@@ -845,6 +865,7 @@ class MainWindow(wx.Frame):
 
         MenuBar.Append(PrefsMenu, _("&Edit"))
 
+        # Build Help menu and bind functions
         HelpMenu = wx.Menu()
 
         item = HelpMenu.Append(wx.ID_ABOUT, text=_("&About"))
@@ -852,11 +873,60 @@ class MainWindow(wx.Frame):
 
         MenuBar.Append(HelpMenu, _("&Help"))
 
+        # Add the menu bar to the frame
         self.SetMenuBar(MenuBar)
 
-        self.cacheGrid = CacheGrid(self, self.conf, self.db)
-
-        self.Show(True)
+    def selectCaches(self, scope, destText):
+        options = [_('All'),_('Marked with User Flag')]
+        if self.cacheGrid.NumSelectedRows() > 0:
+            options += ([_('Selected'),_('Selected and marked with User Flag')])
+            selection = True
+        else:
+            selection = False
+        dlg = wx.SingleChoiceDialog(self, _('Export Option'),
+                                    _('Caches to export to ') + destText,
+                                    choices=options,
+                                    style=wx.CHOICEDLG_STYLE)
+        if scope == 'userFlag':
+            dlg.SetSelection(1)
+        elif scope == 'selection' and selection:
+            dlg.SetSelection(2)
+        elif scope == 'selection_userFlag' and selection:
+            dlg.SetSelection(3)
+        else:
+            dlg.SetSelection(0)
+        if dlg.ShowModal() == wx.ID_OK:
+            if dlg.GetSelection() == 2:
+                scope = 'selection'
+                caches = self.cacheGrid.GetSelectedCaches()
+            elif dlg.GetSelection() == 1 or dlg.GetSelection() == 3:
+                if dlg.GetSelection() == 1:
+                    scope = 'userFlag'
+                    cachesTmp = self.db.getCacheList()
+                else:
+                    scope = 'selection_userFlag'
+                    cachesTmp = self.cacheGrid.GetSelectedCaches()
+                caches = []
+                for cache in cachesTmp:
+                    if cache.user_flag:
+                        caches.append(cache)
+            else:
+                scope = 'all'
+                caches = self.db.getCacheList()
+            if len(caches) == 0:
+                msg = wx.MessageDialog(self,
+                    caption=_('No caches selected'),
+                    message=_('No caches selected to export to ') + destText,
+                    style=wx.OK | wx.ICON_HAND)
+                msg.ShowModal()
+                msg.Destroy()
+                scope = None
+                caches = None
+        else:
+            scope = None
+            caches = None
+        dlg.Destroy()
+        return (scope, caches)
 
     def OnHelpAbout(self, event=None):
         HelpAbout = wx.AboutDialogInfo()
@@ -933,6 +1003,12 @@ class MainWindow(wx.Frame):
             dlg.Destroy()
 
     def OnExportWpt(self, event=None):
+        '''Function to export waypoints to a file'''
+
+        (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
+        if scope == None:
+            return
+
         wildcard = "GPX File (*.gpx)|*.gpx|"\
                    "LOC file (*.loc)|*.loc|"\
                    "Compressed GPX File (*.zip)|*.zip|"\
@@ -964,15 +1040,15 @@ class MainWindow(wx.Frame):
             self.conf.export.lastFolder = dlg.GetDirectory()
             path = dlg.GetPath()
             if dlg.GetFilterIndex() == 0:
-                type = '.gpx'
+                ext = '.gpx'
                 zip = False
             elif dlg.GetFilterIndex() == 1:
-                type = '.loc'
+                ext = '.loc'
             elif dlg.GetFilterIndex() == 2:
-                type = '.zip'
+                ext = '.zip'
                 zip = True
-            if os.path.splitext(path)[1] != type:
-                    path = path + type
+            if os.path.splitext(path)[1] != ext:
+                    path = path + ext
 
             if os.path.isfile(path):
                 question = wx.MessageDialog(None,
@@ -983,10 +1059,9 @@ class MainWindow(wx.Frame):
                 if question.ShowModal() == wx.ID_NO:
                     question.destroy()
                     return
-            if type == '.loc':
+            if ext == '.loc':
                 locExport(path, caches)
             else:
-
                 opts = ExportOptions(self, wx.ID_ANY,
                         type       = self.conf.export.type        or 'simple',
                         gc         = self.conf.export.gc          or False,
@@ -1006,14 +1081,13 @@ class MainWindow(wx.Frame):
                         full   = False
                         simple = False
                     self.conf.export.lastFile = path
-                    self.conf.export.type    = opts.GetType()
-                    self.conf.export.gc    = opts.GetGc()
-                    self.conf.export.logs    = opts.GetLogs()
-                    self.conf.export.tbs     = opts.GetTbs()
-                    self.conf.export.addWpts = opts.GetAddWpts()
-                    # TODO: add filtering of caches based on selection etc
-                    caches = self.db.getCacheList()
-                    if type == '.gpx':
+                    self.conf.export.type     = opts.GetType()
+                    self.conf.export.gc       = opts.GetGc()
+                    self.conf.export.logs     = opts.GetLogs()
+                    self.conf.export.tbs      = opts.GetTbs()
+                    self.conf.export.addWpts  = opts.GetAddWpts()
+
+                    if ext == '.gpx':
                         gpxExport(path, caches,
                                         full       = full,
                                         simple     = simple,
@@ -1021,7 +1095,7 @@ class MainWindow(wx.Frame):
                                         logs       = opts.GetLogs(),
                                         tbs        = opts.GetTbs(),
                                         addWpts    = opts.GetAddWpts())
-                    elif type == '.zip':
+                    elif ext == '.zip':
                         self.conf.export.sepAddWpts = opts.GetSepAddWpts()
                         zipExport(path, caches,
                                         full       = full,
@@ -1033,6 +1107,7 @@ class MainWindow(wx.Frame):
                                         sepAddWpts = opts.GetSepAddWpts())
                 opts.Destroy()
         dlg.Destroy()
+        self.conf.export.scope = scope
 
 
     def OnPrefs(self, event=None):
@@ -1049,7 +1124,7 @@ class MainWindow(wx.Frame):
         self.Destroy()
 
 
-def main (debug, canModify):
+def main (canModify):
     app = wx.PySimpleApp()
     locked = not Geocacher.lockOn()
     if locked:
@@ -1062,7 +1137,7 @@ def main (debug, canModify):
             locked = False
     if not locked:
         try:
-            Geocacher.init(debug, canModify)
+            Geocacher.init(canModify)
 
             frame = MainWindow(None,-1,Geocacher.conf, Geocacher.db)
             app.MainLoop()
@@ -1079,15 +1154,13 @@ http://www.example.com""" % ("%prog",__version__)
 if __name__ == "__main__":
     try:
         parser = optparse.OptionParser(usage=USAGE, version=("Geocaching "+__version__))
-        parser.add_option("-d","--debug",action="store",type="int",dest="debug",
-                            help="set debug level 0-9")
         parser.add_option("-v","--view",action="store_true",dest="view",
                             help="run in only view mode")
-        parser.set_defaults(debug=debugLevel,viewOnly=False)
+        parser.set_defaults(viewOnly=False)
 
         (options, args) = parser.parse_args()
 
-        main(options.debug, not(options.viewOnly))
+        main(not(options.viewOnly))
 
     except KeyboardInterrupt:
         pass

@@ -461,7 +461,7 @@ class Cache(object):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("user_comments")[0].text = t
 
-    def __getUser_flag(self):    textToBool(self.__node.attrib["user_flag"])
+    def __getUser_flag(self):    return textToBool(self.__node.attrib["user_flag"])
     user_flag = property(__getUser_flag)
 
     def setUser_flag(self,b):
@@ -875,8 +875,7 @@ class Geocacher:
                 return name
 
     @staticmethod
-    def init(debug=0, canModify=True):
-        Geocacher.debugLevel = debug
+    def init(canModify=True):
         Geocacher.canModify = canModify
         # load/initalise the database
         Geocacher.db = DB( Geocacher.getConfFile("db.xml") )
@@ -899,18 +898,11 @@ class Geocacher:
                        'logs'       :False,
                        'tbs'        :False,
                        'addWpts'    :False,
-                       'sepAddWpts' :False},
+                       'sepAddWpts' :False,
+                       'scope'      :'all'},
              'load'  :{'lastFolder' :Geocacher.getHomeDir(),
                        'lastFile'   :'',
                        'type'       :'update'},
              'gc'    :{'userName'  :'',
                        'userId'    :''}}
         Geocacher.conf = dict4ini.DictIni( Geocacher.getConfFile("geocacher.conf"), values=d)
-
-    @staticmethod
-    def dbgPrint(message, level=1):
-        if level == 0:
-           print "Warning!   %s" % message
-        else:
-            if level <= Geocacher.debugLevel:
-                print "Debug L%i: %s" % (level, message)
