@@ -208,6 +208,20 @@ class Cache(object):
         assert type(f) == float
         self.__node.attrib["lon"] = "%f" % f
 
+    def __getCurrentLat(self):
+        if self.corrected:
+            return self.clat
+        else:
+            return self.lat
+    currentLat = property(__getCurrentLat)
+
+    def __getCurrentLon(self):
+        if self.corrected:
+            return self.clon
+        else:
+            return self.lon
+    currentLon = property(__getCurrentLon)
+
     def __getName(self):    return self.__node.attrib["name"]
     name = property(__getName)
 
@@ -264,7 +278,7 @@ class Cache(object):
     def __getOwner(self):    return self.__node.attrib["owner"]
     owner = property(__getOwner)
 
-    def setOwner(self,t):textToBool
+    def setOwner(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["owner"] = t
 

@@ -233,25 +233,20 @@ class CacheDataTable(Grid.PyGridTableBase):
         self.DoSort()
 
     def __addRow(self, cache):
-        # TODO: move cache correction logic into DB module
-        if cache.corrected == True:
-            lat = cache.cLat
-            lon = cache.cLon
-        else:
-            lat = cache.lat
-            lon = cache.lon
 
         location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
         hLat = location.lat
         hLon = location.lon
 
         if self.conf.common.miles or False:
-            dist = '%0.2f Mi' % distance(hLat,hLon,lat,lon,miles=True)
+            dist = '%0.2f Mi' % distance(hLat,hLon,cache.currentLat,
+                                         cache.currentLon,miles=True)
         else:
-            dist = '%0.2f km' % distance(hLat,hLon,lat,lon)
-        cBear = cardinalBearing(hLat,hLon,lat,lon)
+            dist = '%0.2f km' % distance(hLat,hLon,cache.currentLat,
+                                         cache.currentLon,miles=True)
+        cBear = cardinalBearing(hLat,hLon,cache.currentLat,cache.currentLon)
 
-        row = {'code':cache.code,'id':cache.id,'lon':lon,'lat':lat,
+        row = {'code':cache.code,'id':cache.id,'lon':cache.currentLon,'lat':cache.currentLat,
                 'name':cache.name,'url':cache.url,'found':cache.found,
                 'type':cache.type,'size':cache.container,'distance':dist,
                 'bearing':cBear,'oLat':cache.lat,'oLon':cache.lon,
