@@ -240,11 +240,12 @@ class Cache(object):
     locked = property(__getLocked)
 
     def __getUser_date(self):    return textToDateTime(self.__node.attrib["user_date"])
-    user_date = property(__getUser_date)
 
-    def setUserDate(self,dt):
+    def __setUser_date(self,dt):
         assert type(dt)==datetime.datetime
         self.__node.attrib["user_date"] = dateTimeToText(dt)
+
+    user_date = property(__getUser_date, __setUser_date)
 
     def __getGpx_date(self):    return textToDateTime(self.__node.attrib["gpx_date"])
     gpx_date = property(__getGpx_date)
@@ -436,32 +437,36 @@ class Cache(object):
 
     def __getCorrected(self):
         return textToBool(self.__node.attrib["corrected"])
-    corrected = property(__getCorrected)
 
-    def setCorrected(self,b):
+    def __setCorrected(self,b):
         assert type(b) == bool
         self.__node.attrib["corrected"] = boolToText(b)
 
-    def __getCLat(self):    return float(self.__node.attrib["clat"])
-    clat = property(__getCLat)
+    corrected = property(__getCorrected, __setCorrected)
 
-    def setCLat(self,f):
+    def __getCLat(self):    return float(self.__node.attrib["clat"])
+
+    def __setCLat(self,f):
         assert type(f) == float
         self.__node.attrib["clat"] = "%f" % f
 
-    def __getCLon(self):    return float(self.__node.attrib["clon"])
-    clon = property(__getCLon)
+    clat = property(__getCLat, __setCLat)
 
-    def setCLon(self,f):
+    def __getCLon(self):    return float(self.__node.attrib["clon"])
+
+    def __setCLon(self,f):
         assert type(f) == float
         self.__node.attrib["clon"] = "%f" % f
 
-    def __getCNote(self):    return self.__node.attrib["cnote"]
-    cnote = property(__getCNote)
+    clon = property(__getCLon, __setCLon)
 
-    def setCNote(self,t):
+    def __getCNote(self):    return self.__node.attrib["cnote"]
+
+    def __setCNote(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["cnote"] = t
+
+    cnote = property(__getCNote, __setCNote)
 
     def __getSource(self):    return self.__node.attrib["source"]
     source = property(__getSource)

@@ -9,6 +9,7 @@
 # TODO: Add viewing of data that is not displayed in the table
 # TODO: Add view only mode
 
+from datetime import datetime
 import logging
 import optparse
 import os
@@ -227,7 +228,15 @@ class CacheDataTable(Grid.PyGridTableBase):
             self.__addRow(cache)
         self.DoSort()
 
+    def ReloadRow(self, row):
+        cache = self.GetRowCache(row)
+        self.data.pop(row)
+        self.data.insert(row, self.__buildRow(cache))
+
     def __addRow(self, cache):
+        self.data.append(self.__buildRow(cache))
+
+    def __buildRow(self, cache):
 
         location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
         hLat = location.lat
@@ -255,7 +264,7 @@ class CacheDataTable(Grid.PyGridTableBase):
                 'user_flag':cache.user_flag,'user_data1':cache.user_data1,
                 'user_data2':cache.user_data2,'user_data3':cache.user_data3,
                 'user_data4':cache.user_data4}
-        self.data.append(row)
+        return row
 
     def GetNumberRows(self):
         return len(self.data)
@@ -482,6 +491,7 @@ class CacheDataTable(Grid.PyGridTableBase):
 class CacheGrid(Grid.Grid):
     # TODO: add icon to Sorted Column Name
     def __init__(self, parent, conf, db):
+        self.conf = conf
         Grid.Grid.__init__(self, parent, -1)
 
         self._table = CacheDataTable(conf, db)
@@ -525,6 +535,7 @@ class CacheGrid(Grid.Grid):
         """(row, evt) -> display a popup menu when a row label is right clicked"""
         addID = wx.NewId()
         deleteID = wx.NewId()
+        correctID = wx.NewId()
         x = self.GetRowSize(row)/2
 
         if not self.GetSelectedRows():
@@ -532,8 +543,9 @@ class CacheGrid(Grid.Grid):
 
         menu = wx.Menu()
         xo, yo = evt.GetPosition()
-        menu.Append(addID, "Add Cache")
-        menu.Append(deleteID, "Delete Cache(s)")
+        menu.Append(addID, _('Add Cache'))
+        menu.Append(deleteID, _('Delete Cache(s)'))
+        menu.Append(correctID, _('Correct Cordinates'))
 
         def add(event, self=self, row=row):
             # TODO implement manually adding cache
@@ -546,8 +558,16 @@ class CacheGrid(Grid.Grid):
             self._table.DeleteRows(rows)
             self.Reset()
 
+        def correct(event, self=self, row=row):
+            self.SelectRow(row)
+            dlg = CorrectLatLon(self, wx.ID_ANY,self._table.GetRowCache(row), self.conf)
+            if dlg.ShowModal() == wx.ID_OK:
+                self._table.ReloadRow(row)
+                self.Reset()
+
         self.Bind(wx.EVT_MENU, add, id=addID)
         self.Bind(wx.EVT_MENU, delete, id=deleteID)
+        self.Bind(wx.EVT_MENU, correct, id=correctID)
         self.PopupMenu(menu)
         menu.Destroy()
         return
@@ -807,6 +827,91 @@ class ExportOptions(wx.Dialog):
 
     def GetSepAddWpts(self):
         return self.sepAddWpts.GetValue()
+
+class CorrectLatLon(wx.Dialog):
+    '''Get the import options from the user'''
+    def __init__(self,parent,id, cache, conf):
+        """Creates the Preferences Frame"""
+        self.cache = cache
+        wx.Dialog.__init__(self,parent,id,_('Lat/Lon Correction for ')+cache.code,#size = (300,300),
+                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
+
+        self.latName = wx.StaticText(self, wx.ID_ANY, _('Latitude'))
+        self.lonName = wx.StaticText(self, wx.ID_ANY, _('Longitude'))
+        self.origName = wx.StaticText(self, wx.ID_ANY, _('Origional'))
+        self.corName = wx.StaticText(self, wx.ID_ANY, _('Corrected'))
+        self.commName = wx.StaticText(self, wx.ID_ANY, _('Comment'))
+
+        self.oLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))
+        self.oLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))
+        self.cLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))# TODO: add validator
+        self.cLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))# TODO: add validator
+
+        self.comment = wx.TextCtrl(self, wx.ID_ANY, size=(200, 100),
+                                    style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER)
+
+
+
+        coordGrid = wx.GridBagSizer(3, 3)
+        coordGrid.Add(self.latName, (0,1), (1,1), wx.ALL, 1)
+        coordGrid.Add(self.lonName, (0,2), (1,1), wx.ALL, 1)
+        coordGrid.Add(self.origName, (1,0), (1,1), wx.ALL, 1)
+        coordGrid.Add(self.corName, (2,0), (1,1), wx.ALL, 1)
+
+        coordGrid.Add(self.oLat, (1,1), (1,1), wx.ALL, 1)
+        coordGrid.Add(self.oLon, (1,2), (1,1), wx.ALL, 1)
+        coordGrid.Add(self.cLat, (2,1), (1,1), wx.ALL, 1)
+        coordGrid.Add(self.cLon, (2,2), (1,1), wx.ALL, 1)
+
+        coordSbox = wx.StaticBox(self, wx.ID_ANY, 'Cordinates')
+        coordSboxSizer = wx.StaticBoxSizer(coordSbox, wx.VERTICAL)
+        coordSboxSizer.Add(coordGrid, 0, 0, 0)
+
+        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
+        mainBox.Add(coordSboxSizer)
+        mainBox.Add(self.commName, 0, wx.EXPAND)
+        mainBox.Add(self.comment, 0, wx.EXPAND)
+
+        # Ok and Cancel Buttons
+        okButton = wx.Button(self,wx.ID_OK)
+        cancelButton = wx.Button(self,wx.ID_CANCEL)
+        buttonBox = wx.StdDialogButtonSizer()
+        buttonBox.AddButton(okButton)
+        buttonBox.AddButton(cancelButton)
+        buttonBox.Realize()
+
+        self.Bind(wx.EVT_BUTTON,   self.OnExit,          okButton)
+        self.Bind(wx.EVT_BUTTON,   self.OnExit,          cancelButton)
+
+        mainBox.Add(buttonBox, 0, wx.EXPAND)
+        self.SetSizer(mainBox)
+        self.SetAutoLayout(True)
+
+        # Stop the orogional Lat/Lon values being edited
+        self.oLat.SetEditable(False)
+        self.oLon.SetEditable(False)
+
+        # Load the values
+        self.oLat.SetValue(str(cache.lat))
+        self.oLon.SetValue(str(cache.lon))
+        if cache.corrected:
+            self.cLat.SetValue(str(cache.clat))
+            self.cLon.SetValue(str(cache.clon))
+            self.comment.SetValue(cache.cnote)
+
+        self.Show(True)
+
+    def OnExit(self, event=None):
+        print 'Exit'
+        if event.GetId() == wx.ID_OK:
+            print 'OK'
+            self.cache.clat = float(self.cLat.GetValue())
+            self.cache.clon = float(self.cLon.GetValue())
+            self.cache.corrected = True
+            self.cache.cnote = self.comment.GetValue()
+            self.cache.user_date = datetime.now()
+        self.Destroy()
+        wx.Dialog.EndModal(self, event.GetId())
 
 class MainWindow(wx.Frame):
     """Main Frame"""
