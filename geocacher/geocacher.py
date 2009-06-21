@@ -54,7 +54,6 @@ class ImageRenderer(Grid.PyGridCellRenderer):
 
         self.colSize = None
         self.rowSize = None
-        self.__init2__(conf)
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
@@ -90,7 +89,8 @@ class ImageRenderer(Grid.PyGridCellRenderer):
                 0, 0, wx.COPY, True)
 
 class CacheSizeRenderer(ImageRenderer):
-    def __init2__(self, conf):
+    def __init__(self, table, conf):
+        ImageRenderer.__init__(self, table, conf)
         self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
                         'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
                         'Regular':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-regular.gif'), wx.BITMAP_TYPE_GIF),
@@ -100,11 +100,9 @@ class CacheSizeRenderer(ImageRenderer):
                         'Other':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-other.gif'), wx.BITMAP_TYPE_GIF)}
         self._default='Not chosen'
 
-        self.colSize = None
-        self.rowSize = None
-
 class CacheTypeRenderer(ImageRenderer):
-    def __init2__(self, conf):
+    def __init__(self, table, conf):
+        ImageRenderer.__init__(self, table, conf)
         self._images = {'Traditional Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-traditional.gif'), wx.BITMAP_TYPE_GIF),
                         'Ape':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-ape.gif'), wx.BITMAP_TYPE_GIF),
                         'CITO':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-cito.gif'), wx.BITMAP_TYPE_GIF),
@@ -121,9 +119,6 @@ class CacheTypeRenderer(ImageRenderer):
                         'WhereIGo':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-whereigo.gif'), wx.BITMAP_TYPE_GIF)
                         }
         self._default='Traditional Cache'
-
-        self.colSize = None
-        self.rowSize = None
 
 class CacheDataTable(Grid.PyGridTableBase):
     def __init__(self, conf, db):
