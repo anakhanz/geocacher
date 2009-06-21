@@ -932,6 +932,7 @@ class Geocacher:
         # Set default values for configuration items
         d = {'common':{'mainWidth'  :700,
                        'mainHeigt'  :500,
+                       'mainSplit'  :400,
                        'cacheCols'  :['code','id','lat','lon','name','found',
                                       'type','size','distance','bearing'],
                        'sortCol'    :'code',

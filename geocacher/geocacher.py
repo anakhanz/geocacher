@@ -937,6 +937,12 @@ class CorrectLatLon(wx.Dialog):
         self.Destroy()
         wx.Dialog.EndModal(self, event.GetId())
 
+class MainSplitter(wx.SplitterWindow):
+    def __init__(self,parent,id):
+        wx.SplitterWindow.__init__(self, parent, id,
+            style=wx.SP_LIVE_UPDATE | wx.SP_BORDER)
+
+
 class MainWindow(wx.Frame):
     """Main Frame"""
     def __init__(self,parent,id, conf, db):
@@ -953,7 +959,14 @@ class MainWindow(wx.Frame):
 
         self.buildMenu()
 
-        self.cacheGrid = CacheGrid(self, self.conf, self.db)
+        self.splitter = MainSplitter(self, wx.ID_ANY)
+        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db)
+        panel2 = wx.Window(self.splitter, wx.ID_ANY, style=wx.BORDER_SUNKEN)
+        self.splitter.SetMinimumPaneSize(20)
+        self.splitter.SplitHorizontally(self.cacheGrid, panel2, conf.common.mainSplit or 400)
+
+        wx.StaticText(panel2, -1, "TestText", (5,5))
+
 
         self.Show(True)
 
@@ -1236,6 +1249,7 @@ class MainWindow(wx.Frame):
     def OnQuit(self, event=None):
         """Exit application."""
         (self.conf.common.mainWiidth,self.conf.common.mainHeight) = self.GetSizeTuple()
+        self.conf.common.mainSplit = self.splitter.GetSashPosition()
         self.conf.common.cacheCols = self.cacheGrid.GetCols()
         self.conf.common.sortCol = self.cacheGrid.GetSortCol()
         self.conf.save()
