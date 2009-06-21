@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 
 # TODO: Add export to GPS (using gpsBabel)
-# TODO: Add lat/lon correction tool
 # TODO: Add selection of Current home location
 # TODO: Add icon to main Window
 # TODO: Add configuration of User Data Column names
@@ -532,10 +531,14 @@ class CacheGrid(Grid.Grid):
         elif col == -1: self.RowPopup(row, evt)
 
     def RowPopup(self, row, evt):
-        """(row, evt) -> display a popup menu when a row label is right clicked"""
+        '''(row, evt) -> display a popup menu when a row label is right clicked'''
+
+        cache = self._table.GetRowCache(row)
+
         addID = wx.NewId()
         deleteID = wx.NewId()
         correctID = wx.NewId()
+        rmCorrID = wx.NewId()
         x = self.GetRowSize(row)/2
 
         if not self.GetSelectedRows():
@@ -545,7 +548,11 @@ class CacheGrid(Grid.Grid):
         xo, yo = evt.GetPosition()
         menu.Append(addID, _('Add Cache'))
         menu.Append(deleteID, _('Delete Cache(s)'))
-        menu.Append(correctID, _('Correct Cordinates'))
+        if cache.corrected:
+            menu.Append(correctID, _('Edit Cordinate Correction'))
+            menu.Append(rmCorrID, _('Remove Cordinate Correction'))
+        else:
+            menu.Append(correctID, _('Correct Cordinates'))
 
         def add(event, self=self, row=row):
             # TODO implement manually adding cache
@@ -558,16 +565,33 @@ class CacheGrid(Grid.Grid):
             self._table.DeleteRows(rows)
             self.Reset()
 
-        def correct(event, self=self, row=row):
+        def correct(event, self=self, row=row, cache=cache):
             self.SelectRow(row)
             dlg = CorrectLatLon(self, wx.ID_ANY,self._table.GetRowCache(row), self.conf)
             if dlg.ShowModal() == wx.ID_OK:
+                self._table.ReloadRow(row)
+                self.Reset()
+            dlg.Destroy()
+
+        def remCorrection(event, self=self, row=row, cache=cache):
+            self.SelectRow(row)
+            dlg = wx.MessageDialog(None,
+                message=_('Are you sure you want to remove the cordinate correction for ')+cache.code,
+                caption=_('Remove Cordinate Correction'),
+                style=wx.YES_NO|wx.ICON_QUESTION)
+            if dlg.ShowModal() == wx.ID_YES:
+                cache.clat = 0.0
+                cache.clon = 0.0
+                cache.corrected = False
+                cache.cnote = ''
+                cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
 
         self.Bind(wx.EVT_MENU, add, id=addID)
         self.Bind(wx.EVT_MENU, delete, id=deleteID)
         self.Bind(wx.EVT_MENU, correct, id=correctID)
+        self.Bind(wx.EVT_MENU, remCorrection, id=rmCorrID)
         self.PopupMenu(menu)
         menu.Destroy()
         return
