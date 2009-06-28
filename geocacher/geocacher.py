@@ -15,6 +15,7 @@ import string
 import sys
 import time
 import traceback
+import tempfile
 
 try:
     os.chdir(os.path.split(sys.argv[0])[0])
@@ -1351,7 +1352,27 @@ class MainWindow(wx.Frame):
         prefsFrame = PreferencesWindow(self,wx.ID_ANY,self.conf)
 
     def OnGpsUpload(self, event=None):
-        pass
+        # TODO: handle errors
+        # TODO: selection of GPS type/location
+        (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
+        if scope == None:
+            return
+        fd,tmpFile = tempfile.mkstemp()
+        dlg = wx.MessageDialog(None,
+                               message=_("Do you want to include the additional waypoints?"),
+                               caption=_("GPS Upload"),
+                               style=wx.YES_NO|wx.ICON_QUESTION
+                               )
+        if dlg.ShowModal() == wx.ID_YES:
+            addWpts = True
+        else:
+            addWpts = False
+        gpxExport(tmpFile, caches, addWpts = addWpts)
+        gpsCom = GpsCom()
+        gpsCom.gpxToGps(tmpFile)
+        os.remove(tmpFile)
+
+
 
     def OnQuit(self, event=None):
         """Exit application."""
