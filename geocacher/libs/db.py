@@ -9,6 +9,9 @@ from libs import dict4ini
 from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
 from libs.common import getTextFromPath,getAttribFromPath
 
+VERSION = 1
+ROOT_ELEMENT = 'db'
+
 class DB:
     '''Database for all non configuration data in the geocacher application'''
 
@@ -18,17 +21,32 @@ class DB:
             self.root = ElementTree(file=file).getroot()
             version = int(self.root.attrib["version"])
         except:
-            self.root = Element("db",version="1")
-            version=1
+            self.root = Element(ROOT_ELEMENT,version=str(VERSION))
+            version=VERSION
             self.addLocation('Default')
         self.file = file
 
     def save(self):
-        '''Save the DB'''
-        fid = open(self.file,"w")
+        '''Saves the DB'''
+        self.backup(self.file)
+
+    def backup(self, file):
+        '''Save the DB to the given file'''
+        fid = open(file,"w")
         fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
         ElementTree(self.root).write(fid,encoding="utf-8")
         fid.close()
+
+    def restore(self, file):
+        '''Restores the DB from the given file'''
+        try:
+            newRoot = ElementTree(file=file).getroot()
+            tag = newRoot.tag
+            version = int(newRoot.attrib["version"])
+        except:
+            return False
+        if tag == ROOT_ELEMENT and version == VERSION:
+            self.root = newRoot
 
     def getCacheList(self):
         '''Returns a list of caches'''

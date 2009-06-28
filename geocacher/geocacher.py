@@ -427,7 +427,7 @@ class CacheDataTable(Grid.PyGridTableBase):
                                style=wx.YES_NO|wx.ICON_QUESTION)
         if dlg.ShowModal() == wx.ID_YES:
             for row in rows:
-                self.db.getCacheByCode(self.data[row]['code']).delete()
+                self.db.getCacheByCode(self.data[row-deleteCount]['code']).delete()
                 self.data.pop(row-deleteCount)
                 # we need to advance the delete count
                 # to make sure we delete the right rows
@@ -1001,6 +1001,12 @@ class MainWindow(wx.Frame):
         item = FileMenu.Append(wx.ID_ANY, text=_("&Export Waypoints"))
         self.Bind(wx.EVT_MENU, self.OnExportWpt, item)
 
+        item = FileMenu.Append(wx.ID_ANY, text=_("&Back-up Database"))
+        self.Bind(wx.EVT_MENU, self.OnBackupDb, item)
+
+        item = FileMenu.Append(wx.ID_ANY, text=_("&Restore Database"))
+        self.Bind(wx.EVT_MENU, self.OnRestoreDb, item)
+
         item = FileMenu.Append(wx.ID_EXIT, text=_("&Quit"))
         self.Bind(wx.EVT_MENU, self.OnQuit, item)
 
@@ -1290,6 +1296,56 @@ class MainWindow(wx.Frame):
         dlg.Destroy()
         self.conf.export.scope = scope
 
+    def OnBackupDb(self, event=None):
+        wildcard = "XML (*.xml)|*.xml|"\
+                   "Any Type (*.*)|*.*|"
+        dir = os.getcwd()
+        dlg = wx.FileDialog(
+            self, message=_("Select file to backup the DB to"),
+            defaultDir=dir,
+            defaultFile="",
+            wildcard=wildcard,
+            style=wx.SAVE
+            )
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            if os.path.isfile(path):
+                question = wx.MessageDialog(None,
+                               message=path + _(" already exists are you sure you want to replace it ?"),
+                               caption=_("File Already Exists"),
+                               style=wx.YES_NO|wx.ICON_WARNING
+                               )
+                if question.ShowModal() == wx.ID_NO:
+                    question.Destroy()
+                    return
+                question.Destroy()
+            self.db.backup(path)
+        dlg.Destroy()
+
+    def OnRestoreDb(self, event=None):
+        wildcard = "XML (*.xml)|*.xml|"\
+                   "Any Type (*.*)|*.*|"
+        dir = os.getcwd()
+        dlg = wx.FileDialog(
+            self, message=_("Select file to restore the DB from"),
+            defaultDir=dir,
+            defaultFile="",
+            wildcard=wildcard,
+            style=wx.OPEN
+            )
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            question = wx.MessageDialog(None,
+                           message=_("Are you sure you want to replace the contents of the DB with ") + path + '?',
+                           caption=_("Replace DB?"),
+                           style=wx.YES_NO|wx.ICON_WARNING
+                           )
+            if question.ShowModal() == wx.ID_YES:
+                self.db.restore(path)
+                self.cacheGrid.ReloadCaches()
+            question.Destroy()
+        dlg.Destroy()
+
 
     def OnPrefs(self, event=None):
         prefsFrame = PreferencesWindow(self,wx.ID_ANY,self.conf)
@@ -1303,7 +1359,10 @@ class MainWindow(wx.Frame):
         self.conf.common.mainSplit = self.splitter.GetSashPosition()
         self.conf.common.cacheCols = self.cacheGrid.GetCols()
         self.conf.common.sortCol = self.cacheGrid.GetSortCol()
-        self.conf.common.dispCache = self.displayCache.code
+        if self.displayCache != None:
+            self.conf.common.dispCache = self.displayCache.code
+        else:
+            self.conf.common.dispCache = ''
         self.conf.save()
         self.db.save()
         self.Destroy()
