@@ -35,6 +35,7 @@ __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dir
 
 from libs.common import nl2br
 from libs.db import Geocacher
+from libs.gpsbabel import GpsCom
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
 from libs.loc import locLoad, locExport
 from libs.latlon import distance, cardinalBearing
@@ -510,6 +511,7 @@ class CacheGrid(Grid.Grid):
         self.Bind(Gridmovers.EVT_GRID_COL_MOVE, self.OnColMove, self)
         self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnLabelRightClicked)
         self.Bind(Grid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
+        self.Bind(Grid.EVT_GRID_CELL_LEFT_CLICK, self.OnCellLeftClicked)
 
 
         self.SetRowLabelSize(20)
@@ -531,12 +533,13 @@ class CacheGrid(Grid.Grid):
 
     def OnLabelLeftClicked(self, evt):
         # Did we click on a row or a column?
-        row, col = evt.GetRow(), evt.GetCol()
-        if row == -1:
-            self.SelectCol(col)
-        elif col == -1:
-            self.cacheSel(self._table.GetRowCode(row))
-            self.SelectRow(row)
+        if evt.GetRow() != -1:
+            self.cacheSel(self._table.GetRowCode(evt.GetRow()))
+        evt.Skip()
+
+    def OnCellLeftClicked(self, evt):
+        self.cacheSel(self._table.GetRowCode(evt.GetRow()))
+        evt.Skip()
 
     def OnLabelRightClicked(self, evt):
         # Did we click on a row or a column?
@@ -1014,10 +1017,10 @@ class MainWindow(wx.Frame):
         # Build GPS menu and bind functions
         GpsMenu = wx.Menu()
 
-        item = PrefsMenu.Append(wx.ID_ANY, text=_("&Upload to GPS"))
+        item = GpsMenu.Append(wx.ID_ANY, text=_("&Upload to GPS"))
         self.Bind(wx.EVT_MENU, self.OnGpsUpload, item)
 
-        MenuBar.Append(GpsMenu, _("$GPS"))
+        MenuBar.Append(GpsMenu, _("&GPS"))
 
         # Build Help menu and bind functions
         HelpMenu = wx.Menu()
@@ -1031,6 +1034,8 @@ class MainWindow(wx.Frame):
         self.SetMenuBar(MenuBar)
 
     def updateDetail(self, newCache=''):
+        # TODO: add further information to display
+        # TODO: add option to view actual webpage
         newCacheObj = self.db.getCacheByCode(newCache)
         if newCacheObj != None:
             self.displayCache = newCacheObj
@@ -1038,14 +1043,16 @@ class MainWindow(wx.Frame):
             descText = _('Select a Cache to display from the table above')
         else:
             descText = "<h1>" + self.displayCache.code + "</h1>"
-            if self.displayCache.short_desc_html:
-                descText = descText + self.displayCache.short_desc
-            else:
-                descText = descText + '<p>' + nl2br(self.displayCache.short_desc) + '<p>'
-            if self.displayCache.long_desc_html:
-                descText = descText + self.displayCache.long_desc
-            else:
-                descText = descText + '<p>' + nl2br(self.displayCache.long_desc) + '<p>'
+            if self.displayCache.short_desc != None:
+                if self.displayCache.short_desc_html:
+                    descText = descText + self.displayCache.short_desc
+                else:
+                    descText = descText + '<p>' + nl2br(self.displayCache.short_desc) + '<p>'
+            if self.displayCache.long_desc != None:
+                if self.displayCache.long_desc_html:
+                    descText = descText + self.displayCache.long_desc
+                else:
+                    descText = descText + '<p>' + nl2br(self.displayCache.long_desc) + '<p>'
             if len(self.displayCache.encoded_hints) > 0:
                 descText = descText + '<h2>Encoded Hints</h2><p>' + nl2br(self.displayCache.encoded_hints.encode('rot13')) + '</p>'
         self.Description.SetPage(descText)
