@@ -97,6 +97,8 @@ def getAttribFromPath(root, relativePath, attrib, nameSpaces=None, default=None)
             ret = default
     return ret
 
+def nl2br(s):
+    return '<br />\n'.join(s.split('\n'))
 
 def escape(str):
     # you can also use

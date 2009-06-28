@@ -5,7 +5,6 @@
 # TODO: Add selection of Current home location
 # TODO: Add icon to main Window
 # TODO: Add configuration of User Data Column names
-# TODO: Add viewing of data that is not displayed in the table
 # TODO: Add view only mode
 
 from datetime import datetime
@@ -25,6 +24,7 @@ except:
 import wx
 import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
+import wx.html
 
 import locale
 
@@ -33,6 +33,7 @@ from libs.i18n import createGetText
 # make translation available in the code
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
 
+from libs.common import nl2br
 from libs.db import Geocacher
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
 from libs.loc import locLoad, locExport
@@ -179,6 +180,7 @@ class CacheDataTable(Grid.PyGridTableBase):
             'lat'         :Grid.GRID_VALUE_FLOAT + ':6,6',
             'lon'         :Grid.GRID_VALUE_FLOAT + ':6,6',
             'name'        :Grid.GRID_VALUE_STRING,
+            'url'         :Grid.GRID_VALUE_STRING,
             'found'       :Grid.GRID_VALUE_BOOL,
             'type'        :Grid.GRID_VALUE_STRING,
             'size'        :Grid.GRID_VALUE_STRING,
@@ -489,8 +491,9 @@ class CacheDataTable(Grid.PyGridTableBase):
 
 class CacheGrid(Grid.Grid):
     # TODO: add icon to Sorted Column Name
-    def __init__(self, parent, conf, db):
+    def __init__(self, parent, conf, db, cacheSel):
         self.conf = conf
+        self.cacheSel = cacheSel
         Grid.Grid.__init__(self, parent, -1)
 
         self._table = CacheDataTable(conf, db)
@@ -506,6 +509,8 @@ class CacheGrid(Grid.Grid):
         Gridmovers.GridColMover(self)
         self.Bind(Gridmovers.EVT_GRID_COL_MOVE, self.OnColMove, self)
         self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnLabelRightClicked)
+        self.Bind(Grid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
+
 
         self.SetRowLabelSize(20)
         self.SetMargins(0,0)
@@ -523,6 +528,15 @@ class CacheGrid(Grid.Grid):
         frm = evt.GetMoveRow()          # Row being moved
         to = evt.GetBeforeRow()         # Before which row to insert
         self._table.MoveRow(frm,to)
+
+    def OnLabelLeftClicked(self, evt):
+        # Did we click on a row or a column?
+        row, col = evt.GetRow(), evt.GetCol()
+        if row == -1:
+            self.SelectCol(col)
+        elif col == -1:
+            self.cacheSel(self._table.GetRowCode(row))
+            self.SelectRow(row)
 
     def OnLabelRightClicked(self, evt):
         # Did we click on a row or a column?
@@ -926,9 +940,7 @@ class CorrectLatLon(wx.Dialog):
         self.Show(True)
 
     def OnExit(self, event=None):
-        print 'Exit'
         if event.GetId() == wx.ID_OK:
-            print 'OK'
             self.cache.clat = float(self.cLat.GetValue())
             self.cache.clon = float(self.cLon.GetValue())
             self.cache.corrected = True
@@ -949,6 +961,7 @@ class MainWindow(wx.Frame):
         """Create the main frame"""
         self.conf = conf
         self.db = db
+        self.displayCache = None
         w = self.conf.common.mainWiidth or 700
         h = self.conf.common.mainHeight or 500
         wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (w,h),
@@ -960,12 +973,13 @@ class MainWindow(wx.Frame):
         self.buildMenu()
 
         self.splitter = MainSplitter(self, wx.ID_ANY)
-        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db)
+        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db,  self.updateDetail)
+        self.Description = wx.html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
         panel2 = wx.Window(self.splitter, wx.ID_ANY, style=wx.BORDER_SUNKEN)
         self.splitter.SetMinimumPaneSize(20)
-        self.splitter.SplitHorizontally(self.cacheGrid, panel2, conf.common.mainSplit or 400)
+        self.splitter.SplitHorizontally(self.cacheGrid, self.Description, conf.common.mainSplit or 400)
 
-        wx.StaticText(panel2, -1, "TestText", (5,5))
+        self.updateDetail(self.conf.common.dispCache or '')
 
 
         self.Show(True)
@@ -997,6 +1011,14 @@ class MainWindow(wx.Frame):
 
         MenuBar.Append(PrefsMenu, _("&Edit"))
 
+        # Build GPS menu and bind functions
+        GpsMenu = wx.Menu()
+
+        item = PrefsMenu.Append(wx.ID_ANY, text=_("&Upload to GPS"))
+        self.Bind(wx.EVT_MENU, self.OnGpsUpload, item)
+
+        MenuBar.Append(GpsMenu, _("$GPS"))
+
         # Build Help menu and bind functions
         HelpMenu = wx.Menu()
 
@@ -1007,6 +1029,26 @@ class MainWindow(wx.Frame):
 
         # Add the menu bar to the frame
         self.SetMenuBar(MenuBar)
+
+    def updateDetail(self, newCache=''):
+        newCacheObj = self.db.getCacheByCode(newCache)
+        if newCacheObj != None:
+            self.displayCache = newCacheObj
+        if self.displayCache == None:
+            descText = _('Select a Cache to display from the table above')
+        else:
+            descText = "<h1>" + self.displayCache.code + "</h1>"
+            if self.displayCache.short_desc_html:
+                descText = descText + self.displayCache.short_desc
+            else:
+                descText = descText + '<p>' + nl2br(self.displayCache.short_desc) + '<p>'
+            if self.displayCache.long_desc_html:
+                descText = descText + self.displayCache.long_desc
+            else:
+                descText = descText + '<p>' + nl2br(self.displayCache.long_desc) + '<p>'
+            if len(self.displayCache.encoded_hints) > 0:
+                descText = descText + '<h2>Encoded Hints</h2><p>' + nl2br(self.displayCache.encoded_hints.encode('rot13')) + '</p>'
+        self.Description.SetPage(descText)
 
     def selectCaches(self, scope, destText):
         options = [_('All'),_('Marked with User Flag')]
@@ -1243,8 +1285,10 @@ class MainWindow(wx.Frame):
 
 
     def OnPrefs(self, event=None):
-        print "Editing preferences"
         prefsFrame = PreferencesWindow(self,wx.ID_ANY,self.conf)
+
+    def OnGpsUpload(self, event=None):
+        pass
 
     def OnQuit(self, event=None):
         """Exit application."""
@@ -1252,6 +1296,7 @@ class MainWindow(wx.Frame):
         self.conf.common.mainSplit = self.splitter.GetSashPosition()
         self.conf.common.cacheCols = self.cacheGrid.GetCols()
         self.conf.common.sortCol = self.cacheGrid.GetSortCol()
+        self.conf.common.dispCache = self.displayCache.code
         self.conf.save()
         self.db.save()
         self.Destroy()
