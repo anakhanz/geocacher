@@ -1,6 +1,7 @@
 ﻿# -*- coding: utf-8 -*-
 
 import logging
+import os
 import datetime
 from string import digits
 
@@ -99,6 +100,27 @@ def getAttribFromPath(root, relativePath, attrib, nameSpaces=None, default=None)
 
 def nl2br(s):
     return '<br />\n'.join(s.split('\n'))
+
+def listFiles(dir):
+    """
+    Recursivley builds and returns a list of valid image files in a given
+    directory
+
+    Keyword Arguments:
+    dir - Folder to recursivley list image files from
+    """
+    fileList=[]
+    for name in os.listdir(dir):
+        path = os.path.join(dir, name)
+        if (
+        os.path.isfile( path) and
+        os.path.splitext( name )[1] in
+            ('.jpg', '.JPG')
+        ):
+            fileList +=[path]
+        elif (os.path.isdir(path)):
+            fileList += self._listFiles(path)
+    return fileList
 
 def escape(str):
     # you can also use

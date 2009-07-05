@@ -953,7 +953,7 @@ class Geocacher:
                        'scope'      :'all'},
              'load'  :{'lastFolder' :Geocacher.getHomeDir(),
                        'lastFile'   :'',
-                       'type'       :'update'},
+                       'mode'       :'update'},
              'gc'    :{'userName'  :'',
                        'userId'    :''}}
         Geocacher.conf = dict4ini.DictIni( Geocacher.getConfFile("geocacher.conf"), values=d)

@@ -34,7 +34,7 @@ from libs.i18n import createGetText
 # make translation available in the code
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
 
-from libs.common import nl2br
+from libs.common import nl2br, listFiles
 from libs.db import Geocacher
 from libs.gpsbabel import GpsCom
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
@@ -993,8 +993,11 @@ class MainWindow(wx.Frame):
         FileMenu = wx.Menu()
 
         # TODO: add option to add folder of files (as seperate menu Item)
-        item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints"))
+        item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints from File"))
         self.Bind(wx.EVT_MENU, self.OnLoadWpt, item)
+
+        item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints from Folder"))
+        self.Bind(wx.EVT_MENU, self.OnLoadWptDir, item)
 
         item = FileMenu.Append(wx.ID_ANY, text=_("&Export Waypoints"))
         self.Bind(wx.EVT_MENU, self.OnExportWpt, item)
@@ -1125,7 +1128,6 @@ class MainWindow(wx.Frame):
         wx.AboutBox(HelpAbout)
 
     def OnLoadWpt(self, event=None):
-        # TODO: split file processing & import type selection from file selection
         wildcard = "GPX File (*.gpx)|*.gpx|"\
                    "LOC file (*.loc)|*.loc|"\
                    "Compressed GPX File (*.zip)|*.zip|"\
@@ -1163,29 +1165,76 @@ class MainWindow(wx.Frame):
                                         _('Type of file load'),
                                         choices=options,
                                         style=wx.CHOICEDLG_STYLE)
-            if self.conf.load.type == 'replace':
+            if self.conf.load.mode == 'replace':
                 dlg.SetSelection(1)
             else:
                 dlg.SetSelection(0)
             if dlg.ShowModal() == wx.ID_OK:
                 if dlg.GetSelection() == 0:
-                    self.conf.load.type = 'update'
+                    self.conf.load.mode = 'update'
                 else:
-                    self.conf.load.type = 'replace'
+                    self.conf.load.mode = 'replace'
 
                 for path in paths:
-                    if os.path.splitext(path)[1] == '.gpx':
-                        gpxLoad(path,self.db,mode=self.conf.load.type,
-                                userId=self.conf.gc.userId,
-                                userName=self.conf.gc.userName)
-                    elif os.path.splitext(path)[1] == '.loc':
-                        locLoad(path,self.db,mode=self.conf.load.type)
-                    elif os.path.splitext(path)[1] == '.zip':
-                        zipLoad(path,self.db,mode=self.conf.load.type,
-                                userId=self.conf.gc.userId,
-                                userName=self.conf.gc.userName)
+                    self.LoadFile(path, self.conf.load.mode)
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
+
+    def OnLoadWptDir(self, event=None):
+
+        if os.path.isdir(self.conf.load.lastFolder):
+            dir = self.conf.load.lastFolder
+
+        else:
+            dir = os.getcwd()
+
+        dlg = wx.DirDialog(self, _('Select Folder to import waypoint files from'),
+                                 defaultPath=dir,
+                                 style=wx.DD_DEFAULT_STYLE
+                                 | wx.DD_DIR_MUST_EXIST)
+
+        if dlg.ShowModal() == wx.ID_OK:
+            dir = dlg.GetPath()
+            self.conf.load.lastFolder = dir
+
+            options = [_('Update'),_('Replace')]
+            dlg = wx.SingleChoiceDialog(self, _('Load option'),
+                                        _('Type of file load'),
+                                        choices=options,
+                                        style=wx.CHOICEDLG_STYLE)
+            if self.conf.load.mode == 'replace':
+                dlg.SetSelection(1)
+            else:
+                dlg.SetSelection(0)
+            if dlg.ShowModal() == wx.ID_OK:
+                if dlg.GetSelection() == 0:
+                    self.conf.load.mode = 'update'
+                else:
+                    self.conf.load.mode = 'replace'
+
+                addWptFiles = []
+                for file in listFiles(dir):
+                    if path.rfind('-wpts') >= 0:
+                        addWptFiles.append(file)
+                    else:
+                        self.LoadFile(file, self.conf.load.mode)
+                for file in addWptFiles:
+                    self.LoadFile(file, self.conf.load.mode)
+                self.cacheGrid.ReloadCaches()
+            dlg.Destroy()
+
+    def LoadFile(path, mode):
+        ext = os.path.splitext(path)[1]
+        if ext == '.gpx':
+            gpxLoad(path,self.db,mode=mode,
+                    userId=self.conf.gc.userId,
+                    userName=self.conf.gc.userName)
+        elif ext == '.loc':
+            locLoad(path,self.db,mode=mode)
+        elif ext == '.zip':
+            zipLoad(path,self.db,mode=mode,
+                    userId=self.conf.gc.userId,
+                    userName=self.conf.gc.userName)
 
     def OnExportWpt(self, event=None):
         '''Function to export waypoints to a file'''
