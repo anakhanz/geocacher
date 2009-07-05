@@ -985,9 +985,6 @@ class MainWindow(wx.Frame):
 
         self.updateDetail(self.conf.common.dispCache or '')
 
-
-        self.Show(True)
-
     def buildMenu(self):
         '''Builds the menu'''
         MenuBar = wx.MenuBar()
@@ -1388,45 +1385,40 @@ class MainWindow(wx.Frame):
         self.db.save()
         self.Destroy()
 
-
-def main (canModify):
-    app = wx.PySimpleApp()
-    locked = not Geocacher.lockOn()
-    if locked:
-        dlg = wx.MessageDialog(None,
-                               message=_("Geocacher appears to already be running are you sure you wish to run another copy"),
+class GeocacherApp (wx.App):
+    '''Application Class'''
+    def OnInit(self):
+        self.checker = wx.SingleInstanceChecker(".Geocacher_"+wx.GetUserId())
+        if self.checker.IsAnotherRunning():
+            dlg = wx.MessageDialog(None,
+                               message=_("Geocacher is already running, please switch to that instance."),
                                caption=_("Geocacher Already Running"),
-                               style=wx.YES_NO|wx.ICON_WARNING
+                               style=wx.CANCEL|wx.ICON_HAND
                                )
-        if dlg.ShowModal() == wx.ID_YES:
-            locked = False
-    if not locked:
-        try:
-            Geocacher.init(canModify)
-
+            dlg.ShowModal()
+            return False
+        else:
+            Geocacher.init(True)
             frame = MainWindow(None,-1,Geocacher.conf, Geocacher.db)
-            app.MainLoop()
+            frame.Show(True)
+            self.SetTopWindow(frame)
+            return True
 
-        finally:
-            Geocacher.lockOff()
-    else:
-        logging.warn(_('Geocacher appears to already be running, if not delete the file listed above.'))
-        sys.exit(1)
+    def OnExit(self):
+        pass
+
 USAGE = """%s [options]
 Geocacher %s by Rob Wallace (c)2009, Licence GPL2
 http://www.example.com""" % ("%prog",__version__)
 
 if __name__ == "__main__":
-    try:
-        parser = optparse.OptionParser(usage=USAGE, version=("Geocaching "+__version__))
-        parser.add_option("-v","--view",action="store_true",dest="view",
-                            help="run in only view mode")
-        parser.set_defaults(viewOnly=False)
+    parser = optparse.OptionParser(usage=USAGE, version=("Geocaching "+__version__))
+    parser.add_option("-v","--view",action="store_true",dest="view",
+                        help="run in only view mode")
+    parser.set_defaults(viewOnly=False)
 
-        (options, args) = parser.parse_args()
+    (options, args) = parser.parse_args()
 
-        main(not(options.viewOnly))
+    app = GeocacherApp(False)
+    app.MainLoop()
 
-    except KeyboardInterrupt:
-        pass
-    sys.exit(0)

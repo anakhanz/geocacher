@@ -844,25 +844,6 @@ class Location(object):
         self.__node.getparent().remove(self.__node)
 
 class Geocacher:
-    __lockFile = "geocacher.lock"
-
-    @staticmethod
-    def lockOn():
-        ''' create the lock file and return True if it can'''
-        file = os.path.join(Geocacher.getHomeDir("geocacher"),Geocacher.__lockFile)
-        if os.path.isfile(file):
-            print file
-            return False
-        else:
-            open(file,"w").write("")
-            return True
-
-    @staticmethod
-    def lockOff():
-        ''' Delete the lockfile '''
-        file = os.path.join(Geocacher.getHomeDir("geocacher"),Geocacher.__lockFile)
-        if os.path.isfile(file):
-            os.unlink(file)
 
     @staticmethod
     def getHomeDir(mkdir=None):
