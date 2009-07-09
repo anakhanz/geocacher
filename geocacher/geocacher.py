@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-# TODO: Add export to GPS (using gpsBabel)
 # TODO: Add selection of Current home location
 # TODO: Add icon to main Window
 # TODO: Add configuration of User Data Column names
@@ -133,11 +132,6 @@ class CacheDataTable(Grid.PyGridTableBase):
                            ['code','id','lat','lon','name','found','type',
                             'size','distance','bearing']
 
-        # TODO: Add 'Number of logs' to table columns
-        # TODO: Add 'Last Found' to table columns
-        # TODO: Add 'Found Count' to table columns
-        # TODO: Add 'Last Log Date' to table columns
-        # TODO: Add Travel Bugs to columns
         self.colLabels = {
             'code'        :_('Code'),
             'id'          :_('ID'),
@@ -164,6 +158,11 @@ class CacheDataTable(Grid.PyGridTableBase):
             'placed'      :_('Date Placed'),
             'user_date'   :_('Last User Update'),
             'gpx_date'    :_('Last GPX Update'),
+            'num_logs'    :_('Number Of Logs'),
+            'last_log'    :_('Last Log Date'),
+            'last_found'  :_('Last Found'),
+            'found_count' :_('Found Count'),
+            'has_tb'      :_('Has Travel Bugs'),
             'locked'      :_('Locked'),
             'found'       :_('Found'),
             'found_date'  :_('Date Found'),
@@ -202,6 +201,11 @@ class CacheDataTable(Grid.PyGridTableBase):
             'placed'      :Grid.GRID_VALUE_DATETIME,
             'user_date'   :Grid.GRID_VALUE_DATETIME,
             'gpx_date'    :Grid.GRID_VALUE_DATETIME,
+            'num_logs'    :Grid.GRID_VALUE_NUMBER,
+            'last_log'    :Grid.GRID_VALUE_DATETIME,
+            'last_found'  :Grid.GRID_VALUE_DATETIME,
+            'found_count' :Grid.GRID_VALUE_NUMBER,
+            'has_tb'      :Grid.GRID_VALUE_BOOL,
             'locked'      :Grid.GRID_VALUE_BOOL,
             'found'       :Grid.GRID_VALUE_BOOL,
             'found_date'  :Grid.GRID_VALUE_DATETIME,
@@ -262,7 +266,10 @@ class CacheDataTable(Grid.PyGridTableBase):
                 'state':cache.state,'country':cache.country,
                 'owner':cache.owner,'placedBy':cache.placed_by,'placed':cache.placed,
                 'user_date':cache.user_date,'gpx_date':cache.gpx_date,
-                'locked':cache.locked,'found':cache.found,'found_date':cache.found_date,
+                'num_logs':cache.getNumLogs(),'last_log':cache.getLastLogDate(),
+                'last_found':cache.getLastFound(),'found_count' :cache.getFoundCount(),
+                'has_tb':cache.hasTravelBugs(),'locked':cache.locked,
+                'found':cache.found,'found_date':cache.found_date,
                 'dnf':cache.dnf,'dnf_date':cache.dnf_date,'source':cache.source,
                 'user_flag':cache.user_flag,'user_data1':cache.user_data1,
                 'user_data2':cache.user_data2,'user_data3':cache.user_data3,
@@ -277,11 +284,16 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def IsEmptyCell(self, row, col):
         id = self.colNames[col]
-        return not self.data[row][id]
+        return self.data[row][id] is not None
 
     def GetValue(self, row, col):
         id = self.colNames[col]
         return self.data[row][id]
+
+    def SetValue(self, row, col, value):
+        pass # leave this as pass until the editable elements are implemented
+##        id = self.colNames[col]
+##        self.data[row][id] = value
 
     def GetRowCode(self, row):
         return self.data[row]['code']
@@ -295,9 +307,8 @@ class CacheDataTable(Grid.PyGridTableBase):
             caches.append(self.GetRowCache(row))
         return caches
 
-    def SetValue(self, row, col, value):
-        id = self.colNames[col]
-        self.data[row][id] = value
+    def GetRowLabelValue(self, row):
+        return self.GetRowCode(row)
 
     def GetColLabelValue(self, col):
         id = self.colNames[col]
@@ -444,6 +455,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         self.DoSort()
 
     def DoSort(self):
+        # TODO: fix sorting with None dates
         _data = []
 
         for row in self.data:
@@ -514,8 +526,8 @@ class CacheGrid(Grid.Grid):
         self.Bind(Grid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
         self.Bind(Grid.EVT_GRID_CELL_LEFT_CLICK, self.OnCellLeftClicked)
 
-
-        self.SetRowLabelSize(20)
+        self.SetRowLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
+        self.SetColLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
         self.SetMargins(0,0)
         self.Reset()
 
@@ -676,6 +688,7 @@ class CacheGrid(Grid.Grid):
         """reset the view based on the data in the table.  Call
         this when rows are added or destroyed"""
         self._table.ResetView(self)
+        self.AutoSize()
 
     def ReloadCaches(self):
         self.GetTable().ReloadCaches()

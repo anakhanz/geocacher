@@ -553,6 +553,10 @@ class Cache(object):
             logIds.append(logNode.attrib["id"])
         return logIds
 
+    def getNumLogs(self):
+        '''Returns the number of logs in the DB for the cache'''
+        return len(self.__node.xpath("log"))
+
     def getLogById(self,id):
         '''Returns the log with the given id if found, otherwise "None"'''
         assert type(id)==unicode or type(id)==str
@@ -561,6 +565,51 @@ class Cache(object):
             return Log(logs[0])
         else:
             return None
+
+    def getLogDates(self):
+        '''
+        Returns a sorted list of the dates on which the cache has been logged
+        with the most recent first
+        '''
+        logs = self.__node.xpath("log")
+        dates = []
+        if logs != None:
+            for log in logs:
+                dates.append(Log(log).date)
+        dates.sort(reverse=True)
+        return dates
+
+    def getLastLogDate(self):
+        '''Returns the date of the last log or None if no logs'''
+        dates = self.getLogDates()
+        if len(dates) == 0:
+            return None
+        else:
+            return dates[0]
+
+    def getFoundDates(self):
+        '''
+        Returns a sorted list of the dates on which the cache has been found
+        with the most recent first
+        '''
+        logs = self.__node.xpath(u"""log[@type="%s"]""" % 'Found it')
+        dates = []
+        if logs != None:
+            for log in logs:
+                dates.append(Log(log).date)
+        dates.sort(reverse=True)
+        return dates
+
+    def getLastFound(self):
+        '''Returns the date on which the cache was found or None if never Found'''
+        dates = self.getFoundDates()
+        if len(dates) == 0:
+            return None
+        else:
+            return dates[0]
+
+    def getFoundCount(self):
+        return len(self.getFoundDates())
 
     def addLog(self,id,
                     date        = None,
@@ -599,6 +648,10 @@ class Cache(object):
         for bugNode in bugNodes:
             bugRefs.append(TravelBug(bugNode).ref)
         return bugRefs
+
+    def hasTravelBugs(self):
+        '''Returns True if the cache has travel bugs in it at present'''
+        return len(self.__node.xpath("travelbug")) > 0
 
     def getTravelBugByRef(self,ref):
         '''Returns the travel bug with the given ref if found, otherwise "None"'''
