@@ -130,3 +130,18 @@ def escape(str):
     str = str.replace(u'<',u'&lt;')
     str = str.replace(u'>',u'&gt;')
     return str
+
+def dateCmp(x,y):
+    '''Comparrison function for dates where some items may be of the 'None' type'''
+    if x == None and y == None:
+        return 0
+    elif x == None and y != None:
+        return 1
+    elif x != None and y == None:
+        return -1
+    elif x > y:
+        return 1
+    elif x == y:
+        return 0
+    else:
+        return -1

@@ -33,7 +33,7 @@ from libs.i18n import createGetText
 # make translation available in the code
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
 
-from libs.common import nl2br, listFiles
+from libs.common import nl2br, listFiles, dateCmp
 from libs.db import Geocacher
 from libs.gpsbabel import GpsCom
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
@@ -454,18 +454,18 @@ class CacheDataTable(Grid.PyGridTableBase):
         self._sortCol = self.colNames[col]
         self.DoSort()
 
+    def SortDataItem(self, rowData):
+        return rowData[self._sortCol]
+
     def DoSort(self):
-        # TODO: fix sorting with None dates
-        _data = []
 
-        for row in self.data:
-            _data.append((row.get(self._sortCol, None), row))
+        # Fix the comparison function for dates
+        if self.dataTypes[self._sortCol] == Grid.GRID_VALUE_DATETIME:
+            cmp = dateCmp
+        else:
+            cmp = None
 
-        _data.sort()
-        self.data = []
-
-        for sortvalue, row in _data:
-            self.data.append(row)
+        self.data.sort(cmp=cmp, key=self.SortDataItem)
 
     def _updateColAttrs(self, grid):
         """
