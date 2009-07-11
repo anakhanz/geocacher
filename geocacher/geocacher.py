@@ -979,7 +979,7 @@ class MainWindow(wx.Frame):
         self.conf = conf
         self.db = db
         self.displayCache = None
-        w = self.conf.common.mainWiidth or 700
+        w = self.conf.common.mainWidth or 700
         h = self.conf.common.mainHeight or 500
         wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (w,h),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
@@ -1435,7 +1435,7 @@ class MainWindow(wx.Frame):
 
     def OnQuit(self, event=None):
         """Exit application."""
-        (self.conf.common.mainWiidth,self.conf.common.mainHeight) = self.GetSizeTuple()
+        (self.conf.common.mainWidth,self.conf.common.mainHeight) = self.GetSizeTuple()
         self.conf.common.mainSplit = self.splitter.GetSashPosition()
         self.conf.common.cacheCols = self.cacheGrid.GetCols()
         self.conf.common.sortCol = self.cacheGrid.GetSortCol()

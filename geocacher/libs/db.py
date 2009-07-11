@@ -983,7 +983,7 @@ class Geocacher:
         # load/initalise the program configuration
         # Set default values for configuration items
         d = {'common':{'mainWidth'  :700,
-                       'mainHeigt'  :500,
+                       'mainHeight'  :500,
                        'mainSplit'  :400,
                        'cacheCols'  :['code','id','lat','lon','name','found',
                                       'type','size','distance','bearing'],
