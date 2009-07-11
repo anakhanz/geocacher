@@ -238,10 +238,12 @@ class CacheDataTable(Grid.PyGridTableBase):
     def ReloadRow(self, row):
         cache = self.GetRowCache(row)
         self.data.pop(row)
-        self.data.insert(row, self.__buildRow(cache))
+        if not self.__cacheFilter(cache):
+            self.data.insert(row, self.__buildRow(cache))
 
     def __addRow(self, cache):
-        self.data.append(self.__buildRow(cache))
+        if not self.__cacheFilter(cache):
+            self.data.append(self.__buildRow(cache))
 
     def __buildRow(self, cache):
 
@@ -275,6 +277,14 @@ class CacheDataTable(Grid.PyGridTableBase):
                 'user_data2':cache.user_data2,'user_data3':cache.user_data3,
                 'user_data4':cache.user_data4}
         return row
+
+    def __cacheFilter(self, cache):
+        mine = cache.owner == self.conf.gc.userName or\
+               cache.owner_id == self.conf.gc.userId
+        return (bool(self.conf.filter.archived) and cache.archived) or\
+               (bool(self.conf.filter.disabled) and (not cache.available)) or\
+               (bool(self.conf.filter.found) and cache.found) or\
+               (bool(self.conf.filter.mine) and mine)
 
     def GetNumberRows(self):
         return len(self.data)
@@ -691,7 +701,7 @@ class CacheGrid(Grid.Grid):
         self.AutoSize()
 
     def ReloadCaches(self):
-        self.GetTable().ReloadCaches()
+        self._table.ReloadCaches()
         self.Reset()
 
     def GetCols(self):
@@ -985,9 +995,11 @@ class MainWindow(wx.Frame):
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
 
-        self.CreateStatusBar()
+        self.buildStatusBar()
 
         self.buildMenu()
+
+        self.buildToolBar()
 
         self.splitter = MainSplitter(self, wx.ID_ANY)
         self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db,  self.updateDetail)
@@ -1005,7 +1017,6 @@ class MainWindow(wx.Frame):
         # Build file menu and bind functions
         FileMenu = wx.Menu()
 
-        # TODO: add option to add folder of files (as seperate menu Item)
         item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints from File"))
         self.Bind(wx.EVT_MENU, self.OnLoadWpt, item)
 
@@ -1052,6 +1063,59 @@ class MainWindow(wx.Frame):
 
         # Add the menu bar to the frame
         self.SetMenuBar(MenuBar)
+
+    def buildToolBar(self):
+        TBFLAGS = ( wx.TB_HORIZONTAL
+                    | wx.NO_BORDER
+                    | wx.TB_FLAT
+                    #| wx.TB_TEXT
+                    #| wx.TB_HORZ_LAYOUT
+                    )
+
+        tsize = (24,24)
+
+        tb = self.CreateToolBar(TBFLAGS)
+
+        tb.AddControl(wx.StaticText(tb, -1, _('Fiter Options'), style=wx.TEXT_ATTR_FONT_ITALIC))
+
+        self.cbHideMine = wx.CheckBox(tb, wx.ID_ANY, _('Hide Mine'))
+        tb.AddControl(self.cbHideMine)
+        self.Bind(wx.EVT_CHECKBOX, self.OnCbHideMine, self.cbHideMine)
+        self.cbHideMine.SetValue(self.conf.filter.mine or False)
+
+        self.cbHideFound = wx.CheckBox(tb, wx.ID_ANY, _('Hide Found'))
+        tb.AddControl(self.cbHideFound)
+        self.Bind(wx.EVT_CHECKBOX, self.OnCbHideFound, self.cbHideFound)
+        self.cbHideFound.SetValue(self.conf.filter.found or False)
+
+        self.cbHideDisabled = wx.CheckBox(tb, wx.ID_ANY, _('Hide Disabled'))
+        tb.AddControl(self.cbHideDisabled)
+        self.Bind(wx.EVT_CHECKBOX, self.OnCbHideDisabled, self.cbHideDisabled)
+        self.cbHideDisabled.SetValue(self.conf.filter.disabled or False)
+
+        self.cbHideArchived = wx.CheckBox(tb, wx.ID_ANY, _('Hide Archived'))
+        tb.AddControl(self.cbHideArchived)
+        self.Bind(wx.EVT_CHECKBOX, self.OnCbHideArchived, self.cbHideArchived)
+        self.cbHideArchived.SetValue(self.conf.filter.archived or False)
+
+        tb.AddSeparator()
+
+        tb.AddControl(wx.StaticText(tb, -1, _('Home location'), style=wx.TEXT_ATTR_FONT_ITALIC))
+        choices = self.db.getLocationNameList()
+        if self.conf.common.currentLoc in choices:
+            current = self.conf.common.currentLoc
+        else:
+            current = choices[0]
+        self.selHome = wx.ComboBox(tb, wx.ID_ANY,current,
+                                   choices = choices,
+                                   size=[150,-1],
+                                   style=wx.CB_DROPDOWN|wx.CB_SORT)
+        tb.AddControl(self.selHome)
+        self.Bind(wx.EVT_COMBOBOX, self.OnSelLocation, self.selHome)
+        tb.Realize()
+
+    def buildStatusBar(self):
+        self.CreateStatusBar()
 
     def updateDetail(self, newCache=''):
         # TODO: add further information to display
@@ -1128,6 +1192,14 @@ class MainWindow(wx.Frame):
             caches = None
         dlg.Destroy()
         return (scope, caches)
+
+    def updateFilter(self):
+        self.cacheGrid.ReloadCaches()
+        self.splitter.SetSashPosition(self.splitter.GetSashPosition())
+
+    def updateCurrentLocation(self):
+        # TODO: implement location update
+        pass
 
     def OnHelpAbout(self, event=None):
         HelpAbout = wx.AboutDialogInfo()
@@ -1430,6 +1502,26 @@ class MainWindow(wx.Frame):
         gpsCom = GpsCom()
         gpsCom.gpxToGps(tmpFile)
         os.remove(tmpFile)
+
+    def OnSelLocation(self, event=None):
+        print self.selHome.GetValue()
+        self.updateCurrentLocation()
+
+    def OnCbHideArchived(self, event=None):
+        self.conf.filter.archived = self.cbHideArchived.GetValue()
+        self.updateFilter()
+
+    def OnCbHideDisabled(self, event=None):
+        self.conf.filter.disabled = self.cbHideDisabled.GetValue()
+        self.updateFilter()
+
+    def OnCbHideFound(self, event=None):
+        self.conf.filter.found = self.cbHideFound.GetValue()
+        self.updateFilter()
+
+    def OnCbHideMine(self, event=None):
+        self.conf.filter.mine = self.cbHideMine.GetValue()
+        self.updateFilter()
 
 
 

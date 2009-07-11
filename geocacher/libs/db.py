@@ -177,10 +177,10 @@ class DB:
 
     def getLocationNameList(self):
         '''Returns a list of home location names'''
-        locationCodeList = []
+        locationNameList = []
         for locationNode in self.root.xpath(u"location"):
-            locationCodeList.append(locationNode.attrib["name"])
-        return cacheCodeList
+            locationNameList.append(locationNode.attrib["name"])
+        return locationNameList
 
     def getLocationByName(self,name):
         '''Returns the location with the given name if found, otherwise "None"'''
@@ -1004,6 +1004,10 @@ class Geocacher:
                        'addWpts'    :False,
                        'sepAddWpts' :False,
                        'scope'      :'all'},
+             'filter':{'archived'   :False,
+                       'disabled'   :False,
+                       'found'      :False,
+                       'mine'       :False},
              'load'  :{'lastFolder' :Geocacher.getHomeDir(),
                        'lastFile'   :'',
                        'mode'       :'update'},
