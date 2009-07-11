@@ -39,6 +39,7 @@ from libs.gpsbabel import GpsCom
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
 from libs.loc import locLoad, locExport
 from libs.latlon import distance, cardinalBearing
+from libs.latlon import degToStr, strToDeg
 
 try:
     __version__ = open(os.path.join(os.path.dirname(__file__),
@@ -601,19 +602,37 @@ class CacheGrid(Grid.Grid):
             print "adding cache not yet implemented"
 
         def delete(event, self=self, row=row):
+            '''Delete the selected cache'''
             rows = self.GetSelectedRows()
             self._table.DeleteRows(rows)
             self.Reset()
 
         def correct(event, self=self, row=row, cache=cache):
+            '''Add/Edit Correction of the Lat/Lon for the selected row'''
             self.SelectRow(row)
-            dlg = CorrectLatLon(self, wx.ID_ANY,self._table.GetRowCache(row), self.conf)
-            if dlg.ShowModal() == wx.ID_OK:
+            cache = self._table.GetRowCache(row)
+            # create data dictionary for the dialog and it's validators
+            data = {'lat': cache.lat, 'lon': cache.lon,
+                    'clat': cache.clat, 'clon': cache.clon,
+                    'cnote': cache.cnote}
+            dlg = CorrectLatLon(self, wx.ID_ANY, self.conf, cache.code, data,
+                not cache.corrected)
+            # show the dialog and update the cache if OK clicked and there
+            # where changes
+            if dlg.ShowModal() == wx.ID_OK and (data['clat'] != cache.clat or
+                                                data['clon'] != cache.clon or
+                                                data['cnote'] != cache.cnote):
+                cache.clat = data['clat']
+                cache.clon = data['clon']
+                cache.cnote = data['cnote']
+                cache.corrected = True
+                cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
             dlg.Destroy()
 
         def remCorrection(event, self=self, row=row, cache=cache):
+            '''Remoce the Lat/Lon correction for the slected row'''
             self.SelectRow(row)
             dlg = wx.MessageDialog(None,
                 message=_('Are you sure you want to remove the cordinate correction for ')+cache.code,
@@ -893,51 +912,154 @@ class ExportOptions(wx.Dialog):
     def GetSepAddWpts(self):
         return self.sepAddWpts.GetValue()
 
+class NotEmptyValidator(wx.PyValidator):
+    def __init__(self, data, key):
+        wx.PyValidator.__init__(self)
+        self.data = data
+        self.key = key
+
+    def Clone(self):
+        return NotEmptyValidator(self.data, self.key)
+
+    def Validate(self, win):
+        textCtrl = self.GetWindow()
+        text = textCtrl.GetValue()
+        if len(text) == 0:
+            message = 'The highlighted field must contain some text!'
+            wx.MessageBox(message, 'Error')
+            textCtrl.SetBackgroundColour('pink')
+            textCtrl.SetFocus()
+            textCtrl.Refresh()
+            return False
+        else:
+            textCtrl.SetBackgroundColour(
+                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+            textCtrl.Refresh()
+            return True
+
+    def TransferToWindow(self):
+        textCtrl = self.GetWindow()
+        textCtrl.SetValue(self.data.get(self.key, ""))
+        return True
+
+    def TransferFromWindow(self):
+        textCtrl = self.GetWindow()
+        self.data[self.key] = textCtrl.GetValue()
+        return True
+
+class LatLonValidator(wx.PyValidator):
+    def __init__(self, mode, conf, data, key, new=False):
+        wx.PyValidator.__init__(self)
+        self.mode = mode
+        self.conf = conf
+        self.data = data
+        self.key = key
+        self.new = new
+
+    def Clone(self):
+        return LatLonValidator(self.mode, self.conf , self.data, self.key, self.new)
+
+    def Validate(self, win):
+        textCtrl = self.GetWindow()
+        if strToDeg(textCtrl.GetValue(), self.mode) == None:
+            message = 'The highlighted fiels must be in one of the following formats:'
+            if self.mode == 'lat':
+                message = message + '''
+    N12 34.345
+    S12 34 45.6
+    S12.34567
+    -12.34567'''
+            elif self.mode == 'lon':
+                message = message + '''
+    E12 34.345
+    W12 34 45.6
+    W12.34567
+    -12.34567'''
+            else:
+                message = message + '''
+    12 34.345
+    12 34 45.6
+    12.34567'''
+            wx.MessageBox(message, 'Error')
+            textCtrl.SetBackgroundColour('pink')
+            textCtrl.SetFocus()
+            textCtrl.Refresh()
+            return False
+        else:
+            textCtrl.SetBackgroundColour(
+                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+            textCtrl.Refresh()
+            return True
+
+    def TransferToWindow(self):
+        textCtrl = self.GetWindow()
+        value = self.data.get(self.key, 0)
+        if self.new:
+            textCtrl.SetValue('')
+        else:
+            format = self.conf.common.coordFmt or 'hdd mm.mmm'
+            textCtrl.SetValue(degToStr(value, format, self.mode))
+        return True
+
+    def TransferFromWindow(self):
+        textCtrl = self.GetWindow()
+        self.data[self.key] = strToDeg(textCtrl.GetValue(), self.mode)
+        return True
+
+
 class CorrectLatLon(wx.Dialog):
     '''Get the import options from the user'''
-    def __init__(self,parent,id, cache, conf):
-        """Creates the Preferences Frame"""
-        self.cache = cache
-        wx.Dialog.__init__(self,parent,id,_('Lat/Lon Correction for ')+cache.code,#size = (300,300),
-                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
+    def __init__(self,parent,id, conf, code, data, new):
+        '''Creates the Lat/Lon correction Frame'''
+        wx.Dialog.__init__(self,parent,id,
+            _('Lat/Lon Correction for ')+code,#size = (300,300),
+           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
 
-        self.latName = wx.StaticText(self, wx.ID_ANY, _('Latitude'))
-        self.lonName = wx.StaticText(self, wx.ID_ANY, _('Longitude'))
-        self.origName = wx.StaticText(self, wx.ID_ANY, _('Origional'))
-        self.corName = wx.StaticText(self, wx.ID_ANY, _('Corrected'))
-        self.commName = wx.StaticText(self, wx.ID_ANY, _('Comment'))
+        # Create labels for controls
+        latName = wx.StaticText(self, wx.ID_ANY, _('Latitude'))
+        lonName = wx.StaticText(self, wx.ID_ANY, _('Longitude'))
+        origName = wx.StaticText(self, wx.ID_ANY, _('Origional'))
+        corName = wx.StaticText(self, wx.ID_ANY, _('Corrected'))
+        commName = wx.StaticText(self, wx.ID_ANY, _('Comment'))
 
-        self.oLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))
-        self.oLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))
-        self.cLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))# TODO: add validator
-        self.cLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1))# TODO: add validator
+        # Create controls
+        oLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
+            validator=LatLonValidator('lat', conf, data, 'lat'))
+        oLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
+            validator=LatLonValidator('lon', conf, data, 'lon'))
+        cLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
+            validator=LatLonValidator('lat', conf, data, 'clat', new))
+        cLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
+            validator=LatLonValidator('lon', conf, data, 'clon', new))
 
-        self.comment = wx.TextCtrl(self, wx.ID_ANY, size=(200, 100),
-                                    style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER)
+        comment = wx.TextCtrl(self, wx.ID_ANY, size=(200, 100),
+            style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER,
+            validator=NotEmptyValidator(data, 'cnote'))
 
-
-
+        # Create Grid for coordinate information and add the controls
         coordGrid = wx.GridBagSizer(3, 3)
-        coordGrid.Add(self.latName, (0,1), (1,1), wx.ALL, 1)
-        coordGrid.Add(self.lonName, (0,2), (1,1), wx.ALL, 1)
-        coordGrid.Add(self.origName, (1,0), (1,1), wx.ALL, 1)
-        coordGrid.Add(self.corName, (2,0), (1,1), wx.ALL, 1)
+        coordGrid.Add(latName, (0,1), (1,1), wx.ALL, 1)
+        coordGrid.Add(lonName, (0,2), (1,1), wx.ALL, 1)
+        coordGrid.Add(origName, (1,0), (1,1), wx.ALL, 1)
+        coordGrid.Add(corName, (2,0), (1,1), wx.ALL, 1)
 
-        coordGrid.Add(self.oLat, (1,1), (1,1), wx.ALL, 1)
-        coordGrid.Add(self.oLon, (1,2), (1,1), wx.ALL, 1)
-        coordGrid.Add(self.cLat, (2,1), (1,1), wx.ALL, 1)
-        coordGrid.Add(self.cLon, (2,2), (1,1), wx.ALL, 1)
+        coordGrid.Add(oLat, (1,1), (1,1), wx.ALL, 1)
+        coordGrid.Add(oLon, (1,2), (1,1), wx.ALL, 1)
+        coordGrid.Add(cLat, (2,1), (1,1), wx.ALL, 1)
+        coordGrid.Add(cLon, (2,2), (1,1), wx.ALL, 1)
 
-        coordSbox = wx.StaticBox(self, wx.ID_ANY, 'Cordinates')
+        # Put a box around the coordinates section
+        coordSbox = wx.StaticBox(self, wx.ID_ANY, _('Coordinates'))
         coordSboxSizer = wx.StaticBoxSizer(coordSbox, wx.VERTICAL)
         coordSboxSizer.Add(coordGrid, 0, 0, 0)
 
+        # place the coordinates section and th ecomment in the vertical box
         mainBox = wx.BoxSizer(orient=wx.VERTICAL)
         mainBox.Add(coordSboxSizer)
-        mainBox.Add(self.commName, 0, wx.EXPAND)
-        mainBox.Add(self.comment, 0, wx.EXPAND)
+        mainBox.Add(commName, 0, wx.EXPAND)
+        mainBox.Add(comment, 0, wx.EXPAND)
 
-        # Ok and Cancel Buttons
+        # Ok and Cancel Buttons to the bottom of the form
         okButton = wx.Button(self,wx.ID_OK)
         cancelButton = wx.Button(self,wx.ID_CANCEL)
         buttonBox = wx.StdDialogButtonSizer()
@@ -945,36 +1067,15 @@ class CorrectLatLon(wx.Dialog):
         buttonBox.AddButton(cancelButton)
         buttonBox.Realize()
 
-        self.Bind(wx.EVT_BUTTON,   self.OnExit,          okButton)
-        self.Bind(wx.EVT_BUTTON,   self.OnExit,          cancelButton)
-
         mainBox.Add(buttonBox, 0, wx.EXPAND)
         self.SetSizer(mainBox)
         self.SetAutoLayout(True)
 
         # Stop the orogional Lat/Lon values being edited
-        self.oLat.SetEditable(False)
-        self.oLon.SetEditable(False)
-
-        # Load the values
-        self.oLat.SetValue(str(cache.lat))
-        self.oLon.SetValue(str(cache.lon))
-        if cache.corrected:
-            self.cLat.SetValue(str(cache.clat))
-            self.cLon.SetValue(str(cache.clon))
-            self.comment.SetValue(cache.cnote)
+        oLat.SetEditable(False)
+        oLon.SetEditable(False)
 
         self.Show(True)
-
-    def OnExit(self, event=None):
-        if event.GetId() == wx.ID_OK:
-            self.cache.clat = float(self.cLat.GetValue())
-            self.cache.clon = float(self.cLon.GetValue())
-            self.cache.corrected = True
-            self.cache.cnote = self.comment.GetValue()
-            self.cache.user_date = datetime.now()
-        self.Destroy()
-        wx.Dialog.EndModal(self, event.GetId())
 
 class MainSplitter(wx.SplitterWindow):
     def __init__(self,parent,id):
@@ -1575,4 +1676,3 @@ if __name__ == "__main__":
 
     app = GeocacherApp(False)
     app.MainLoop()
-

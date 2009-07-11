@@ -2,6 +2,8 @@
 
 from math import sqrt, degrees, radians, sin, cos, atan2
 
+import re
+
 def distance(lat1, lon1, lat2, lon2, miles = False):
     '''
     Takes a pair of cordinates and returns the distance between them in
@@ -94,35 +96,118 @@ def cardinalBearing(lat1, lon1, lat2, lon2):
     '''
     return toCardinal(bearing(lat1, lon1, lat2, lon2))
 
-if __name__ == "__main__":
-    hLat = -41-(16.301/60)
-    hLon = 174+(45.461/60)
-    print "Home"
-    print " Lat is %0.4f, lon is %0.4f" % (hLat, hLon)
+def strToDeg (s, mode='pure'):
+    '''
+    Reads a lon/lat/pure angle from the given string in the given mode and
+    returns it if valid, otherwise returns None
+    '''
+    if mode=='lat':
+        pos = '+N'
+        neg = '-S'
+        minimum = -90.0
+        maximum = +90.0
+    elif mode=='lon':
+        pos = '+E'
+        neg = '-W'
+        minimum = -180.0
+        maximum = +180.0
+    else: #assume pure degrees mode
+        pos = '+'
+        neg = '-'
+        minimum = 0.0
+        maximum = 360.0
+    reStart = '^[' + neg + pos + ']?'
 
-    lat = -41-(15.959/60)
-    lon = 174+(45.554/60)
-    print "GC1QBQC Splashing Out - Wonderful Wilton Waterfall (Wgtn)"
-    print " Lat is %0.4f, lon is %0.4f" % (lat, lon)
-    print "Geocaching: %0.2f, Bearing %s" % (0.65, 'N')
-    print "Calculated: %0.2f, Bearing %s" % (
-        distance(hLat,hLon,lat,lon),
-        cardinalBearing(hLat,hLon,lat,lon))
+    s = s.capitalize()
 
-    lat = -41-(16.581/60)
-    lon = 174+(45.846/60)
-    print "GC155CE The NZ InfoTech Lookout Cache (Wellington)"
-    print " Lat is %0.4f, lon is %0.4f" % (lat, lon)
-    print "Geocaching: %0.2f, Bearing %s" % (0.75, 'SE')
-    print "Calculated: %0.2f, Bearing %s" % (
-        distance(hLat,hLon,lat,lon),
-        cardinalBearing(hLat,hLon,lat,lon))
+    # Extract the single float value from the text
+    # hdd.ddddd
+    if re.match(reStart + '\d{1,3}\.\d{2,}$', s):
+        if not s[0].isdigit():
+            s = s[1:]
+        d = float(s)
+    # hdd mm.mmm
+    elif re.match(reStart + '\d{1,3} [0-5]\d\.\d{2,}$', s):
+        if not s[0].isdigit():
+            s = s[1:]
+        deg, min = s.split(' ')
+        d = float(deg) + float(min)/60
+    # hdd mm ss.s
+    elif re.match(reStart + '\d{1,3} [0-5]\d [0-5]\d(\.\d+)?$', s):
+        if not s[0].isdigit():
+            s = s[1:]
+        deg, min, sec = s.split(' ')
+        d = float(deg) + float(min)/60 +float(sec)/360
+    else:
+        return None
+    # Check to see if changing sign is necessary
+    if s[0] in neg:
+        d = d * -1.0
+    # Check that value is within range
+    if minimum <= d <= maximum:
+        return d
+    else:
+        return None
 
-    lat = -41-(18.378/60)
-    lon = 174+(47.089/60)
-    print "GCYJZ7 GG's Backyard (Wellington)"
-    print " Lat is %0.4f, lon is %0.4f" % (lat, lon)
-    print "Geocaching: %0.2f, Bearing %s" % (4.5, 'SE')
-    print "Calculated: %0.2f, Bearing %s" % (
-        distance(hLat,hLon,lat,lon),
-        cardinalBearing(hLat,hLon,lat,lon))
+def strToLon (s):
+    '''
+    Reads a lon angle from the given string and returns it if valid, otherwise
+    returns None
+    '''
+    return strToDeg(s, 'lon')
+
+def strToLat (s):
+    '''
+    Reads a lat angle from the given string and returns it if valid, otherwise
+    returns None
+    '''
+    return strToDeg(s, 'lat')
+
+def degToStr (d, format='hdd.ddddd', mode='pure'):
+    '''
+    Returns the given angle in the given format using the given mode as a
+    string.
+    '''
+    if mode=='lat':
+        pos = 'N'
+        neg = 'S'
+        minimum = -90.0
+        maximum = +90.0
+    elif mode=='lon':
+        pos = 'E'
+        neg = 'W'
+        minimum = -180.0
+        maximum = +180.0
+    else: #assume pure degrees mode
+        pos = ''
+        neg = '-'
+        minimum = 0.0
+        maximum = 360.0
+
+    assert minimum <= d <= maximum
+
+    if d < 0:
+        sign = neg
+    else:
+        sign = pos
+    d = abs(d)
+
+    if format == 'hdd mm.mmm':
+        deg = int(d)
+        min = (d -deg)*60.0
+        return '%s%02i %06.3f' % (sign,deg,min)
+    elif format == 'hdd mm ss.s':
+        deg = int(d)
+        min = int((d-deg)*60)
+        sec = ((d-deg)*60.0-min)*60.0
+        return '%s%i %02i %04.1f' % (sign,deg,min,sec)
+    else: # assume hdd.ddddd
+        return '%s%0.5f' % (sign,d)
+
+def latToStr(d, format='hdd mm.mmm'):
+    '''Returns the given latitude in the given format as a string.'''
+    return degToStr(d, format=format, mode='lat')
+
+def lonToStr(d, format='hdd mm.mmm'):
+    '''Returns the given longitude in the given format as a string.'''
+    return degToStr(d, format=format, mode='lon')

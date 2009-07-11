@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 '''Module to implement the persistant data stores'''
+# TODO: convert all set functions to be acessed as paroperties
 import datetime
 from lxml.etree import Element,ElementTree
 import os
@@ -107,6 +108,7 @@ class DB:
                         corrected=False,
                         clat=0.0,
                         clon=0.0,
+                        cnote='',
                         user_comments="",
                         user_flag=False,
                         user_data1="",
@@ -145,6 +147,7 @@ class DB:
                             corrected  = boolToText(corrected),
                             clat       = "%f" % clat,
                             clon       = "%f" % clon,
+                            cnote      = "%s" % cnote,
                             user_flag  = boolToText(user_flag),
                             user_data1 = "%s" % user_data1,
                             user_data2 = "%s" % user_data2,
@@ -478,6 +481,7 @@ class Cache(object):
 
     clon = property(__getCLon, __setCLon)
 
+    # TODO: convert cnote to a tag as it can contain spaces and new lines
     def __getCNote(self):    return self.__node.attrib["cnote"]
 
     def __setCNote(self,t):
@@ -993,6 +997,7 @@ class Geocacher:
                        'userData3'  :'User Data 3',
                        'userData4'  :'User Data 4',
                        'miles'      :False,
+                       'coordFmt'   :'hdd mm.mmm',
                        'CurrentLoc' :'Default',
                        'dispCache'  :''},
              'export':{'lastFolder' :Geocacher.getHomeDir(),
