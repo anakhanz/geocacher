@@ -144,7 +144,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                     cache.setFound(True)
                     cache.setFound_date(logDate)
                 elif logType == "Didn't find it":
-                    cache.SetDnf(True)
+                    cache.setDnf(True)
                     cache.setDnf_date(logDate)
                 if logType =="Found it" or logType == "Didn't find it":
                     cache.setOwn_log(logText)

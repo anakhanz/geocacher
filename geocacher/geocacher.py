@@ -1236,7 +1236,7 @@ class MainWindow(wx.Frame):
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
 
-    def LoadFile(path, mode):
+    def LoadFile(self, path, mode):
         ext = os.path.splitext(path)[1]
         if ext == '.gpx':
             gpxLoad(path,self.db,mode=mode,
