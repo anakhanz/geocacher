@@ -1358,6 +1358,12 @@ class MainWindow(wx.Frame):
         # TODO: implement location update
         pass
 
+    def GpsError(self, message):
+        wx.MessageBox(parent = self,
+            message = _('Error communicating with GPS, GPSBabel said:\n')+message,
+            caption = _('GPS Error'),
+            style = wx.OK | wx.ICON_ERROR)
+
     def OnHelpAbout(self, event=None):
         HelpAbout = wx.AboutDialogInfo()
         HelpAbout.SetName('Geocacher')
@@ -1640,7 +1646,6 @@ class MainWindow(wx.Frame):
         prefsFrame = PreferencesWindow(self,wx.ID_ANY,self.conf)
 
     def OnGpsUpload(self, event=None):
-        # TODO: handle errors
         # TODO: selection of GPS type/location
         (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
         if scope == None:
@@ -1657,7 +1662,9 @@ class MainWindow(wx.Frame):
             addWpts = False
         gpxExport(tmpFile, caches, addWpts = addWpts)
         gpsCom = GpsCom()
-        gpsCom.gpxToGps(tmpFile)
+        ok, message = gpsCom.gpxToGps(tmpFile)
+        if not ok:
+            self.GpsError( message)
         os.remove(tmpFile)
 
     def OnSelLocation(self, event=None):
@@ -1702,10 +1709,9 @@ class GeocacherApp (wx.App):
         self.checker = wx.SingleInstanceChecker(".Geocacher_"+wx.GetUserId())
         if self.checker.IsAnotherRunning():
             dlg = wx.MessageDialog(None,
-                               message=_("Geocacher is already running, please switch to that instance."),
-                               caption=_("Geocacher Already Running"),
-                               style=wx.CANCEL|wx.ICON_HAND
-                               )
+                message=_("Geocacher is already running, please switch to that instance."),
+                caption=_("Geocacher Already Running"),
+                style=wx.CANCEL|wx.ICON_HAND)
             dlg.ShowModal()
             return False
         else:
