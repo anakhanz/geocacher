@@ -28,9 +28,9 @@ class GpsCom:
             if latStr[-1:] == 'S': lat = - lat
             lon = float(lonStr[:-1])
             if lonStr[-1:] == 'W': lon = - lon
-            return True, lat, lon
+            return True, lat, lon, stderr
         else:
-            return False,stderr
+            return False, None, None, stderr
 
 
 if __name__ == "__main__":

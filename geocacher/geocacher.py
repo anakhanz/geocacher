@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 
-# TODO: Add selection of Current home location
 # TODO: Add icon to main Window
-# TODO: Add configuration of User Data Column names
 # TODO: Add view only mode
 
 from datetime import datetime
@@ -304,17 +302,7 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def __buildRow(self, cache):
 
-        location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
-        hLat = location.lat
-        hLon = location.lon
-
-        if self.conf.common.miles or False:
-            dist = '%0.2f Mi' % distance(hLat,hLon,cache.currentLat,
-                                         cache.currentLon,miles=True)
-        else:
-            dist = '%0.2f km' % distance(hLat,hLon,cache.currentLat,
-                                         cache.currentLon,miles=True)
-        cBear = cardinalBearing(hLat,hLon,cache.currentLat,cache.currentLon)
+        dist, cBear = self.__calcDistBearing(cache)
 
         row = {'code':cache.code,'id':cache.id,'lon':cache.currentLon,'lat':cache.currentLat,
                 'name':cache.name,'url':cache.url,'found':cache.found,
@@ -335,6 +323,24 @@ class CacheDataTable(Grid.PyGridTableBase):
                 'user_data4':cache.user_data4}
         return row
 
+    def __calcDistBearing(self, cache):
+        '''
+        Calculates the distance and cardinalBearing of the given cache and
+        returns it as a tuple
+        '''
+        location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
+        hLat = location.lat
+        hLon = location.lon
+
+        if self.conf.common.miles or False:
+            dist = '%0.2f Mi' % distance(hLat,hLon,cache.currentLat,
+                                         cache.currentLon,miles=True)
+        else:
+            dist = '%0.2f km' % distance(hLat,hLon,cache.currentLat,
+                                         cache.currentLon,miles=True)
+        cBear = cardinalBearing(hLat,hLon,cache.currentLat,cache.currentLon)
+        return dist, cBear
+
     def __cacheFilter(self, cache):
         mine = cache.owner == self.conf.gc.userName or\
                cache.owner_id == self.conf.gc.userId
@@ -342,6 +348,13 @@ class CacheDataTable(Grid.PyGridTableBase):
                (bool(self.conf.filter.disabled) and (not cache.available)) or\
                (bool(self.conf.filter.found) and cache.found) or\
                (bool(self.conf.filter.mine) and mine)
+
+    def UpdateLocation(self):
+        '''Updates the location based information in all cache rows'''
+        for row in self.data:
+            row['distance'], row['bearing'] = self.__calcDistBearing(self.db.getCacheByCode(row['code']))
+        if self._sortCol in ['distance','bearing']:
+            self.DoSort()
 
     def GetNumberRows(self):
         return len(self.data)
@@ -779,6 +792,10 @@ class CacheGrid(Grid.Grid):
         self._table.ReloadCaches()
         self.Reset()
 
+    def UpdateLocation(self):
+        self._table.UpdateLocation()
+        self.Reset()
+
     def GetCols(self):
         return self._table.GetCols()
 
@@ -788,6 +805,7 @@ class CacheGrid(Grid.Grid):
 class PreferencesWindow(wx.Frame):
     """Preferences Dialog"""
     # TODO: Add configuration of home locations
+    # TODO: Add configuration of User Data Column names
     def __init__(self,parent,id,prefs):
         """Creates the Preferences Frame"""
         self._prefs = prefs
@@ -1208,6 +1226,9 @@ class MainWindow(wx.Frame):
         item = GpsMenu.Append(wx.ID_ANY, text=_("&Upload to GPS"))
         self.Bind(wx.EVT_MENU, self.OnGpsUpload, item)
 
+        item = GpsMenu.Append(wx.ID_ANY, text=_("&Location From GPS"))
+        self.Bind(wx.EVT_MENU, self.OnGpsLocation, item)
+
         MenuBar.Append(GpsMenu, _("&GPS"))
 
         # Build Help menu and bind functions
@@ -1263,12 +1284,12 @@ class MainWindow(wx.Frame):
             current = self.conf.common.currentLoc
         else:
             current = choices[0]
-        self.selHome = wx.ComboBox(tb, wx.ID_ANY,current,
-                                   choices = choices,
-                                   size=[150,-1],
-                                   style=wx.CB_DROPDOWN|wx.CB_SORT)
-        tb.AddControl(self.selHome)
-        self.Bind(wx.EVT_COMBOBOX, self.OnSelLocation, self.selHome)
+        self.selLocation = wx.ComboBox(tb, wx.ID_ANY,current,
+                                       choices = choices,
+                                       size=[150,-1],
+                                       style=wx.CB_DROPDOWN|wx.CB_SORT)
+        tb.AddControl(self.selLocation)
+        self.Bind(wx.EVT_COMBOBOX, self.OnSelLocation, self.selLocation)
         tb.Realize()
 
     def buildStatusBar(self):
@@ -1354,9 +1375,16 @@ class MainWindow(wx.Frame):
         self.cacheGrid.ReloadCaches()
         self.splitter.SetSashPosition(self.splitter.GetSashPosition())
 
-    def updateCurrentLocation(self):
-        # TODO: implement location update
-        pass
+    def updateLocations(self):
+        for i in range(0,self.selLocation.GetCount()):
+            self.selLocation.Delete(0)
+        for location in self.db.getLocationNameList():
+            self.selLocation.Append(location)
+
+    def updateCurrentLocation(self, name):
+        self.selLocation.SetValue(name)
+        self.conf.common.currentLoc = name
+        self.cacheGrid.UpdateLocation()
 
     def GpsError(self, message):
         wx.MessageBox(parent = self,
@@ -1652,10 +1680,9 @@ class MainWindow(wx.Frame):
             return
         fd,tmpFile = tempfile.mkstemp()
         dlg = wx.MessageDialog(None,
-                               message=_("Do you want to include the additional waypoints?"),
-                               caption=_("GPS Upload"),
-                               style=wx.YES_NO|wx.ICON_QUESTION
-                               )
+            message=_("Do you want to include the additional waypoints?"),
+            caption=_("GPS Upload"),
+            style=wx.YES_NO|wx.ICON_QUESTION)
         if dlg.ShowModal() == wx.ID_YES:
             addWpts = True
         else:
@@ -1667,9 +1694,40 @@ class MainWindow(wx.Frame):
             self.GpsError( message)
         os.remove(tmpFile)
 
+    def OnGpsLocation(self, event=None):
+        gpsCom = GpsCom()
+        ok, lat, lon, message = gpsCom.getCurrentPos()
+        if not ok:
+            self.GpsError(message)
+            return
+        dlg = wx.TextEntryDialog(self,
+            _('Please enter a name for the new Location from the GPS'),
+            caption=_('Location Name'))
+        if dlg.ShowModal() != wx.ID_OK:
+            dlg.Destroy()
+            return
+        name = dlg.GetValue()
+        dlg.Destroy()
+        if name in self.db.getLocationNameList():
+            dlg = wx.MessageDialog(self,
+                message=_('Are you sure you want to replace the existing laocation named ')+name,
+                caption=_('Replace Existing Location'),
+                style=wx.YES_NO|wx.ICON_QUESTION)
+            if dlg.ShowModal() == wx.ID_YES:
+                dlg.Destroy()
+                location = self.db.getLocationByName(name)
+                location.lat = lat
+                location.lon = lon
+            else:
+                dlg.Destroy()
+                return
+        else:
+            self.db.addLocation(name, lat, lon)
+        self.updateLocations()
+        self.updateCurrentLocation(name)
+
     def OnSelLocation(self, event=None):
-        print self.selHome.GetValue()
-        self.updateCurrentLocation()
+        self.updateCurrentLocation(self.selLocation.GetValue())
 
     def OnCbHideArchived(self, event=None):
         self.conf.filter.archived = self.cbHideArchived.GetValue()
@@ -1686,8 +1744,6 @@ class MainWindow(wx.Frame):
     def OnCbHideMine(self, event=None):
         self.conf.filter.mine = self.cbHideMine.GetValue()
         self.updateFilter()
-
-
 
     def OnQuit(self, event=None):
         """Exit application."""

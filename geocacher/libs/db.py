@@ -183,6 +183,7 @@ class DB:
         locationNameList = []
         for locationNode in self.root.xpath(u"location"):
             locationNameList.append(locationNode.attrib["name"])
+        locationNameList.sort()
         return locationNameList
 
     def getLocationByName(self,name):
