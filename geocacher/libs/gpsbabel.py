@@ -17,7 +17,7 @@ class GpsCom:
 
         p = Popen(['gpsbabel','-i','gpx','-f',file,'-o',self.gps,'-F',self.port],stdout=PIPE, stderr=PIPE)
         stdout, stderr = p.communicate()
-        return p.returncode==0,stderr
+        return p.returncode==0,stderr+stdout
 
     def getCurrentPos(self):
         p = Popen(['gpsbabel','-i',self.gps+',get_posn','-f',self.port],stdout=PIPE, stderr=PIPE)
@@ -30,7 +30,7 @@ class GpsCom:
             if lonStr[-1:] == 'W': lon = - lon
             return True, lat, lon, stderr
         else:
-            return False, None, None, stderr
+            return False, None, None, stderr+stdout
 
 
 if __name__ == "__main__":

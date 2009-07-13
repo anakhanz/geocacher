@@ -218,11 +218,8 @@ class CacheDataTable(Grid.PyGridTableBase):
             'dnf'         :_('DNF'),
             'dnf_date'    :_('DNF Date'),
             'source'      :_('Source'),
-            'user_flag'   :_('User Flag'),
-            'user_data1'  :self.conf.common.userData1 or _('User Data 1'),
-            'user_data2'  :self.conf.common.userData2 or _('User Data 2'),
-            'user_data3'  :self.conf.common.userData3 or _('User Data 3'),
-            'user_data4'  :self.conf.common.userData4 or _('User Data 4')}
+            'user_flag'   :_('User Flag')}
+        self.UpdateUserDataLabels()
 
         self.dataTypes = {
             'code'        :Grid.GRID_VALUE_STRING,
@@ -355,6 +352,16 @@ class CacheDataTable(Grid.PyGridTableBase):
             row['distance'], row['bearing'] = self.__calcDistBearing(self.db.getCacheByCode(row['code']))
         if self._sortCol in ['distance','bearing']:
             self.DoSort()
+
+    def UpdateUserDataLabels(self):
+        self.colLabels['user_data1'] = \
+            self.conf.common.userData1 or _('User Data 1')
+        self.colLabels['user_data2'] = \
+            self.conf.common.userData2 or _('User Data 2')
+        self.colLabels['user_data3'] = \
+            self.conf.common.userData3 or _('User Data 3')
+        self.colLabels['user_data4'] = \
+            self.conf.common.userData4 or _('User Data 4')
 
     def GetNumberRows(self):
         return len(self.data)
@@ -796,6 +803,10 @@ class CacheGrid(Grid.Grid):
         self._table.ReloadCaches()
         self.Reset()
 
+    def UpdateUserDataLabels(self):
+        self._table.UpdateUserDataLabels()
+        self.Reset()
+
     def UpdateLocation(self):
         self._table.UpdateLocation()
         self.Reset()
@@ -806,50 +817,204 @@ class CacheGrid(Grid.Grid):
     def GetSortCol(self):
         return self._table.GetSortCol()
 
-class PreferencesWindow(wx.Frame):
+class PreferencesWindow(wx.Dialog):
     """Preferences Dialog"""
     # TODO: Add configuration of home locations
-    # TODO: Add configuration of User Data Column names
-    def __init__(self,parent,id,prefs):
+    def __init__(self,parent,id,conf):
         """Creates the Preferences Frame"""
-        self._prefs = prefs
-        wx.Frame.__init__(self,parent,wx.ID_ANY,_("Preferences"),#size = (w,h),
+        self.conf = conf
+        self.labelWidth = 150
+        self.entryWidth = 200
+        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Preferences"),size = (400,500),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
-        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
 
-        gcGrid = wx.FlexGridSizer(rows=2,cols=2)
-        label = wx.StaticText(self,wx.ID_ANY,"User Name")
-        gcGrid.Add(label, 0,wx.EXPAND)
-        self.gcUserName = wx.TextCtrl(self,wx.ID_ANY,self._prefs.gc.userName)
-        gcGrid.Add(self.gcUserName, 0,wx.EXPAND)
-        label = wx.StaticText(self,wx.ID_ANY,"User ID")
-        gcGrid.Add(label, 0,wx.EXPAND)
-        self.gcUserId = wx.TextCtrl(self,wx.ID_ANY,self._prefs.gc.userId)
-        gcGrid.Add(self.gcUserId, 0,wx.EXPAND)
-        mainBox.Add(gcGrid, 0, wx.EXPAND)
+        nb = wx.Notebook(self)
+
+        # create the page windows as children of the notebook
+        self.Display   = self.__buildDisplayPanel(nb)
+        self.GC        = self.__buildGCPanel(nb)
+        self.GPS       = self.__buildGpsPanel(nb)
+        self.Locations = self.__buildLocationsPanel(nb)
+
+        # add the pages to the notebook with the label to show on the tab
+        nb.AddPage(self.Display,   _('Display'))
+        nb.AddPage(self.GC,        _('Geocaching.Com'))
+        nb.AddPage(self.GPS,        _('GPS'))
+        nb.AddPage(self.Locations, _('Locations'))
+
         # Ok and Cancel Buttons
         okButton = wx.Button(self,wx.ID_OK)
-        self.Bind(wx.EVT_BUTTON, self.OnOk,okButton)
         cancelButton = wx.Button(self,wx.ID_CANCEL)
+
+        self.Bind(wx.EVT_BUTTON, self.OnOk,okButton)
         self.Bind(wx.EVT_BUTTON, self.OnCancel,cancelButton)
+
         buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
         buttonBox.Add(okButton, 0, wx.EXPAND)
         buttonBox.Add(cancelButton, 0, wx.EXPAND)
 
-        mainBox.Add(buttonBox, 0, wx.EXPAND)
-        self.SetSizer(mainBox)
-        self.SetAutoLayout(True)
+        # finally, put the notebook and buttons in a sizerto manage the layout
+        mainSizer = wx.BoxSizer(orient=wx.VERTICAL)
+        mainSizer.Add(nb, 1, wx.EXPAND)
+        mainSizer.Add(buttonBox, 0, wx.EXPAND)
+        self.SetSizer(mainSizer)
+
+    def __buildDisplayPanel(self, parent):
+        panel = wx.Panel(parent, wx.ID_ANY)
+
+        displayGrid = wx.GridBagSizer(5, 5)
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('Units'),
+            size = (self.labelWidth,-1))
+        displayGrid.Add(label, (0,0))
+        self.dispUnitsChoices = [_('Kilometers'), _('Miles')]
+        if self.conf.common.miles or False:
+            value = self.dispUnitsChoices[1]
+        else:
+            value = self.dispUnitsChoices[0]
+        self.dispUnits = wx.ComboBox(panel, wx.ID_ANY,
+            value=value,
+            choices=self.dispUnitsChoices,
+            style=wx.CB_READONLY,
+            size = (self.entryWidth,-1))
+        displayGrid.Add(self.dispUnits, (0,1))
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('Coordinate Format'))
+        displayGrid.Add(label, (1,0))
+        self.dispCoordFmt = wx.ComboBox(panel, wx.ID_ANY,
+            value=self.conf.common.coordFmt or 'hdd mm.mmm',
+            choices=['hdd.ddddd', 'hdd mm.mmm', 'hdd mm ss.s'],
+            style=wx.CB_READONLY,
+            size = (self.entryWidth,-1))
+        displayGrid.Add(self.dispCoordFmt, (1,1))
+
+        label = wx.StaticText(panel,wx.ID_ANY,
+            _('User Data Column Names'))
+        displayGrid.Add(label, (2,0), (1,2))
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 1'))
+        displayGrid.Add(label, (3,0))
+        self.dispUserData1 = wx.TextCtrl(panel, wx.ID_ANY,
+            self.conf.common.userData1 or label.GetLabel(),
+            size = (self.entryWidth,-1))
+        displayGrid.Add(self.dispUserData1, (3,1))
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 2'))
+        displayGrid.Add(label, (4,0))
+        self.dispUserData2 = wx.TextCtrl(panel, wx.ID_ANY,
+            self.conf.common.userData2 or label.GetLabel(),
+            size = (self.entryWidth,-1))
+        displayGrid.Add(self.dispUserData2, (4,1))
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 3'))
+        displayGrid.Add(label, (5,0))
+        self.dispUserData3 = wx.TextCtrl(panel, wx.ID_ANY,
+            self.conf.common.userData3 or label.GetLabel(),
+            size = (self.entryWidth,-1))
+        displayGrid.Add(self.dispUserData3, (5,1))
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 4'))
+        displayGrid.Add(label, (6,0))
+        self.dispUserData4 = wx.TextCtrl(panel, wx.ID_ANY,
+            self.conf.common.userData4 or label.GetLabel(),
+            size = (self.entryWidth,-1))
+        displayGrid.Add(self.dispUserData4, (6,1))
 
 
-        self.Show(True)
+        panel.SetSizer(displayGrid)
+        return panel
+
+    def __saveDisplayConf(self):
+        if self.dispUnits.GetValue() == self.dispUnitsChoices[0]:
+            self.conf.common.miles = False
+        else:
+            self.conf.common.miles = True
+        self.conf.common.coordFmt = self.dispCoordFmt.GetValue()
+        self.conf.common.userData1 = self.dispUserData1.GetValue()
+        self.conf.common.userData2 = self.dispUserData2.GetValue()
+        self.conf.common.userData3 = self.dispUserData3.GetValue()
+        self.conf.common.userData4 = self.dispUserData4.GetValue()
+
+    def __buildGCPanel(self, parent):
+        panel = wx.Panel(parent, wx.ID_ANY)
+        gcGrid = wx.GridBagSizer(5, 5)
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('User Name'),
+            size = (self.labelWidth,-1))
+        gcGrid.Add(label, (0,0))
+        self.gcUserName = wx.TextCtrl(panel,
+            wx.ID_ANY,self.conf.gc.userName or '',
+            size = (self.entryWidth,-1))
+        gcGrid.Add(self.gcUserName, (0,1))
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('User ID'))
+        gcGrid.Add(label, (1,0))
+        self.gcUserId = wx.TextCtrl(panel,wx.ID_ANY,
+            self.conf.gc.userId or '',
+            size = (self.entryWidth,-1))
+        gcGrid.Add(self.gcUserId, (1,1))
+
+        panel.SetSizer(gcGrid)
+        return panel
+
+    def __saveGCConf(self):
+        self.conf.gc.userName = self.gcUserName.GetValue()
+        self.conf.gc.userId = self.gcUserId.GetValue()
+
+    def __buildGpsPanel(self,parent):
+        panel = wx.Panel(parent, wx.ID_ANY)
+        gpsGrid = wx.GridBagSizer(5, 5)
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('Type'),
+            size = (self.labelWidth,-1))
+        gpsGrid.Add(label, (0,0))
+        self.gpsType = wx.ComboBox(panel, wx.ID_ANY,
+            value=self.conf.gps.type or 'garmin',
+            choices=['garmin'],
+            style=wx.CB_SORT|wx.CB_READONLY,
+            size = (self.entryWidth,-1))
+        gpsGrid.Add(self.gpsType, (0,1))
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('Port'))
+        gpsGrid.Add(label, (1,0))
+        self.gpsConnection = wx.ComboBox(panel, wx.ID_ANY,
+            value=self.conf.gps.connection or 'usb:',
+            choices=['usb:'],
+            style=wx.CB_SORT,
+            size = (self.entryWidth,-1))
+        gpsGrid.Add(self.gpsConnection, (1,1))
+
+        panel.SetSizer(gpsGrid)
+        return panel
+
+    def __saveGpsConf(self):
+        self.conf.gps.type = self.gpsType.GetValue()
+        self.conf.gps.connection = self.gpsConnection.GetValue()
+
+    def __buildLocationsPanel(self, parent):
+        panel = wx.Panel(parent, wx.ID_ANY)
+        locationGrid = wx.FlexGridSizer(rows=2,cols=2)
+
+        label = wx.StaticText(panel,wx.ID_ANY,_('Filler'),
+            size = (self.labelWidth,-1))
+        locationGrid.Add(label, 0,wx.EXPAND)
+
+        panel.SetSizer(locationGrid)
+        return panel
+
+    def __saveLocationsConf(self):
+        pass
 
     def OnCancel(self, event=None):
         self.Destroy()
 
     def OnOk(self, event=None):
-        self._prefs.gc.userName = self.gcUserName.GetValue()
-        self._prefs.gc.userId = self.gcUserId.GetValue()
-        self.Destroy()
+        self.__saveDisplayConf()
+        self.__saveGCConf()
+        self.__saveGpsConf()
+        self.__saveLocationsConf()
+
+        event.Skip()
 
 class ExportOptions(wx.Dialog):
     '''Get the import options from the user'''
@@ -1389,6 +1554,7 @@ class MainWindow(wx.Frame):
         self.conf.common.currentLoc = name
         self.cacheGrid.UpdateLocation()
 
+
     def GpsError(self, message):
         wx.MessageBox(parent = self,
             message = _('Error communicating with GPS, GPSBabel said:\n')+message,
@@ -1674,10 +1840,14 @@ class MainWindow(wx.Frame):
 
 
     def OnPrefs(self, event=None):
-        prefsFrame = PreferencesWindow(self,wx.ID_ANY,self.conf)
+        dlg = PreferencesWindow(self,wx.ID_ANY,self.conf)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.cacheGrid.UpdateUserDataLabels()
+            self.updateCurrentLocation(
+                self.conf.common.currentLoc or 'Default')
+        dlg.Destroy()
 
     def OnGpsUpload(self, event=None):
-        # TODO: selection of GPS type/location
         (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
         if scope == None:
             return
@@ -1691,14 +1861,16 @@ class MainWindow(wx.Frame):
         else:
             addWpts = False
         gpxExport(tmpFile, caches, addWpts = addWpts)
-        gpsCom = GpsCom()
+        gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
+                        port=self.conf.gps.connection or 'usb:')
         ok, message = gpsCom.gpxToGps(tmpFile)
         if not ok:
             self.GpsError( message)
         os.remove(tmpFile)
 
     def OnGpsLocation(self, event=None):
-        gpsCom = GpsCom()
+        gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
+                        port=self.conf.gps.connection or 'usb:')
         ok, lat, lon, message = gpsCom.getCurrentPos()
         if not ok:
             self.GpsError(message)
@@ -1776,8 +1948,8 @@ class GeocacherApp (wx.App):
         else:
             Geocacher.init(True)
             frame = MainWindow(None,-1,Geocacher.conf, Geocacher.db)
-            frame.Show(True)
             self.SetTopWindow(frame)
+            frame.Show(True)
             return True
 
     def OnExit(self):

@@ -1010,6 +1010,8 @@ class Geocacher:
                        'addWpts'    :False,
                        'sepAddWpts' :False,
                        'scope'      :'all'},
+             'gps'   :{'type'       :'garmin',
+                       'connection' :'usb:'},
              'filter':{'archived'   :False,
                        'disabled'   :False,
                        'found'      :False,

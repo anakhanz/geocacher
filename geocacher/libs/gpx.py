@@ -163,7 +163,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                 cacheTb = cache.getTravelBugByRef(wptTbRef)
                 cacheTb.setId(wptTbId)
                 cacheTb.setName(wptTbName)
-        # Go through the list of trave bugs in the cache and delete any
+        # Go through the list of travel bugs in the cache and delete any
         # that are not listed in the wpt
         for cacheTbRef in cacheTbRefs:
             if not(cacheTbRef in wptTbRefs):
