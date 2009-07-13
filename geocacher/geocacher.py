@@ -585,9 +585,9 @@ class CacheDataTable(Grid.PyGridTableBase):
 
 class CacheGrid(Grid.Grid):
     # TODO: add icon to Sorted Column Name
-    def __init__(self, parent, conf, db, cacheSel):
+    def __init__(self, parent, conf, db, mainWin):
         self.conf = conf
-        self.cacheSel = cacheSel
+        self.mainWin = mainWin
         Grid.Grid.__init__(self, parent, -1)
 
         self._table = CacheDataTable(conf, db)
@@ -627,11 +627,11 @@ class CacheGrid(Grid.Grid):
     def OnLabelLeftClicked(self, evt):
         # Did we click on a row or a column?
         if evt.GetRow() != -1:
-            self.cacheSel(self._table.GetRowCode(evt.GetRow()))
+            self.mainWin.updateDetail(self._table.GetRowCode(evt.GetRow()))
         evt.Skip()
 
     def OnCellLeftClicked(self, evt):
-        self.cacheSel(self._table.GetRowCode(evt.GetRow()))
+        self.mainWin.updateDetail(self._table.GetRowCode(evt.GetRow()))
         evt.Skip()
 
     def OnLabelRightClicked(self, evt):
@@ -1181,7 +1181,7 @@ class MainWindow(wx.Frame):
         self.buildToolBar()
 
         self.splitter = MainSplitter(self, wx.ID_ANY)
-        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db,  self.updateDetail)
+        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db,  self)
         self.Description = wx.html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
         panel2 = wx.Window(self.splitter, wx.ID_ANY, style=wx.BORDER_SUNKEN)
         self.splitter.SetMinimumPaneSize(20)
