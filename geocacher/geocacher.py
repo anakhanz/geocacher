@@ -786,7 +786,11 @@ class CacheGrid(Grid.Grid):
         """reset the view based on the data in the table.  Call
         this when rows are added or destroyed"""
         self._table.ResetView(self)
-        self.AutoSize()
+        # Use AutoSizeColumns() followed by AutoSizeRows() to avoid issues with
+        # AutoSize() doing both and causing the splittter and scroll bars to
+        # disapear
+        self.AutoSizeColumns()
+        self.AutoSizeRows()
 
     def ReloadCaches(self):
         self._table.ReloadCaches()
@@ -1373,7 +1377,6 @@ class MainWindow(wx.Frame):
 
     def updateFilter(self):
         self.cacheGrid.ReloadCaches()
-        self.splitter.SetSashPosition(self.splitter.GetSashPosition())
 
     def updateLocations(self):
         for i in range(0,self.selLocation.GetCount()):
