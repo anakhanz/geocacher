@@ -871,32 +871,28 @@ class Location(object):
         self.__node = n
 
     def __getName(self):    return self.__node.attrib["name"]
-    name = property(__getName)
 
-    def setName(self,t):
+    def __setName(self,t):
         assert type(t) == uniceode or type(t)==str
         self.__node.attrib["name"] = t
 
-    def __getLat(self):    return float(self.__node.attrib["lat"])
-    lat = property(__getLat)
+    name = property(__getName, __setName)
 
-    def setLat(self,f):
+    def __getLat(self):    return float(self.__node.attrib["lat"])
+
+    def __setLat(self,f):
         assert type(f) == float
         self.__node.attrib["lat"] = "%f" % f
 
-    def __getLon(self):    return float(self.__node.attrib["lon"])
-    lon = property(__getLon)
+    lat = property(__getLat, __setLat)
 
-    def setLon(self,f):
+    def __getLon(self):    return float(self.__node.attrib["lon"])
+
+    def __setLon(self,f):
         assert type(f) == float
         self.__node.attrib["lon"] = "%f" % f
 
-    def __getCmt(self):    return self.__node.txt
-    cmt = property(__getCmt)
-
-    def setCmt(self,t):
-        assert type(t) == unicode or type(t)==str
-        self.__node.text = t
+    lon = property(__getLon, __setLon)
 
     def delete(self):
         self.__node.getparent().remove(self.__node)

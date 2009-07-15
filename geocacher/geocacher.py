@@ -59,7 +59,9 @@ class DegRenderer(Grid.PyGridCellRenderer):
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
         format = self.conf.common.coordFmt or 'hdd mm.mmm'
-        text = degToStr(value, format, self.mode)
+        #print value, self.mode, type(value)
+        try: text = degToStr(value, format, self.mode)
+        except: text = ''
         hAlign, vAlign = attr.GetAlignment()
         dc.SetFont(attr.GetFont())
         if isSelected:
@@ -138,6 +140,67 @@ class ImageRenderer(Grid.PyGridCellRenderer):
         dc.Blit(rect.x+1, rect.y+1, width, height,
                 image,
                 0, 0, wx.COPY, True)
+
+class DegEditor(Grid.PyGridCellEditor):
+    def __init__(self, conf, mode = 'pure'):
+        Grid.PyGridCellEditor.__init__(self)
+        self.conf = conf
+        self.mode = mode
+
+    def Create(self, parent, id, evtHandler):
+        self.newValue = [0]
+
+        self._tc = wx.TextCtrl(parent, id,'')
+        self._tc.SetInsertionPoint(0)
+        self.SetControl(self._tc)
+
+        if evtHandler:
+            self._tc.PushEventHandler(evtHandler)
+
+    def SetSize(self, rect):
+        self._tc.SetDimensions(rect.x, rect.y, rect.width+2, rect.height+2,
+                               wx.SIZE_ALLOW_MINUS_ONE)
+
+    def BeginEdit(self, row, col, grid):
+        self.startValue = grid.GetTable().GetValue(row, col)
+        format = self.conf.common.coordFmt or 'hdd mm.mmm'
+        self._tc.SetValue(degToStr(self.startValue, format, self.mode))
+        self._tc.SetInsertionPointEnd()
+        self._tc.SetFocus()
+        self._tc.SetSelection(0, self._tc.GetLastPosition())
+
+    def EndEdit(self, row, col, grid):
+        changed = False
+
+        value = strToDeg(self._tc.GetValue(), self.mode)
+
+        if value != self.startValue:
+            changed = True
+            grid.GetTable().SetValue(row, col, value)
+
+        return changed
+
+    def Reset(self):
+        self._tc.SetValue(degToStr(self.startValue, format, self.mode))
+        self._tc.SetInsertionPointEnd()
+
+    def Clone(self):
+        return DegEditor(conf, mode)
+
+    def StartingKey(self, evt):
+        self.OnChar(evt)
+        if evt.GetSkipped():
+            self._tc.EmulateKeyPress(evt)
+
+class LatEditor(DegEditor):
+    '''Editor for cells containiny Latitudes (subcalss of DegEditor)'''
+    def __init__(self, conf):
+        DegEditor.__init__(self, conf, 'lat')
+
+class LonEditor(DegEditor):
+    '''Editor for cells containiny Longitudes (subcalss of DegEditor)'''
+    def __init__(self, conf):
+        DegEditor.__init__(self, conf, 'lon')
 
 class CacheSizeRenderer(ImageRenderer):
     def __init__(self, table, conf):
@@ -819,10 +882,10 @@ class CacheGrid(Grid.Grid):
 
 class PreferencesWindow(wx.Dialog):
     """Preferences Dialog"""
-    # TODO: Add configuration of home locations
-    def __init__(self,parent,id,conf):
+    def __init__(self,parent,id,conf, db):
         """Creates the Preferences Frame"""
         self.conf = conf
+        self.db = db
         self.labelWidth = 150
         self.entryWidth = 200
         wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Preferences"),size = (400,500),
@@ -992,18 +1055,11 @@ class PreferencesWindow(wx.Dialog):
         self.conf.gps.connection = self.gpsConnection.GetValue()
 
     def __buildLocationsPanel(self, parent):
-        panel = wx.Panel(parent, wx.ID_ANY)
-        locationGrid = wx.FlexGridSizer(rows=2,cols=2)
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('Filler'),
-            size = (self.labelWidth,-1))
-        locationGrid.Add(label, 0,wx.EXPAND)
-
-        panel.SetSizer(locationGrid)
-        return panel
+        grid = LocationsGrid(parent, self.conf, self.db)
+        return grid
 
     def __saveLocationsConf(self):
-        pass
+        self.Locations.Save()
 
     def OnCancel(self, event=None):
         self.Destroy()
@@ -1015,6 +1071,317 @@ class PreferencesWindow(wx.Dialog):
         self.__saveLocationsConf()
 
         event.Skip()
+
+class LocationsDataTable(Grid.PyGridTableBase):
+    def __init__(self, conf, db):
+        self.conf = conf
+        self.db = db
+        Grid.PyGridTableBase.__init__(self)
+        self.colLabels = [_('Name'), _('Latitude'), _('Longitude')]
+        self.renderers=[None, LatRenderer, LonRenderer]
+        self.editors = [None, LatEditor, LonEditor]
+        self.data = []
+        locationNames = self.db.getLocationNameList()
+        for locationName in locationNames:
+            location = self.db.getLocationByName(locationName)
+            self.data.append([location.name, location.lat, location.lon])
+
+        self._rows = self.GetNumberRows()
+        self._cols = self.GetNumberCols()
+
+    def Save(self):
+        existingNames = self.db.getLocationNameList()
+        newNames = self.GetNames()
+        for row in self.data:
+            if row[0] in existingNames:
+                location = self.db.getLocationByName(row[0])
+                location.lat = row[1]
+                location.lon = row[2]
+            else:
+                self.db.addLocation(row[0], row[1], row[2])
+        for name in existingNames:
+            if name not in newNames:
+                location = self.db.getLocationByName(name)
+                location.delete()
+        if (self.conf.common.currentLoc or 'Default') not in newNames:
+            self.conf.common.currentLoc = newNames[0]
+
+    def DeleteRows(self, rows):
+        """
+        rows -> delete the rows from the dataset
+        rows hold the row indices
+        """
+        deleteCount = 0
+        rows = rows[:]
+        rows.sort()
+        toDelStr =""
+        for row in rows:
+            if toDelStr == "":
+                toDelStr = self.data[row][0]
+            else:
+                toDelStr = toDelStr + ', ' + self.data[row][0]
+
+        dlg = wx.MessageDialog(None,
+                               message=_("Are you sure you wish to delete the following: ") + toDelStr,
+                               caption=_("Geocacher Delete Caches?"),
+                               style=wx.YES_NO|wx.ICON_QUESTION)
+        if dlg.ShowModal() == wx.ID_YES:
+            for row in rows:
+                self.data.pop(row-deleteCount)
+                # we need to advance the delete count
+                # to make sure we delete the right rows
+                deleteCount += 1
+
+    def GetNumberRows(self):
+        return len(self.data)
+
+    def GetNumberCols(self):
+        return 3
+
+    def IsEmptyCell(self, row, col):
+        return False
+
+    def GetValue(self, row, col):
+        return self.data[row][col]
+
+    def SetValue(self, row, col, value):
+        otherLocations = []
+        for i in range(len(self.data)):
+            if i != row:
+                otherLocations.append(self.data[i][0])
+        if col in [1,2] and value == None:
+            message = _('The active cell must be in one of the following formats:')
+            if col == 1:
+                message = message + '''
+    N12 34.345
+    S12 34 45.6
+    S12.34567
+    -12.34567'''
+            elif col == 2:
+                message = message + '''
+    E12 34.345
+    W12 34 45.6
+    W12.34567
+    -12.34567'''
+            wx.MessageBox(message, _('Input Error'))
+        elif col == 0 and value == '':
+            wx.MessageBox(_('The Location name must not be empty'),
+                          _('Input Error'))
+        elif col == 0 and value in otherLocations:
+            wx.MessageBox(_('Each location must have a different name'),
+                          _('Input Error'))
+        else:
+            self.data[row][col] = value
+
+    def GetColLabelValue(self, col):
+        return self.colLabels[col]
+
+    def GetRowLabelValue(self, row):
+        return ''
+
+    def AddRow(self, data):
+        self.data.append(data)
+        self.data.sort()
+
+    def GetNames(self):
+        names = []
+        for row in self.data:
+            names.append(row[0])
+        names.sort()
+        return names
+
+    def ReplaceRow(self, row, data):
+        self.data.pop(row)
+        self.AddRow(data)
+
+    def ResetView(self, grid):
+        """
+        (Grid) -> Reset the grid view.   Call this to
+        update the grid if rows and columns have been added or deleted
+        """
+        grid.BeginBatch()
+
+        for current, new, delmsg, addmsg in [
+            (self._rows, self.GetNumberRows(), Grid.GRIDTABLE_NOTIFY_ROWS_DELETED, Grid.GRIDTABLE_NOTIFY_ROWS_APPENDED),
+            (self._cols, self.GetNumberCols(), Grid.GRIDTABLE_NOTIFY_COLS_DELETED, Grid.GRIDTABLE_NOTIFY_COLS_APPENDED),
+        ]:
+
+            if new < current:
+                msg = Grid.GridTableMessage(self,delmsg,new,current-new)
+                grid.ProcessTableMessage(msg)
+            elif new > current:
+                msg = Grid.GridTableMessage(self,addmsg,new-current)
+                grid.ProcessTableMessage(msg)
+
+        grid.EndBatch()
+
+        self._rows = self.GetNumberRows()
+        self._cols = self.GetNumberCols()
+        # update the column rendering plugins
+        self._updateColAttrs(grid)
+
+        # update the scrollbars and the displayed part of the grid
+        grid.AdjustScrollbars()
+        grid.ForceRefresh()
+
+    def _updateColAttrs(self, grid):
+        """
+        wx.Grid -> update the column attributes to add the
+        appropriate renderer given the column name.
+        """
+        for col in range(len(self.colLabels)):
+            attr = Grid.GridCellAttr()
+            if self.renderers[col] != None:
+                renderer = self.renderers[col](self, self.conf)
+                attr.SetRenderer(renderer)
+
+                if renderer.colSize:
+                    grid.SetColSize(col, renderer.colSize)
+
+                if renderer.rowSize:
+                    grid.SetDefaultRowSize(renderer.rowSize)
+
+            if self.editors[col] != None:
+                attr.SetEditor(self.editors[col](self.conf))
+
+            grid.SetColAttr(col, attr)
+
+class LocationsGrid(Grid.Grid):
+    def __init__(self, parent, conf, db):
+        self.conf = conf
+        Grid.Grid.__init__(self, parent, wx.ID_ANY)
+
+        self._table = LocationsDataTable(conf, db)
+
+        self.SetTable(self._table, True)
+        self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnRightClicked)
+        self.Bind(Grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClicked)
+
+        self.SetRowLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
+        self.SetColLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
+        self.SetMargins(0,0)
+
+        self.Reset()
+
+    def Save(self):
+        self._table.Save()
+
+    def OnRightClicked(self, evt):
+        # Did we click on a row or a column?
+        row = evt.GetRow()
+        if row != -1:
+            self.SelectRow(row)
+
+        addID = wx.NewId()
+        editID = wx.NewId()
+        deleteID = wx.NewId()
+        x = self.GetRowSize(row)/2
+
+        menu = wx.Menu()
+        xo, yo = evt.GetPosition()
+        menu.Append(addID, _('Add Location'))
+        if row != -1:
+            menu.Append(editID, _('Edit Location'))
+            if self._table.GetNumberRows() > 1:
+                menu.Append(deleteID, _('Delete Location'))
+
+        def add(event, self=self, row=row):
+            name = self._table.GetValue(row,0)
+            data = {'name':'',
+                    'lat' :0,
+                    'lon' :0}
+            names = self._table.GetNames()
+            dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, True)
+            if dlg.ShowModal() == wx.ID_OK:
+                self._table.AddRow([data['name'], data['lon'], data['lat']])
+                self.Reset()
+
+        def edit(event, self=self, row=row):
+            data = {'name':self._table.GetValue(row,0),
+                    'lat' :self._table.GetValue(row,1),
+                    'lon' :self._table.GetValue(row,2)}
+            names = self._table.GetNames()
+            dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, False)
+            if dlg.ShowModal() == wx.ID_OK:
+                self._table.ReplaceRow(row,
+                                       [data['name'], data['lon'], data['lat']])
+                self.Reset()
+
+        def delete(event, self=self, row=row):
+            '''Delete the selected cache'''
+            rows = self.GetSelectedRows()
+            self._table.DeleteRows(rows)
+            self.Reset()
+
+        self.Bind(wx.EVT_MENU, add, id=addID)
+        self.Bind(wx.EVT_MENU, edit, id=editID)
+        self.Bind(wx.EVT_MENU, delete, id=deleteID)
+        self.PopupMenu(menu)
+        menu.Destroy()
+        return
+
+    def Reset(self):
+        """reset the view based on the data in the table.  Call
+        this when rows are added or destroyed"""
+        self._table.ResetView(self)
+        # Use AutoSizeColumns() followed by AutoSizeRows() to avoid issues with
+        # AutoSize() doing both and causing the splittter and scroll bars to
+        # disapear
+        self.AutoSizeColumns()
+        self.AutoSizeRows()
+
+class EditLocation(wx.Dialog):
+    '''Add/Edit a new location'''
+    def __init__(self,parent,id, conf, data, names, new):
+        '''Creates the Add/Edit Location Frame'''
+        if new:
+            caption = _('Add New Location')
+        else:
+            caption = _('Edit location ')+ data['name']
+        wx.Dialog.__init__(self,parent,id,
+            caption,size = (400,90),
+           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
+
+        # Create labels for controls
+        nameName = wx.StaticText(self, wx.ID_ANY, _('Name'), size=(80,-1))
+        latName = wx.StaticText(self, wx.ID_ANY, _('Latitude'), size=(80,-1))
+        lonName = wx.StaticText(self, wx.ID_ANY, _('Longitude'), size=(80,-1))
+
+        # Create controls
+        name = wx.TextCtrl(self, wx.ID_ANY, size=(290, -1),
+            #style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER,
+            validator=LocNameValidator(data, 'name', names))
+        lat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
+            validator=LatValidator(conf, data, 'lat', new))
+        lon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
+            validator=LonValidator(conf, data, 'lon', new))
+
+        # Create Grid for coordinate information and add the controls
+        detailGrid = wx.GridBagSizer(3, 3)
+        detailGrid.Add(nameName, (0,0), (1,1), wx.ALL, 1)
+        detailGrid.Add(name, (0,1), (1,3), wx.ALL, 1)
+        detailGrid.Add(latName, (1,0), (1,1), wx.ALL, 1)
+        detailGrid.Add(lat, (1,1), (1,1), wx.ALL, 1)
+        detailGrid.Add(lonName, (1,2), (1,1), wx.ALL, 1)
+        detailGrid.Add(lon, (1,3), (1,1), wx.ALL, 1)
+
+        # place the Location information in the vertical box
+        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
+        mainBox.Add(detailGrid)
+
+        # Ok and Cancel Buttons to the bottom of the form
+        okButton = wx.Button(self,wx.ID_OK)
+        cancelButton = wx.Button(self,wx.ID_CANCEL)
+        buttonBox = wx.StdDialogButtonSizer()
+        buttonBox.AddButton(okButton)
+        buttonBox.AddButton(cancelButton)
+        buttonBox.Realize()
+
+        mainBox.Add(buttonBox, 0, wx.EXPAND)
+        self.SetSizer(mainBox)
+        self.SetAutoLayout(True)
+
+        self.Show(True)
 
 class ExportOptions(wx.Dialog):
     '''Get the import options from the user'''
@@ -1168,9 +1535,9 @@ class NotEmptyValidator(wx.PyValidator):
         textCtrl = self.GetWindow()
         text = textCtrl.GetValue()
         if len(text) == 0:
+            textCtrl.SetBackgroundColour('pink')
             message = _('The highlighted field must contain some text!')
             wx.MessageBox(message, _('Input Error'))
-            textCtrl.SetBackgroundColour('pink')
             textCtrl.SetFocus()
             textCtrl.Refresh()
             return False
@@ -1190,7 +1557,49 @@ class NotEmptyValidator(wx.PyValidator):
         self.data[self.key] = textCtrl.GetValue()
         return True
 
-class LatLonValidator(wx.PyValidator):
+class LocNameValidator(wx.PyValidator):
+    def __init__(self, data, key, names):
+        wx.PyValidator.__init__(self)
+        self.data = data
+        self.key = key
+        self.names = names
+
+    def Clone(self):
+        return LocNameValidator(self.data, self.key, self.names)
+
+    def Validate(self, win):
+        textCtrl = self.GetWindow()
+        text = textCtrl.GetValue()
+        ok = False
+        if len(text) == 0:
+            message = _('The Location Name field must not be empty')
+        elif text != self.data[self.key] and text in self.names:
+            message = _('The Location Name can not be the same as another Location Name')
+        else:
+            ok = True
+        if ok:
+            textCtrl.SetBackgroundColour(
+                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
+            textCtrl.Refresh()
+            return True
+        else:
+            textCtrl.SetBackgroundColour('pink')
+            wx.MessageBox(message, _('Input Error'))
+            textCtrl.SetFocus()
+            textCtrl.Refresh()
+            return False
+
+    def TransferToWindow(self):
+        textCtrl = self.GetWindow()
+        textCtrl.SetValue(self.data.get(self.key, ""))
+        return True
+
+    def TransferFromWindow(self):
+        textCtrl = self.GetWindow()
+        self.data[self.key] = textCtrl.GetValue()
+        return True
+
+class DegValidator(wx.PyValidator):
     def __init__(self, mode, conf, data, key, new=False):
         wx.PyValidator.__init__(self)
         self.mode = mode
@@ -1200,11 +1609,12 @@ class LatLonValidator(wx.PyValidator):
         self.new = new
 
     def Clone(self):
-        return LatLonValidator(self.mode, self.conf , self.data, self.key, self.new)
+        return DegValidator(self.mode, self.conf , self.data, self.key, self.new)
 
     def Validate(self, win):
         textCtrl = self.GetWindow()
         if strToDeg(textCtrl.GetValue(), self.mode) == None:
+            textCtrl.SetBackgroundColour('pink')
             message = _('The highlighted field must be in one of the following formats:')
             if self.mode == 'lat':
                 message = message + '''
@@ -1224,7 +1634,6 @@ class LatLonValidator(wx.PyValidator):
     12 34 45.6
     12.34567'''
             wx.MessageBox(message, _('Input Error'))
-            textCtrl.SetBackgroundColour('pink')
             textCtrl.SetFocus()
             textCtrl.Refresh()
             return False
@@ -1249,6 +1658,13 @@ class LatLonValidator(wx.PyValidator):
         self.data[self.key] = strToDeg(textCtrl.GetValue(), self.mode)
         return True
 
+class LatValidator(DegValidator):
+    def __init__(self, conf, data, key, new=False):
+        DegValidator.__init__(self, 'lat', conf, data, key, new)
+
+class LonValidator(DegValidator):
+    def __init__(self, conf, data, key, new=False):
+        DegValidator.__init__(self, 'lon', conf, data, key, new)
 
 class CorrectLatLon(wx.Dialog):
     '''Get the import options from the user'''
@@ -1267,13 +1683,13 @@ class CorrectLatLon(wx.Dialog):
 
         # Create controls
         oLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatLonValidator('lat', conf, data, 'lat'))
+            validator=LatValidator(conf, data, 'lat'))
         oLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatLonValidator('lon', conf, data, 'lon'))
+            validator=LonValidator(conf, data, 'lon'))
         cLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatLonValidator('lat', conf, data, 'clat', new))
+            validator=LatValidator(conf, data, 'clat', new))
         cLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatLonValidator('lon', conf, data, 'clon', new))
+            validator=LonValidator(conf, data, 'clon', new))
 
         comment = wx.TextCtrl(self, wx.ID_ANY, size=(200, 100),
             style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER,
@@ -1335,6 +1751,9 @@ class MainWindow(wx.Frame):
         self.displayCache = None
         w = self.conf.common.mainWidth or 700
         h = self.conf.common.mainHeight or 500
+        # check that the Current location is in the db
+        if (self.conf.common.currentLoc or 'Default') not in self.db.getLocationNameList():
+            self.conf.common.currentLoc = self.db.getLocationNameList()[0]
         wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (w,h),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
@@ -1840,9 +2259,10 @@ class MainWindow(wx.Frame):
 
 
     def OnPrefs(self, event=None):
-        dlg = PreferencesWindow(self,wx.ID_ANY,self.conf)
+        dlg = PreferencesWindow(self, wx.ID_ANY, self.conf, self.db)
         if dlg.ShowModal() == wx.ID_OK:
             self.cacheGrid.UpdateUserDataLabels()
+            self.updateLocations()
             self.updateCurrentLocation(
                 self.conf.common.currentLoc or 'Default')
         dlg.Destroy()
