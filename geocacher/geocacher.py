@@ -1168,8 +1168,8 @@ class NotEmptyValidator(wx.PyValidator):
         textCtrl = self.GetWindow()
         text = textCtrl.GetValue()
         if len(text) == 0:
-            message = 'The highlighted field must contain some text!'
-            wx.MessageBox(message, 'Error')
+            message = _('The highlighted field must contain some text!')
+            wx.MessageBox(message, _('Input Error'))
             textCtrl.SetBackgroundColour('pink')
             textCtrl.SetFocus()
             textCtrl.Refresh()
@@ -1205,7 +1205,7 @@ class LatLonValidator(wx.PyValidator):
     def Validate(self, win):
         textCtrl = self.GetWindow()
         if strToDeg(textCtrl.GetValue(), self.mode) == None:
-            message = 'The highlighted fiels must be in one of the following formats:'
+            message = _('The highlighted field must be in one of the following formats:')
             if self.mode == 'lat':
                 message = message + '''
     N12 34.345
@@ -1223,7 +1223,7 @@ class LatLonValidator(wx.PyValidator):
     12 34.345
     12 34 45.6
     12.34567'''
-            wx.MessageBox(message, 'Error')
+            wx.MessageBox(message, _('Input Error'))
             textCtrl.SetBackgroundColour('pink')
             textCtrl.SetFocus()
             textCtrl.Refresh()
