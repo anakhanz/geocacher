@@ -485,9 +485,11 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def AppendColumn(self,col):
         self.colNames.append(col)
+        if len(self.colNames) == 1:
+            self.ReloadCaches()
 
     def InsertColumn(self,pos,col):
-        self.colNames.insert(pos-1,col)
+        self.colNames.insert(pos,col)
 
     def MoveColumn(self,frm,to):
         grid = self.GetView()
@@ -804,18 +806,32 @@ class CacheGrid(Grid.Grid):
         """(col, evt) -> display a popup menu when a column label is
         right clicked"""
         x = self.GetColSize(col)/2
-        appMenu = wx.Menu()
         activeColNames = self._table.GetCols()
-        colIds={}
+
+        # Build a list mapping column display names to table cloum names
         colDispName=[]
         for colName in self._table.GetAllCols():
             if colName not in activeColNames:
                 colDispName.append([self._table.GetColLabelValueByName(colName), colName])
         colDispName.sort()
+        # build the append column menu and the dictionary mapping the ID of the
+        # selected menu item to the table column name
+
+        appMenu = wx.Menu()
+        appColIds={}
         for colDisp,colName in colDispName:
             colId = wx.NewId()
-            colIds[colId]=colName
+            appColIds[colId]=colName
             appMenu.Append(colId, colDisp)
+
+        # build the insert column menu and the dictionary mapping the ID of the
+        # selected menu item to the table column name
+        insMenu = wx.Menu()
+        insColIds={}
+        for colDisp,colName in colDispName:
+            colId = wx.NewId()
+            insColIds[colId]=colName
+            insMenu.Append(colId, colDisp)
         menu = wx.Menu()
         id1 = wx.NewId()
         sortID = wx.NewId()
@@ -827,6 +843,7 @@ class CacheGrid(Grid.Grid):
         menu.Append(id1, _("Delete Col(s)"))
         menu.Append(sortID, _("Sort Column"))
         menu.AppendMenu(wx.ID_ANY, _("Append Column"), appMenu)
+        menu.AppendMenu(wx.ID_ANY, _("Insert Column"), insMenu)
 
         def delete(event, self=self, col=col):
             cols = self.GetSelectedCols()
@@ -837,7 +854,14 @@ class CacheGrid(Grid.Grid):
             self._table.SortColumn(col)
             self.Reset()
 
-        def append(event, self=self, colIds=colIds):
+        def insert(event, self=self, colIds=insColIds, col=col):
+            if col == -1:
+                self._table.AppendColumn(colIds[event.Id])
+            else:
+                self._table.InsertColumn(col, colIds[event.Id])
+            self.Reset()
+
+        def append(event, self=self, colIds=appColIds):
             self._table.AppendColumn(colIds[event.Id])
             self.Reset()
 
@@ -845,8 +869,11 @@ class CacheGrid(Grid.Grid):
 
         if len(colNames) == 1:
             self.Bind(wx.EVT_MENU, sort, id=sortID)
-        for colId in colIds:
+        for colId in appColIds:
             self.Bind(wx.EVT_MENU, append, id=colId)
+        for colId in insColIds:
+            self.Bind(wx.EVT_MENU, insert, id=colId)
+
 
         self.PopupMenu(menu)
         menu.Destroy()
