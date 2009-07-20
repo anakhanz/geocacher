@@ -108,7 +108,7 @@ class DB:
                         corrected=False,
                         clat=0.0,
                         clon=0.0,
-                        cnote='',
+                        cnote="",
                         user_comments="",
                         user_flag=False,
                         user_data1="",
@@ -147,7 +147,6 @@ class DB:
                             corrected  = boolToText(corrected),
                             clat       = "%f" % clat,
                             clon       = "%f" % clon,
-                            cnote      = "%s" % cnote,
                             user_flag  = boolToText(user_flag),
                             user_data1 = "%s" % user_data1,
                             user_data2 = "%s" % user_data2,
@@ -168,6 +167,9 @@ class DB:
         userComments = Element("user_comments")
         userComments.text = user_comments
         newCache.append(userComments)
+        cNote  = Element("cnote")
+        cNote.text = cnote
+        newCache.append(cNote)
         self.root.append(newCache)
         return Cache(newCache)
 
@@ -482,12 +484,15 @@ class Cache(object):
 
     clon = property(__getCLon, __setCLon)
 
-    # TODO: convert cnote to a tag as it can contain spaces and new lines
-    def __getCNote(self):    return self.__node.attrib["cnote"]
+    def __getCNote(self):
+        ret = self.__node.xpath("cnote")[0].text
+        if ret == None:
+            ret = ""
+        return ret
 
     def __setCNote(self,t):
         assert type(t)==unicode or type(t)==str
-        self.__node.attrib["cnote"] = t
+        self.__node.xpath("cnote")[0].text = t
 
     cnote = property(__getCNote, __setCNote)
 
