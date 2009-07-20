@@ -397,7 +397,7 @@ class CacheDataTable(Grid.PyGridTableBase):
                                          cache.currentLon,miles=True)
         else:
             dist = '%0.2f km' % distance(hLat,hLon,cache.currentLat,
-                                         cache.currentLon,miles=True)
+                                         cache.currentLon,miles=False)
         cBear = cardinalBearing(hLat,hLon,cache.currentLat,cache.currentLon)
         return dist, cBear
 
