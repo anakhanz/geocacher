@@ -1320,7 +1320,7 @@ class LocationsGrid(Grid.Grid):
             names = self._table.GetNames()
             dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, True)
             if dlg.ShowModal() == wx.ID_OK:
-                self._table.AddRow([data['name'], data['lon'], data['lat']])
+                self._table.AddRow([data['name'], data['lat'], data['lon']])
                 self.Reset()
 
         def edit(event, self=self, row=row):
@@ -1331,7 +1331,7 @@ class LocationsGrid(Grid.Grid):
             dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, False)
             if dlg.ShowModal() == wx.ID_OK:
                 self._table.ReplaceRow(row,
-                                       [data['name'], data['lon'], data['lat']])
+                                       [data['name'], data['lat'], data['lon']])
                 self.Reset()
 
         def delete(event, self=self, row=row):

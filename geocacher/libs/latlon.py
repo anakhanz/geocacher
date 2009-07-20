@@ -119,6 +119,8 @@ def strToDeg (s, mode='pure'):
     reStart = '^[' + neg + pos + ']?'
 
     s = s.capitalize()
+    #Check if the value is negative before stripping the sign character
+    negative = s[0] in neg
 
     # Extract the single float value from the text
     # hdd.ddddd
@@ -141,8 +143,8 @@ def strToDeg (s, mode='pure'):
     else:
         return None
     # Check to see if changing sign is necessary
-    if s[0] in neg:
-        d = d * -1.0
+    if negative:
+        d = -d
     # Check that value is within range
     if minimum <= d <= maximum:
         return d
@@ -211,3 +213,4 @@ def latToStr(d, format='hdd mm.mmm'):
 def lonToStr(d, format='hdd mm.mmm'):
     '''Returns the given longitude in the given format as a string.'''
     return degToStr(d, format=format, mode='lon')
+
