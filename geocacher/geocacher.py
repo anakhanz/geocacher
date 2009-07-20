@@ -3,6 +3,19 @@
 
 # TODO: Add icon to main Window
 # TODO: Add view only mode
+# TODO: Add view additional waypoints
+# TODO: Add view Travel bugs
+# TODO: Add filtering by distance
+# TODO: Add Sub-menu item for selecting the current location
+# TODO: Splt toolbar and add menu items to show/hide toolbars
+# TODO: Replace Mi/km text in Distance column with a smart distance renderer
+# TODO: Make hyperlink in main window active and add option to display as cache code/name
+# TODO: Add "Mark found" and Mark Found today menu items
+# TODO: Add "Mark DNF" and "Mark DNF today" menu items
+# TODO: Make relivant menu items pop-up on right-click on cell in cache grid
+# TODO: Enable context menu key in main cache grid
+# TODO: nable context menu key in locations grid
+
 
 from datetime import datetime
 import logging
@@ -22,6 +35,7 @@ except:
 import wx
 import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
+import  wx.lib.scrolledpanel as Scrolled
 import wx.html
 
 import locale
@@ -721,6 +735,7 @@ class CacheGrid(Grid.Grid):
         deleteID = wx.NewId()
         correctID = wx.NewId()
         rmCorrID = wx.NewId()
+        viewLogsID = wx.NewId()
         x = self.GetRowSize(row)/2
 
         if not self.GetSelectedRows():
@@ -730,11 +745,13 @@ class CacheGrid(Grid.Grid):
         xo, yo = evt.GetPosition()
         menu.Append(addID, _('Add Cache'))
         menu.Append(deleteID, _('Delete Cache(s)'))
+        menu.AppendSeparator()
         if cache.corrected:
             menu.Append(correctID, _('Edit Cordinate Correction'))
             menu.Append(rmCorrID, _('Remove Cordinate Correction'))
         else:
             menu.Append(correctID, _('Correct Cordinates'))
+        menu.Append(viewLogsID, _('View Logs'))
 
         def add(event, self=self, row=row):
             # TODO implement manually adding cache
@@ -788,10 +805,15 @@ class CacheGrid(Grid.Grid):
                 self._table.ReloadRow(row)
                 self.Reset()
 
+        def viewLogs(event, self=self, cache=cache):
+            dlg = ViewLogsWindow(self.mainWin, cache)
+            dlg.ShowModal()
+
         self.Bind(wx.EVT_MENU, add, id=addID)
         self.Bind(wx.EVT_MENU, delete, id=deleteID)
         self.Bind(wx.EVT_MENU, correct, id=correctID)
         self.Bind(wx.EVT_MENU, remCorrection, id=rmCorrID)
+        self.Bind(wx.EVT_MENU, viewLogs, id=viewLogsID)
         self.PopupMenu(menu)
         menu.Destroy()
         return
@@ -915,7 +937,7 @@ class PreferencesWindow(wx.Dialog):
         self.db = db
         self.labelWidth = 150
         self.entryWidth = 200
-        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Preferences"),size = (400,500),
+        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Preferences"),size = (400,350),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
 
         nb = wx.Notebook(self)
@@ -1410,6 +1432,71 @@ class EditLocation(wx.Dialog):
 
         self.Show(True)
 
+class ViewLogsWindow(wx.Dialog):
+    """View Logs Dialog"""
+    def __init__(self,parent,cache):
+        """Creates the Liew Logs Frame"""
+        # TODO: add box around each log entry
+
+        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Logs for ")+cache.code,size = (650,500),
+                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
+
+        # Create a scrolled panel and a vertical sizer within it to take the logs
+        sw = Scrolled.ScrolledPanel(self, -1, size=(620, 450),
+                                 style = wx.TAB_TRAVERSAL)
+        logSizer = wx.BoxSizer(orient=wx.VERTICAL)
+
+        # Create a block for each log and add it to the logs sizer
+        for log in cache.getLogs():
+            gbs = wx.GridBagSizer(5, 5)
+            object = wx.StaticText(sw, wx.ID_ANY, _('Date'))
+            gbs.Add(object, (0,0), (1,1))
+            object = wx.TextCtrl(sw, wx.ID_ANY, log.date.strftime("%x"),
+                size=(100, -1))
+            object.SetEditable(False)
+            gbs.Add(object, (0,1), (1,1))
+            object = wx.StaticText(sw, wx.ID_ANY, _('Type'))
+            gbs.Add(object, (0,2), (1,1))
+            object = wx.TextCtrl(sw, wx.ID_ANY, log.type, size=(100, -1))
+            object.SetEditable(False)
+            gbs.Add(object, (0,3), (1,1))
+            object = wx.StaticText(sw, wx.ID_ANY, _('Finder'))
+            gbs.Add(object, (0,4), (1,1))
+            object = wx.TextCtrl(sw, wx.ID_ANY, log.finder_name, size=(100, -1))
+            object.SetEditable(False)
+            gbs.Add(object, (0,5), (1,1))
+            object = wx.StaticText(sw, wx.ID_ANY, _('Message'))
+            gbs.Add(object, (1,0), (1,6))
+            object = wx.TextCtrl(sw, wx.ID_ANY, log.text,size=(600, 100),
+                style=wx.TE_MULTILINE |wx.TE_WORDWRAP)
+            object.SetEditable(False)
+            gbs.Add(object, (2,0), (1,6))
+            logSizer.Add(gbs)
+            logSizer.AddSpacer(20)
+
+        # Final Setup of the scrolled panel
+        sw.SetSizer(logSizer)
+        sw.SetAutoLayout(1)
+        sw.SetupScrolling()
+
+        # Buttons
+        closeButton = wx.Button(self,wx.ID_CLOSE)
+
+        self.Bind(wx.EVT_BUTTON, self.OnClose,closeButton)
+
+        buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
+        buttonBox.Add(closeButton, 0, wx.EXPAND)
+
+        # finally, put the scrolledPannel and buttons in a sizerto manage the layout
+
+        mainSizer = wx.BoxSizer(orient=wx.VERTICAL)
+        mainSizer.Add(sw)
+        mainSizer.Add(buttonBox, 0, wx.EXPAND)
+        self.SetSizer(mainSizer)
+
+    def OnClose(self, event=None):
+        self.Destroy()
+
 class ExportOptions(wx.Dialog):
     '''Get the import options from the user'''
     def __init__(self,parent,id,type='simple',gc=False,logs=False,tbs=False,addWpts=False,sepAddWpts=True,zip=False):
@@ -1698,7 +1785,7 @@ class CorrectLatLon(wx.Dialog):
     def __init__(self,parent,id, conf, code, data, new):
         '''Creates the Lat/Lon correction Frame'''
         wx.Dialog.__init__(self,parent,id,
-            _('Lat/Lon Correction for ')+code,#size = (300,300),
+            _('Lat/Lon Correction for ')+code,size = (350,250),
            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
 
         # Create labels for controls
@@ -1911,7 +1998,8 @@ class MainWindow(wx.Frame):
         self.CreateStatusBar()
 
     def updateDetail(self, newCache=''):
-        # TODO: add further information to display
+        # TODO: pu loading of cache detail int it's own thread
+        # TODO: add further information to cache detail display
         # TODO: add option to view actual webpage
         newCacheObj = self.db.getCacheByCode(newCache)
         if newCacheObj != None:
