@@ -74,29 +74,29 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
             updated = True
 
         if ((cache.gpx_date<=gpxDate and mode=="update") or mode=="replace"):
-            cache.setLon(lon)
-            cache.setLat(lat)
-            cache.setId(id)
-            cache.setAvailable(available)
-            cache.setArchived(archived)
-            cache.setName(name)
-            cache.setUrl(url)
-            cache.setSymbol(symbol)
-            cache.setPlaced(placed)
-            cache.setPlaced_by(placed_by)
-            cache.setOwner(owner)
-            cache.setOwner_id(owner_id)
-            cache.setType(cachetype)
-            cache.setContainer(container)
-            cache.setDifficulty(difficulty)
-            cache.setTerrain(terrain)
-            cache.setState(state)
-            cache.setCountry(country)
-            cache.setShort_desc(short_desc)
-            cache.setShort_desc_html(short_desc_html)
-            cache.setLong_desc(long_desc)
-            cache.setLong_desc_html(long_desc_html)
-            cache.setEncoded_hints(hints)
+            cache.lon = lon
+            cache.lat = lat
+            cache.id = id
+            cache.available = available
+            cache.archived = archived
+            cache.name = name
+            cache.url = url
+            cache.symbol = symbol
+            cache.placed = placed
+            cache.placed_by = placed_by
+            cache.owner = owner
+            cache.owner_id = owner_id
+            cache.type = cachetype
+            cache.container = container
+            cache.difficulty = difficulty
+            cache.terrain = terrain
+            cache.state = state
+            cache.country = country
+            cache.short_desc = short_desc
+            cache.short_desc_html = short_desc_html
+            cache.long_desc = long_desc
+            cache.long_desc_html = long_desc_html
+            cache.encoded_hints = hints
         # Always update Logs and travel bugs
         foundUpdated=False
         for wptLog in wpt.xpath("gs:cache//gs:logs//gs:log", namespaces=NS):
@@ -118,51 +118,51 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                 changed = True
             else:
                 if logDate != log.date:
-                    log.setDate(logDate)
+                    log.date = logDate
                     changed = True
                 if logType != log.type:
-                    log.setType(logType)
+                    log.type = logType
                     changed = True
                 if logFinderId != log.finder_id:
-                    log.setFinder_id(logFinderId)
+                    log.finder_id = logFinderId
                     changed = True
                 if logFinderName != log.finder_name:
-                    log.setFinder_name(logFinderName)
+                    log.finder_name = logFinderName
                     changed = True
                 if logEncoded != log.encoded:
-                    log.setEncoded(logEncoded)
+                    log.encoded = logEncoded
                     changed = True
                 if logText != log.text:
-                    log.setText(logText)
+                    log.text = logText
                     changed = True
                 updated |= changed
             # Update Own find details if this is the first log with changes
             # in it that is of the "Found it" type and the finderId or
             # finderName matches the users values
             if ((not foundUpdated) and changed and(logFinderId == userId or logFinderName == userName)):
-                if logType =="Found it":
-                    cache.setFound(True)
-                    cache.setFound_date(logDate)
+                if logType =='Found it':
+                    cache.found = True
+                    cache.found_date = logDate
                 elif logType == "Didn't find it":
-                    cache.setDnf(True)
-                    cache.setDnf_date(logDate)
-                if logType =="Found it" or logType == "Didn't find it":
-                    cache.setOwn_log(logText)
-                    cache.setOwn_log_encoded(logEncoded)
+                    cache.dnf = True
+                    cache.dnf_date = logDate
+                if logType =='Found it' or logType == "Didn't find it":
+                    cache.own_log = logText
+                    cache.own_log_encoded = logEncoded
                     foundUpdated=True
         wptTbRefs = []
         cacheTbRefs = cache.getTravelBugRefs()
-        for wptTb in wpt.xpath("gs:cache//gs:travelbugs//gs:travelbug", namespaces=NS):
-            wptTbRef = wptTb.attrib["ref"]
+        for wptTb in wpt.xpath('gs:cache//gs:travelbugs//gs:travelbug', namespaces=NS):
+            wptTbRef = wptTb.attrib['ref']
             wptTbRefs.append(wptTbRef)
-            wptTbId = wptTb.attrib["id"]
-            wptTbName = getTextFromPath(wptTb,"gs:name",NS)
+            wptTbId = wptTb.attrib['id']
+            wptTbName = getTextFromPath(wptTb,'gs:name',NS)
             if not (wptTbRef in cacheTbRefs):
                 cacheTb = cache.addTravelBug(wptTbRef,id=wptTbId,name=wptTbName)
             else:
                 cacheTb = cache.getTravelBugByRef(wptTbRef)
-                cacheTb.setId(wptTbId)
-                cacheTb.setName(wptTbName)
+                cacheTb.od = wptTbId
+                cacheTb.name = wptTbName
         # Go through the list of travel bugs in the cache and delete any
         # that are not listed in the wpt
         for cacheTbRef in cacheTbRefs:
@@ -179,29 +179,29 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
         updated = False
         lon = float(wpt.attrib['lon'])
         lat = float(wpt.attrib['lat'])
-        id = getTextFromPath(wpt,"gpx:name",NS)
-        time = textToDateTime(getTextFromPath(wpt,"gpx:time",NS))
-        cmt = getTextFromPath(wpt,"gpx:cmt",NS)
-        name = getTextFromPath(wpt,"gpx:desc",NS)
-        url = getTextFromPath(wpt,"gpx:url",NS)
-        sym = getTextFromPath(wpt,"gpx:sym",NS)
-        cache = DB.getCacheByCode("GC"+id[2:])
+        id = getTextFromPath(wpt,'gpx:name',NS)
+        time = textToDateTime(getTextFromPath(wpt,'gpx:time',NS))
+        cmt = getTextFromPath(wpt,'gpx:cmt',NS,'')
+        name = getTextFromPath(wpt,'gpx:desc',NS)
+        url = getTextFromPath(wpt,'gpx:url',NS)
+        sym = getTextFromPath(wpt,'gpx:sym',NS)
+        cache = DB.getCacheByCode('GC'+id[2:])
         if cache != None:
             addWaypoint = cache.getAddWaypointByCode(id)
             if addWaypoint == None:
                 cache.addAddWaypoint(id,lat=lat,lon=lon,name=name,url=url,time=time,cmt=cmt,sym=sym)
                 updated = True
             else:
-                addWaypoint.setLat(lat)
-                addWaypoint.setLon(lon)
-                addWaypoint.setTime(time)
-                addWaypoint.setCmt(cmt)
-                addWaypoint.setName(name)
-                addWaypoint.setUrl(url)
-                addWaypoint.setSym(sym)
+                addWaypoint.lat = lat
+                addWaypoint.lon = lon
+                addWaypoint.time = time
+                addWaypoint.cmt = cmt
+                addWaypoint.name = name
+                addWaypoint.url = url
+                addWaypoint.sym = sym
             if updated:
-                cache.setGpx_date(gpxDate)
-                cache.setSource(os.path.abspath(filename))
+                cache.gpx_date = gpxDate
+                cache.source = os.path.abspath(filename)
 
 def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple=False,full=False):
     assert os.path.isdir(os.path.split(filename)[0])
@@ -216,7 +216,7 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
     root = gpxInit(caches)
 
     for cache in caches:
-        wpt = Element("wpt", lat='%f' % cache.lat, lon='%f' % cache.lon)
+        wpt = Element('wpt', lat='%f' % cache.lat, lon='%f' % cache.lon)
         root.append(wpt)
         if cache.gpx_date == None and cache.user_date == None:
             cacheTime = datetime.now()

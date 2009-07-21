@@ -212,25 +212,28 @@ class Cache(object):
     code = property(__getCode)
 
     def __getId(self):    return self.__node.attrib["id"]
-    id = property(__getId)
 
-    def setId(self,t):
+    def __setId(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["id"] = t
 
-    def __getLat(self):    return float(self.__node.attrib["lat"])
-    lat = property(__getLat)
+    id = property(__getId, __setId)
 
-    def setLat(self,f):
+    def __getLat(self):    return float(self.__node.attrib["lat"])
+
+    def __setLat(self,f):
         assert type(f) == float
         self.__node.attrib["lat"] = "%f" % f
 
-    def __getLon(self):    return float(self.__node.attrib["lon"])
-    lon = property(__getLon)
+    lat = property(__getLat, __setLat)
 
-    def setLon(self,f):
+    def __getLon(self):    return float(self.__node.attrib["lon"])
+
+    def __setLon(self,f):
         assert type(f) == float
         self.__node.attrib["lon"] = "%f" % f
+
+    lon = property(__getLon, __setLon)
 
     def __getCurrentLat(self):
         if self.corrected:
@@ -247,18 +250,20 @@ class Cache(object):
     currentLon = property(__getCurrentLon)
 
     def __getName(self):    return self.__node.attrib["name"]
-    name = property(__getName)
 
-    def setName(self,t):
+    def __setName(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["name"] = t
 
-    def __getUrl(self):    return self.__node.attrib["url"]
-    url = property(__getUrl)
+    name = property(__getName,__setName)
 
-    def setUrl(self,t):
+    def __getUrl(self):    return self.__node.attrib["url"]
+
+    def __setUrl(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["url"] = t
+
+    url = property(__getUrl,__setUrl)
 
     def __getLocked(self):    return textToBool(self.__node.attrib["locked"])
     locked = property(__getLocked)
@@ -272,192 +277,223 @@ class Cache(object):
     user_date = property(__getUser_date, __setUser_date)
 
     def __getGpx_date(self):    return textToDateTime(self.__node.attrib["gpx_date"])
-    gpx_date = property(__getGpx_date)
 
-    def setGpx_date(self,dt):
+    def __setGpx_date(self,dt):
         assert type(dt)==datetime.datetime
         self.__node.attrib["gpx_date"] = dateTimeToText(dt)
 
-    def __getSymbol(self):    return self.__node.attrib["symbol"]
-    symbol = property(__getSymbol)
+    gpx_date = property(__getGpx_date, __setGpx_date)
 
-    def setSymbol(self,t):
+    def __getSymbol(self):    return self.__node.attrib["symbol"]
+
+    def __setSymbol(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["symbol"] = t
 
+    symbol = property(__getSymbol, __setSymbol)
+
     def __getPlaced(self):
         return textToDateTime(self.__node.attrib["placed"])
-    placed = property(__getPlaced)
 
-    def setPlaced(self,dt):
+    def __setPlaced(self,dt):
         assert type(dt)==datetime.datetime
         self.__node.attrib["placed"] = dateTimeToText(dt)
 
-    def __getPlaced_by(self):    return self.__node.attrib["placed_by"]
-    placed_by = property(__getPlaced_by)
+    placed = property(__getPlaced, __setPlaced)
 
-    def setPlaced_by(self,t):
+    def __getPlaced_by(self):    return self.__node.attrib["placed_by"]
+
+    def __setPlaced_by(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["placed_by"] = t
 
-    def __getOwner(self):    return self.__node.attrib["owner"]
-    owner = property(__getOwner)
+    placed_by = property(__getPlaced_by, __setPlaced_by)
 
-    def setOwner(self,t):
+    def __getOwner(self):    return self.__node.attrib["owner"]
+
+    def __setOwner(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["owner"] = t
 
-    def __getOwner_id(self):    return self.__node.attrib["owner_id"]
-    owner_id = property(__getOwner_id)
+    owner = property(__getOwner, __setOwner)
 
-    def setOwner_id(self,t):
+    def __getOwner_id(self):    return self.__node.attrib["owner_id"]
+
+    def __setOwner_id(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["owner_id"] = t
 
-    def __getContainer(self):    return self.__node.attrib["container"]
-    container = property(__getContainer)
+    owner_id = property(__getOwner_id, __setOwner_id)
 
-    def setContainer(self,t):
+    def __getContainer(self):    return self.__node.attrib["container"]
+
+    def __setContainer(self,t):
         assert type(t)==unicode or type(t)==str
         # TODO: add assertion that the container type is a valid one
         self.__node.attrib["container"] = t
 
-    def __getDifficulty(self):    return float(self.__node.attrib["difficulty"])
-    difficulty = property(__getDifficulty)
+    container = property(__getContainer, __setContainer)
 
-    def setDifficulty(self,f):
+    def __getDifficulty(self):    return float(self.__node.attrib["difficulty"])
+
+    def __setDifficulty(self,f):
         assert type(f)==float
         assert f >= 0 and f <=5
         self.__node.attrib["difficulty"] = "%1.1f" % f
 
-    def __getTerrain(self):    return float(self.__node.attrib["terrain"])
-    terrain = property(__getTerrain)
+    difficulty = property(__getDifficulty, __setDifficulty)
 
-    def setTerrain(self,f):
+    def __getTerrain(self):    return float(self.__node.attrib["terrain"])
+
+    def __setTerrain(self,f):
         assert type(f)==float
         assert f >= 0 and f <=5
         self.__node.attrib["terrain"] = "%1.1f" % f
 
-    def __getType(self):    return self.__node.attrib["type"]
-    type= property(__getType)
+    terrain = property(__getTerrain, __setTerrain)
 
-    def setType(self,t):
+    def __getType(self):    return self.__node.attrib["type"]
+
+    def __setType(self,t):
         assert type(t)==unicode or type(t)==str
         # TODO: add assertion that the type is a valid one
         self.__node.attrib["type"] = t
 
-    def __getAvailable(self):    return textToBool(self.__node.attrib["available"])
-    available = property(__getAvailable)
+    type= property(__getType, __setType)
 
-    def setAvailable(self,b):
+    def __getAvailable(self):    return textToBool(self.__node.attrib["available"])
+
+    def __setAvailable(self,b):
         assert type(b) == bool
         self.__node.attrib["available"] = boolToText(b)
 
-    def __getArchived(self):    return textToBool(self.__node.attrib["archived"])
-    archived = property(__getArchived)
+    available = property(__getAvailable, __setAvailable)
 
-    def setArchived(self,b):
+    def __getArchived(self):    return textToBool(self.__node.attrib["archived"])
+
+    def __setArchived(self,b):
         assert type(b) == bool
         self.__node.attrib["archived"] = boolToText(b)
 
-    def __getState(self):    return self.__node.attrib["state"]
-    state = property(__getState)
+    archived = property(__getArchived, __setArchived)
 
-    def setState(self,t):
+    def __getState(self):    return self.__node.attrib["state"]
+
+    def __setState(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["state"] = t
 
-    def __getCountry(self):    return self.__node.attrib["country"]
-    country = property(__getCountry)
+    state = property(__getState, __setState)
 
-    def setCountry(self,t):
+    def __getCountry(self):    return self.__node.attrib["country"]
+
+    def __setCountry(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["country"] = t
 
+    country = property(__getCountry, __setCountry)
+
     def __getShort_desc(self):
         return self.__node.xpath("short_description")[0].text
-    short_desc = property(__getShort_desc)
 
-    def setShort_desc(self,t):
+    def __setShort_desc(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("short_description")[0].text = t
 
+    short_desc = property(__getShort_desc, __setShort_desc)
+
     def __getShort_desc_html(self):
         return textToBool(self.__node.xpath("short_description")[0].attrib["html"])
-    short_desc_html = property(__getShort_desc_html)
 
-    def setShort_desc_html(self,b):
+    def __setShort_desc_html(self,b):
         assert type(b)==bool
         self.__node.xpath("short_description")[0].attrib["html"] = boolToText(b)
 
+    short_desc_html = property(__getShort_desc_html, __setShort_desc_html)
+
     def __getLong_desc(self):
         return self.__node.xpath("long_description")[0].text
-    long_desc = property(__getLong_desc)
 
-    def setLong_desc(self,t):
+    def __setLong_desc(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("long_description")[0].text = t
 
+    long_desc = property(__getLong_desc, __setLong_desc)
+
     def __getLong_desc_html(self):
         return textToBool(self.__node.xpath("long_description")[0].attrib["html"])
-    long_desc_html = property(__getLong_desc_html)
 
-    def setLong_desc_html(self,b):
+    def __setLong_desc_html(self,b):
         assert type(b)==bool
         self.__node.xpath("long_description")[0].attrib["html"] = boolToText(b)
 
+    long_desc_html = property(__getLong_desc_html, __setLong_desc_html)
+
     def __getEncoded_hints(self):
         return self.__node.xpath("encoded_hints")[0].text
-    encoded_hints = property(__getEncoded_hints)
 
-    def setEncoded_hints(self,t):
+    def __setEncoded_hints(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("encoded_hints")[0].text = t
 
-    def __getFound(self):    return textToBool(self.__node.attrib["found"])
-    found = property(__getFound)
+    encoded_hints = property(__getEncoded_hints, __setEncoded_hints)
 
-    def setFound(self,b):
+    def __getFound(self):    return textToBool(self.__node.attrib["found"])
+
+    def __setFound(self,b):
         assert type(b) == bool
         self.__node.attrib["found"] = boolToText(b)
 
+    found = property(__getFound, __setFound)
+
     def __getFound_date(self):
         return textToDateTime(self.__node.attrib["found_date"])
-    found_date = property(__getFound_date)
 
-    def setFound_date(self,dt):
-        assert type(dt)==datetime.datetime
-        self.__node.attrib["found_date"] = dateTimeToText(dt)
+    def __setFound_date(self,dt):
+        assert type(dt) == datetime.datetime or dt == None
+        if dt == None:
+            self.__node.attrib["found_date"] = ''
+        else:
+            self.__node.attrib["found_date"] = dateTimeToText(dt)
+
+    found_date = property(__getFound_date, __setFound_date)
 
     def __getDnf(self):    return textToBool(self.__node.attrib["dnf"])
-    dnf = property(__getDnf)
 
-    def setDnf(self,b):
+    def __setDnf(self,b):
         assert type(b) == bool
         self.__node.attrib["dnf"] = boolToText(b)
 
+    dnf = property(__getDnf, __setDnf)
+
     def __getDnf_date(self):
         return textToDateTime(self.__node.attrib["dnf_date"])
-    dnf_date = property(__getDnf_date)
 
-    def setDnf_date(self,dt):
-        assert type(dt)==datetime.datetime
-        self.__node.attrib["dnf_date"] = dateTimeToText(dt)
+    def __setDnf_date(self,dt):
+        assert type(dt)==datetime.datetime or dt == None
+        if dt == None:
+            self.__node.attrib["dnf_date"] = ''
+        else:
+            self.__node.attrib["dnf_date"] = dateTimeToText(dt)
+
+    dnf_date = property(__getDnf_date, __setDnf_date)
 
     def __getOwn_log(self):    return self.__node.xpath("own_log")[0].text
-    own_log = property(__getOwn_log)
 
-    def setOwn_log(self,t):
+    def __setOwn_log(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("own_log")[0].text = t
 
+    own_log = property(__getOwn_log, __setOwn_log)
+
     def __getOwn_log_encoded(self):
         return textToBool(self.__node.xpath("own_log")[0].attrib["encoded"])
-    own_log_encoded = property(__getOwn_log_encoded)
 
-    def setOwn_log_encoded(self,b):
+    def __setOwn_log_encoded(self,b):
         assert type(b)==bool
         self.__node.xpath("own_log")[0].attrib["encoded"] = boolToText(b)
+
+    own_log_encoded = property(__getOwn_log_encoded, __setOwn_log_encoded)
 
     def __getCorrected(self):
         return textToBool(self.__node.attrib["corrected"])
@@ -497,55 +533,62 @@ class Cache(object):
     cnote = property(__getCNote, __setCNote)
 
     def __getSource(self):    return self.__node.attrib["source"]
-    source = property(__getSource)
 
-    def setSource(self,t):
+    def __setSource(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["source"] = t
 
+    source = property(__getSource, __setSource)
+
     def __getUser_comments(self):
         return self.__node.xpath("user_comments")[0].text
-    user_comments = property(__getUser_comments)
 
-    def setUser_comments(self,t):
+    def __setUser_comments(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.xpath("user_comments")[0].text = t
 
+    user_comments = property(__getUser_comments, __setUser_comments)
+
     def __getUser_flag(self):
         return textToBool(self.__node.attrib["user_flag"])
-    user_flag = property(__getUser_flag)
 
-    def setUser_flag(self,b):
+    def __setUser_flag(self,b):
         assert type(b) == bool
         self.__node.attrib["user_flag"] = boolToText(b)
 
-    def __getUser_data1(self):    return self.__node.attrib["user_data1"]
-    user_data1 = property(__getUser_data1)
+    user_flag = property(__getUser_flag, __setUser_flag)
 
-    def setUser_data1(self,t):
+    def __getUser_data1(self):    return self.__node.attrib["user_data1"]
+
+    def __setUser_data1(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["user_data1"] = t
 
-    def __getUser_data2(self):    return self.__node.attrib["user_data2"]
-    user_data2 = property(__getUser_data2)
+    user_data1 = property(__getUser_data1, __setUser_data1)
 
-    def setUser_data2(self,t):
+    def __getUser_data2(self):    return self.__node.attrib["user_data2"]
+
+    def __setUser_data2(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["user_data2"] = t
 
-    def __getUser_data3(self):    return self.__node.attrib["user_data3"]
-    user_data3 = property(__getUser_data3)
+    user_data2 = property(__getUser_data2, __setUser_data2)
 
-    def setUser_data3(self,t):
+    def __getUser_data3(self):    return self.__node.attrib["user_data3"]
+
+    def __setUser_data3(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["user_data3"] = t
 
-    def __getUser_data4(self):    return self.__node.attrib["user_data4"]
-    user_data4 = property(__getUser_data4)
+    user_data3 = property(__getUser_data3, __setUser_data3)
 
-    def setUser_data4(self,t):
+    def __getUser_data4(self):    return self.__node.attrib["user_data4"]
+
+    def __setUser_data4(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["user_data4"] = t
+
+    user_data4 = property(__getUser_data4, __setUser_data4)
 
     def getLogs(self):
         '''Returns the logs associated with the cache'''
@@ -736,47 +779,53 @@ class Log(object):
     id = property(__getId)
 
     def __getDate(self):    return textToDateTime(self.__node.attrib["date"])
-    date = property(__getDate)
 
-    def setDate(self,dt):
+    def __setDate(self,dt):
         assert type(dt)==datetime.datetime
         self.__node.attrib["date"] = dateTimeToText(dt)
 
-    def __getType(self):    return self.__node.attrib["type"]
-    type = property(__getType)
+    date = property(__getDate, __setDate)
 
-    def setType(self,t):
+    def __getType(self):    return self.__node.attrib["type"]
+
+    def __setType(self,t):
         assert type(t)==unicode or type(t)==str
         # TODO add assertion that the type is valid
         self.__node.attrib["type"] = t
 
-    def __getFinder_id(self):    return self.__node.attrib["finder_id"]
-    finder_id = property(__getFinder_id)
+    type = property(__getType, __setType)
 
-    def setFinder_id(self,t):
+    def __getFinder_id(self):    return self.__node.attrib["finder_id"]
+
+    def __setFinder_id(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["finder_id"] = t
 
-    def __getFinder_name(self):    return self.__node.attrib["finder_name"]
-    finder_name = property(__getFinder_name)
+    finder_id = property(__getFinder_id, __setFinder_id)
 
-    def setFinder_name(self,t):
+    def __getFinder_name(self):    return self.__node.attrib["finder_name"]
+
+    def __setFinder_name(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["finder_name"] = t
 
-    def setEncoded(self,b):
+    finder_name = property(__getFinder_name, __setFinder_name)
+
+    def __getEncoded(self):    return textToBool(self.__node.attrib["encoded"])
+
+    def __setEncoded(self,b):
         assert type(b)==bool
         self.__node.attrib["encoded"] = boolToText(b)
 
-    def __getEncoded(self):    return textToBool(self.__node.attrib["encoded"])
-    encoded = property(__getEncoded)
+    encoded = property(__getEncoded, __setEncoded)
 
     def __getText(self):    return self.__node.text
-    text = property(__getText)
 
-    def setText(self,t):
+    def __setText(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.text = t
+
+    text = property(__getText, __setText)
 
     def delete(self):
         self.__node.getparent().remove(self.__node)
@@ -790,18 +839,20 @@ class TravelBug(object):
     ref = property(__getRef)
 
     def __getId(self):    return self.__node.attrib["id"]
-    id = property(__getId)
 
-    def setId(self,t):
+    def __setId(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["id"] = t
 
-    def __getName(self):    return self.__node.text
-    name = property(__getName)
+    id = property(__getId, __setId)
 
-    def setName(self,t):
+    def __getName(self):    return self.__node.text
+
+    def __setName(self,t):
         assert type(t)==unicode or type(t)==str
         self.__node.attrib["name"] = t
+
+    name = property(__getName, __setName)
 
     def delete(self):
         self.__node.getparent().remove(self.__node)
@@ -812,60 +863,68 @@ class AddWaypoint(object):
         self.__node = n
 
     def __getCode(self):    return self.__node.attrib["code"]
-    code = property(__getCode)
 
-    def setCode(self,t):
+    def __setCode(self,t):
         assert type(t) == uniceode or type(t)==str
         self.__node.attrib["code"] = t
 
-    def __getLat(self):    return float(self.__node.attrib["lat"])
-    lat = property(__getLat)
+    code = property(__getCode, __setCode)
 
-    def setLat(self,f):
+    def __getLat(self):    return float(self.__node.attrib["lat"])
+
+    def __setLat(self,f):
         assert type(f) == float
         self.__node.attrib["lat"] = "%f" % f
 
-    def __getLon(self):    return float(self.__node.attrib["lon"])
-    lon = property(__getLon)
+    lat = property(__getLat, __setLat)
 
-    def setLon(self,f):
+    def __getLon(self):    return float(self.__node.attrib["lon"])
+
+    def __setLon(self,f):
         assert type(f) == float
         self.__node.attrib["lon"] = "%f" % f
 
-    def __getName(self):    return self.__node.attrib["name"]
-    name = property(__getName)
+    lon = property(__getLon, __setLon)
 
-    def setName(self,t):
+    def __getName(self):    return self.__node.attrib["name"]
+
+    def __setName(self,t):
         assert type(t) == unicode or type(t)==str
         self.__node.attrib["name"] = t
 
-    def __getUrl(self):    return self.__node.attrib["url"]
-    url = property(__getUrl)
+    name = property(__getName, __setName)
 
-    def setUrl(self,t):
+    def __getUrl(self):    return self.__node.attrib["url"]
+
+    def __setUrl(self,t):
         assert type(t) == unicode or type(t)==str
         self.__node.attrib["url"] = t
 
-    def __getTime(self):    return textToDateTime(self.__node.attrib["time"])
-    time = property(__getTime)
+    url = property(__getUrl, __setUrl)
 
-    def setTime(self,dt):
+    def __getTime(self):    return textToDateTime(self.__node.attrib["time"])
+
+    def __setTime(self,dt):
         assert type(dt)==datetime.datetime
         self.__node.attrib["time"] = dateTimeToText(dt)
 
-    def __getCmt(self):    return self.__node.text
-    cmt = property(__getCmt)
+    time = property(__getTime, __setTime)
 
-    def setCmt(self,t):
+    def __getCmt(self):    return self.__node.text
+
+    def __setCmt(self,t):
         assert type(t) == unicode or type(t)==str
         self.__node.text = t
 
-    def __getSym(self):    return self.__node.attrib["sym"]
-    sym = property(__getSym)
+    cmt = property(__getCmt, __setCmt)
 
-    def setSym(self,t):
+    def __getSym(self):    return self.__node.attrib["sym"]
+
+    def __setSym(self,t):
         assert type(t) == unicode or type(t)==str
         self.__node.attrib["sym"] = t
+
+    sym = property(__getSym, __setSym)
 
     def delete(self):
         self.__node.getparent().remove(self.__node)

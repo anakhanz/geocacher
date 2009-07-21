@@ -14,7 +14,8 @@
 # TODO: Add "Mark DNF" and "Mark DNF today" menu items
 # TODO: Make relivant menu items pop-up on right-click on cell in cache grid
 # TODO: Enable context menu key in main cache grid
-# TODO: nable context menu key in locations grid
+# TODO: Enable context menu key in locations grid
+# TODO: Add use cache as home Locaion
 
 
 from datetime import datetime
@@ -1945,12 +1946,7 @@ class MainWindow(wx.Frame):
         self.SetMenuBar(MenuBar)
 
     def buildToolBar(self):
-        TBFLAGS = ( wx.TB_HORIZONTAL
-                    | wx.NO_BORDER
-                    | wx.TB_FLAT
-                    #| wx.TB_TEXT
-                    #| wx.TB_HORZ_LAYOUT
-                    )
+        TBFLAGS = ( wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
 
         tsize = (24,24)
 

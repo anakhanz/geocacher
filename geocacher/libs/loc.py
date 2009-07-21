@@ -40,15 +40,15 @@ def locLoad(filename,DB,mode="update"):
             updated = True
 
         if ((cache.gpx_date<=locDate and mode=="update") or mode=="replace"):
-            cache.setLon(lon)
-            cache.setLat(lat)
-            cache.setName(name)
-            cache.setUrl(url)
-            cache.setSymbol(symbol)
-            cache.setPlaced_by(placed_by)
+            cache.lon = lon
+            cache.lat = lat
+            cache.name = name
+            cache.url = url
+            cache.symbol = symbol
+            cache.placed_by = placed_by
         if updated:
-            cache.setGpx_date(locDate)
-            cache.setSource(os.path.abspath(filename))
+            cache.gpx_date = locDate
+            cache.source = os.path.abspath(filename)
 
 def locExport(filename,caches):
     if len(caches) == 0:
