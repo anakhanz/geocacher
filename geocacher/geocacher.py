@@ -38,6 +38,7 @@ import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
 import  wx.lib.scrolledpanel as Scrolled
 import wx.html
+from wx import xrc
 
 import locale
 
@@ -737,6 +738,7 @@ class CacheGrid(Grid.Grid):
         correctID = wx.NewId()
         rmCorrID = wx.NewId()
         viewLogsID = wx.NewId()
+        viewBugsID = wx.NewId()
         x = self.GetRowSize(row)/2
 
         if not self.GetSelectedRows():
@@ -752,7 +754,8 @@ class CacheGrid(Grid.Grid):
             menu.Append(rmCorrID, _('Remove Cordinate Correction'))
         else:
             menu.Append(correctID, _('Correct Cordinates'))
-        menu.Append(viewLogsID, _('View Logs'))
+        if cache.getNumLogs() > 0: menu.Append(viewLogsID, _('View Logs'))
+        if cache.hasTravelBugs(): menu.Append(viewBugsID, _('View Travel Bugs'))
 
         def add(event, self=self, row=row):
             # TODO implement manually adding cache
@@ -810,11 +813,16 @@ class CacheGrid(Grid.Grid):
             dlg = ViewLogsWindow(self.mainWin, cache)
             dlg.ShowModal()
 
+        def viewBugs(event, self=self, cache=cache):
+            dlg = ViewTravelBugsWindow(self.mainWin, cache)
+            dlg.ShowModal()
+
         self.Bind(wx.EVT_MENU, add, id=addID)
         self.Bind(wx.EVT_MENU, delete, id=deleteID)
         self.Bind(wx.EVT_MENU, correct, id=correctID)
         self.Bind(wx.EVT_MENU, remCorrection, id=rmCorrID)
         self.Bind(wx.EVT_MENU, viewLogs, id=viewLogsID)
+        self.Bind(wx.EVT_MENU, viewBugs, id=viewBugsID)
         self.PopupMenu(menu)
         menu.Destroy()
         return
@@ -1433,47 +1441,82 @@ class EditLocation(wx.Dialog):
 
         self.Show(True)
 
+class ViewTravelBugsWindow(wx.Dialog):
+    """View Travel Bugs Dialog"""
+    def __init__(self,parent,cache):
+        """Creates the View Travel Bugs Frame"""
+
+        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Travel Bugs for ")+cache.code,size = (420,500),
+                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
+
+        res = xrc.XmlResource('xrc\geocacher.xrc')
+
+        # Create a scrolled panel and a vertical sizer within it to take the bugs
+        sw = Scrolled.ScrolledPanel(self, -1, size=(400, 450),
+                                 style = wx.TAB_TRAVERSAL)
+        bugSizer = wx.BoxSizer(orient=wx.VERTICAL)
+        for travelBug in cache.getTravelBugs():
+            bugPanel = res.LoadPanel(sw, 'bugPanel')
+            ref = xrc.XRCCTRL(bugPanel, 'refText')
+            name = xrc.XRCCTRL(bugPanel, 'nameText')
+
+            ref.SetValue(travelBug.ref)
+            name.SetValue(travelBug.name)
+
+            bugSizer.Add(bugPanel)
+
+        # Final Setup of the scrolled panel
+        sw.SetSizer(bugSizer)
+        sw.SetAutoLayout(1)
+        sw.SetupScrolling()
+
+        # Buttons
+        closeButton = wx.Button(self,wx.ID_CLOSE)
+
+        self.Bind(wx.EVT_BUTTON, self.OnClose,closeButton)
+
+        buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
+        buttonBox.Add(closeButton, 0, wx.EXPAND)
+
+        # finally, put the scrolledPannel and buttons in a sizerto manage the layout
+
+        mainSizer = wx.BoxSizer(orient=wx.VERTICAL)
+        mainSizer.Add(sw)
+        mainSizer.Add(buttonBox, 0, wx.EXPAND)
+        self.SetSizer(mainSizer)
+
+    def OnClose(self, event=None):
+        self.Destroy()
+
 class ViewLogsWindow(wx.Dialog):
     """View Logs Dialog"""
     def __init__(self,parent,cache):
-        """Creates the Liew Logs Frame"""
-        # TODO: add box around each log entry
+        """Creates the View Logs Frame"""
 
         wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Logs for ")+cache.code,size = (650,500),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
 
         # Create a scrolled panel and a vertical sizer within it to take the logs
-        sw = Scrolled.ScrolledPanel(self, -1, size=(620, 450),
+        sw = Scrolled.ScrolledPanel(self, -1, size=(640, 450),
                                  style = wx.TAB_TRAVERSAL)
         logSizer = wx.BoxSizer(orient=wx.VERTICAL)
 
+        res = xrc.XmlResource('xrc\geocacher.xrc')
+
         # Create a block for each log and add it to the logs sizer
         for log in cache.getLogs():
-            gbs = wx.GridBagSizer(5, 5)
-            object = wx.StaticText(sw, wx.ID_ANY, _('Date'))
-            gbs.Add(object, (0,0), (1,1))
-            object = wx.TextCtrl(sw, wx.ID_ANY, log.date.strftime("%x"),
-                size=(100, -1))
-            object.SetEditable(False)
-            gbs.Add(object, (0,1), (1,1))
-            object = wx.StaticText(sw, wx.ID_ANY, _('Type'))
-            gbs.Add(object, (0,2), (1,1))
-            object = wx.TextCtrl(sw, wx.ID_ANY, log.type, size=(100, -1))
-            object.SetEditable(False)
-            gbs.Add(object, (0,3), (1,1))
-            object = wx.StaticText(sw, wx.ID_ANY, _('Finder'))
-            gbs.Add(object, (0,4), (1,1))
-            object = wx.TextCtrl(sw, wx.ID_ANY, log.finder_name, size=(100, -1))
-            object.SetEditable(False)
-            gbs.Add(object, (0,5), (1,1))
-            object = wx.StaticText(sw, wx.ID_ANY, _('Message'))
-            gbs.Add(object, (1,0), (1,6))
-            object = wx.TextCtrl(sw, wx.ID_ANY, log.text,size=(600, 100),
-                style=wx.TE_MULTILINE |wx.TE_WORDWRAP)
-            object.SetEditable(False)
-            gbs.Add(object, (2,0), (1,6))
-            logSizer.Add(gbs)
-            logSizer.AddSpacer(20)
+            logPanel = res.LoadPanel(sw, 'logPanel')
+            date = xrc.XRCCTRL(logPanel, 'dateText')
+            type = xrc.XRCCTRL(logPanel, 'typeText')
+            finder = xrc.XRCCTRL(logPanel, 'finderText')
+            message = xrc.XRCCTRL(logPanel, 'messageText')
+
+            date.SetValue(log.date.strftime("%x"))
+            type.SetValue(log.type)
+            finder.SetValue(log.finder_name)
+            message.SetValue(log.text)
+
+            logSizer.Add(logPanel)
 
         # Final Setup of the scrolled panel
         sw.SetSizer(logSizer)

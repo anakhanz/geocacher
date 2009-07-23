@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<resource xmlns="http://www.wxwindows.org/wxxrc" version="2.3.0.1">
+	<object class="wxPanel" name="logPanel">
+		<style>wxTAB_TRAVERSAL</style>
+		<object class="wxStaticBoxSizer">
+			<orient>wxVERTICAL</orient>
+			<label></label>
+			<object class="sizeritem">
+				<option>1</option>
+				<flag></flag>
+				<border>5</border>
+				<object class="wxGridBagSizer">
+					<vgap>5</vgap>
+					<hgap>5</hgap>
+					<growablecols></growablecols>
+					<growablerows></growablerows>
+					<object class="sizeritem">
+						<cellpos>0,0</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxStaticText" name="dateLabel">
+							<label>Date</label>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>0,1</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxTextCtrl" name="dateText">
+							<style>wxTE_READONLY</style>
+							<size>100,-1</size>
+							<value></value>
+							<maxlength>0</maxlength>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>0,2</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxStaticText" name="typeLabel">
+							<label>Type</label>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>0,3</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxTextCtrl" name="typeText">
+							<style>wxTE_READONLY</style>
+							<size>100,-1</size>
+							<value></value>
+							<maxlength>0</maxlength>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>0,4</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxStaticText" name="finderLabel">
+							<label>Finder</label>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>0,5</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxTextCtrl" name="finderText">
+							<style>wxTE_READONLY</style>
+							<size>100,-1</size>
+							<value></value>
+							<maxlength>0</maxlength>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>1,0</cellpos>
+						<cellspan>1,6</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxStaticText" name="messageLabel">
+							<label>Message</label>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>2,0</cellpos>
+						<cellspan>1,6</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxTextCtrl" name="messageText">
+							<style>wxTE_MULTILINE|wxTE_READONLY|wxTE_WORDWRAP</style>
+							<size>600,100</size>
+							<value></value>
+							<maxlength>0</maxlength>
+						</object>
+					</object>
+				</object>
+			</object>
+		</object>
+	</object>
+	<object class="wxPanel" name="bugPanel">
+		<style>wxTAB_TRAVERSAL</style>
+		<object class="wxStaticBoxSizer">
+			<orient>wxVERTICAL</orient>
+			<label></label>
+			<object class="sizeritem">
+				<option>1</option>
+				<flag></flag>
+				<border>5</border>
+				<object class="wxGridBagSizer">
+					<vgap>5</vgap>
+					<hgap>5</hgap>
+					<growablecols></growablecols>
+					<growablerows></growablerows>
+					<object class="sizeritem">
+						<cellpos>0,0</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxStaticText" name="refLabel">
+							<label>Reference</label>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>0,1</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxTextCtrl" name="refText">
+							<style>wxTE_READONLY</style>
+							<size>100,-1</size>
+							<value></value>
+							<maxlength>0</maxlength>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>1,0</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxStaticText" name="nameLabel">
+							<label>Name</label>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<cellpos>1,1</cellpos>
+						<cellspan>1,1</cellspan>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxTextCtrl" name="nameText">
+							<style>wxTE_READONLY</style>
+							<size>280,-1</size>
+							<value></value>
+							<maxlength>0</maxlength>
+						</object>
+					</object>
+				</object>
+			</object>
+		</object>
+	</object>
+</resource>
