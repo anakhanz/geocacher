@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 '''Module to implement the persistant data stores'''
-# TODO: convert all set functions to be acessed as paroperties
 import datetime
 from lxml.etree import Element,ElementTree
 import os
@@ -21,6 +20,7 @@ class DB:
         try:
             self.root = ElementTree(file=file).getroot()
             version = int(self.root.attrib["version"])
+            self.update()
         except:
             self.root = Element(ROOT_ELEMENT,version=str(VERSION))
             version=VERSION
@@ -48,6 +48,10 @@ class DB:
             return False
         if tag == ROOT_ELEMENT and version == VERSION:
             self.root = newRoot
+            self.update()
+
+    def update(self):
+        pass
 
     def getCacheList(self):
         '''Returns a list of caches'''
@@ -98,6 +102,7 @@ class DB:
                         long_desc="",
                         long_desc_html=False,
                         encoded_hints="",
+                        ftf=False,
                         found=False,
                         found_date=None,
                         dnf=False,
@@ -139,10 +144,10 @@ class DB:
                             state      = "%s" % state,
                             country    = "%s" % country,
                             found      = boolToText(found),
+                            ftf        = boolToText(ftf),
                             found_date = "%s" % dateTimeToText(found_date),
                             dnf        = boolToText(dnf),
                             dnf_date   = "%s" % dateTimeToText(dnf_date),
-                            own_log    = own_log,
                             source     = "%s" % source,
                             corrected  = boolToText(corrected),
                             clat       = "%f" % clat,
@@ -437,6 +442,14 @@ class Cache(object):
         self.__node.xpath("encoded_hints")[0].text = t
 
     encoded_hints = property(__getEncoded_hints, __setEncoded_hints)
+
+    def __getFtf(self):    return textToBool(self.__node.attrib["ftf"])
+
+    def __setFtf(self,b):
+        assert type(b) == bool
+        self.__node.attrib["ftf"] = boolToText(b)
+
+    ftf = property(__getFtf, __setFtf)
 
     def __getFound(self):    return textToBool(self.__node.attrib["found"])
 
