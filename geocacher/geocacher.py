@@ -4,7 +4,6 @@
 # TODO: Add icon to main Window
 # TODO: Add view only mode
 # TODO: Add view additional waypoints
-# TODO: Add view Travel bugs
 # TODO: Add filtering by distance
 # TODO: Add Sub-menu item for selecting the current location
 # TODO: Splt toolbar and add menu items to show/hide toolbars
@@ -2232,7 +2231,7 @@ class MainWindow(wx.Frame):
 
                 addWptFiles = []
                 for file in listFiles(dir):
-                    if path.rfind('-wpts') >= 0:
+                    if file.rfind('-wpts') >= 0:
                         addWptFiles.append(file)
                     else:
                         self.LoadFile(file, self.conf.load.mode)

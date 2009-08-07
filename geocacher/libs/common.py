@@ -110,16 +110,14 @@ def listFiles(dir):
     dir - Folder to recursivley list image files from
     """
     fileList=[]
-    for name in os.listdir(dir):
+    dirList = os.listdir(dir)
+    dirList.sort()
+    for name in dirList:
         path = os.path.join(dir, name)
-        if (
-        os.path.isfile( path) and
-        os.path.splitext( name )[1] in
-            ('.jpg', '.JPG')
-        ):
-            fileList +=[path]
+        if os.path.isfile( path):
+            fileList.append(path)
         elif (os.path.isdir(path)):
-            fileList += self._listFiles(path)
+            fileList += listFiles(path)
     return fileList
 
 def escape(str):
