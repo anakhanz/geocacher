@@ -171,8 +171,8 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                 updated = True
 
         if updated:
-            cache.setGpx_date(gpxDate)
-            cache.setSource(os.path.abspath(filename))
+            cache.gpx_date = gpxDate
+            cache.source = os.path.abspath(filename)
 
     cacheCodes = DB.getCacheCodeList()
     for wpt in extraWpts:
