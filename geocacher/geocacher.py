@@ -402,6 +402,18 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def __calcDistBearing(self, cache):
         '''
+        Calculates the distance as a string and cardinalBearing of the given cache and
+        returns it as a tuple
+        '''
+        dist, cBear = self.__calcRawDistBearing(cache)
+        if self.conf.common.miles or False:
+            distStr = '%0.2f Mi' % dist
+        else:
+            distStr = '%0.2f km' % dist
+        return distStr, cBear
+
+    def __calcRawDistBearing(self, cache):
+        '''
         Calculates the distance and cardinalBearing of the given cache and
         returns it as a tuple
         '''
@@ -409,22 +421,22 @@ class CacheDataTable(Grid.PyGridTableBase):
         hLat = location.lat
         hLon = location.lon
 
-        if self.conf.common.miles or False:
-            dist = '%0.2f Mi' % distance(hLat,hLon,cache.currentLat,
-                                         cache.currentLon,miles=True)
-        else:
-            dist = '%0.2f km' % distance(hLat,hLon,cache.currentLat,
-                                         cache.currentLon,miles=False)
+        dist = distance(hLat,hLon,
+                        cache.currentLat,cache.currentLon,
+                        (self.conf.common.miles or False))
         cBear = cardinalBearing(hLat,hLon,cache.currentLat,cache.currentLon)
         return dist, cBear
 
     def __cacheFilter(self, cache):
+        '''Returns true if the given cache should be filtered out of the list'''
         mine = cache.owner == self.conf.gc.userName or\
                cache.owner_id == self.conf.gc.userId
+        dist, cBear = self.__calcRawDistBearing(cache)
         return (bool(self.conf.filter.archived) and cache.archived) or\
                (bool(self.conf.filter.disabled) and (not cache.available)) or\
                (bool(self.conf.filter.found) and cache.found) or\
-               (bool(self.conf.filter.mine) and mine)
+               (bool(self.conf.filter.mine) and mine)or\
+               ((self.conf.filter.overDist) and ((self.conf.filter.maxDistVal or 50.0) <= dist))
 
     def UpdateLocation(self):
         '''Updates the location based information in all cache rows'''
@@ -1933,7 +1945,7 @@ class MainWindow(wx.Frame):
         self.updateDetail(self.conf.common.dispCache or '')
 
     def buildMenu(self):
-        '''Builds the menu'''
+        '''Builds the menu bar'''
         MenuBar = wx.MenuBar()
 
         # Build file menu and bind functions
@@ -1967,6 +1979,43 @@ class MainWindow(wx.Frame):
 
         MenuBar.Append(PrefsMenu, _("&Edit"))
 
+        # Build view menu and bind functions
+        ViewMenu = wx.Menu()
+
+        self.miShowFilter = ViewMenu.Append(wx.ID_ANY, text=_('Show Filter Bar'), kind=wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.OnShowFilter, self.miShowFilter)
+        self.miShowFilter.Check(self.conf.common.showFilter or False)
+
+        MenuBar.Append(ViewMenu, _("&View"))
+
+        # Build filter menu and bind functions
+        FilterMenu = wx.Menu()
+
+        self.miHideMine = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Mine'), kind=wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.OnMiHideMine, self.miHideMine)
+        self.miHideMine.Check(self.conf.filter.mine or False)
+
+        self.miHideFound = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Found'), kind=wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.OnMiHideFound, self.miHideFound)
+        self.miHideFound.Check(self.conf.filter.found or False)
+
+        self.miHideDisabled = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Disabled'), kind=wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.OnMiHideDisabled, self.miHideDisabled)
+        self.miHideDisabled.Check(self.conf.filter.disabled or False)
+
+        self.miHideArchived = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Archived'), kind=wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.OnMiHideArchived, self.miHideArchived)
+        self.miHideArchived.Check(self.conf.filter.archived or False)
+
+        self.miHideOverDist = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Over Max Dist'), kind=wx.ITEM_CHECK)
+        self.Bind(wx.EVT_MENU, self.OnMiHideOverDist, self.miHideOverDist)
+        self.miHideOverDist.Check(self.conf.filter.overDist or False)
+
+        item = FilterMenu.Append(wx.ID_ANY, text=_('Set Max Distance'))
+        self.Bind(wx.EVT_MENU, self.OnMaxDistVal, item)
+
+        MenuBar.Append(FilterMenu, _("&Filter"))
+
         # Build GPS menu and bind functions
         GpsMenu = wx.Menu()
 
@@ -1995,8 +2044,10 @@ class MainWindow(wx.Frame):
         tsize = (24,24)
 
         tb = self.CreateToolBar(TBFLAGS)
+        self.tb = tb
 
-        tb.AddControl(wx.StaticText(tb, -1, _('Fiter Options'), style=wx.TEXT_ATTR_FONT_ITALIC))
+        self.tbFilterName = wx.StaticText(tb, wx.ID_ANY, _('Fiter:'), style=wx.TEXT_ATTR_FONT_ITALIC)
+        tb.AddControl(self.tbFilterName)
 
         self.cbHideMine = wx.CheckBox(tb, wx.ID_ANY, _('Hide Mine'))
         tb.AddControl(self.cbHideMine)
@@ -2018,6 +2069,15 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideArchived, self.cbHideArchived)
         self.cbHideArchived.SetValue(self.conf.filter.archived or False)
 
+        self.cbHideOverDist = wx.CheckBox(tb, wx.ID_ANY, _('Hide Over Max Dist'))
+        tb.AddControl(self.cbHideOverDist)
+        self.Bind(wx.EVT_CHECKBOX, self.OnCbHideOverDist, self.cbHideOverDist)
+        self.cbHideOverDist.SetValue(self.conf.filter.overDist or False)
+
+        self.tbMaxDistance = wx.TextCtrl(tb, wx.ID_ANY, value=str(self.conf.filter.maxDistVal or 50.0), size=[100,-1])
+        tb.AddControl(self.tbMaxDistance)
+        self.tbMaxDistance.Bind(wx.EVT_LEFT_DCLICK, self.OnMaxDistVal)
+
         tb.AddSeparator()
 
         tb.AddControl(wx.StaticText(tb, -1, _('Home location'), style=wx.TEXT_ATTR_FONT_ITALIC))
@@ -2034,11 +2094,13 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_COMBOBOX, self.OnSelLocation, self.selLocation)
         tb.Realize()
 
+        self.ShowHideFilterBar(self.conf.common.showFilter or False)
+
     def buildStatusBar(self):
         self.CreateStatusBar()
 
     def updateDetail(self, newCache=''):
-        # TODO: pu loading of cache detail int it's own thread
+        # TODO: put loading of cache detail int it's own thread
         # TODO: add further information to cache detail display
         # TODO: add option to view actual webpage
         newCacheObj = self.db.getCacheByCode(newCache)
@@ -2047,17 +2109,19 @@ class MainWindow(wx.Frame):
         if self.displayCache == None:
             descText = _('Select a Cache to display from the table above')
         else:
-            descText = "<h1>" + self.displayCache.code + "</h1>"
+            descText = '<h1>' + self.displayCache.code + ' - ' + self.displayCache.name + '</h1>'
+            if self.displayCache.url != '':
+                descText = descText + '<p><a href="' + self.displayCache.url + '">View online page</a></p>'
             if self.displayCache.short_desc != None:
                 if self.displayCache.short_desc_html:
                     descText = descText + self.displayCache.short_desc
                 else:
-                    descText = descText + '<p>' + nl2br(self.displayCache.short_desc) + '<p>'
+                    descText = descText + '<p>' + nl2br(self.displayCache.short_desc) + '</p>'
             if self.displayCache.long_desc != None:
                 if self.displayCache.long_desc_html:
                     descText = descText + self.displayCache.long_desc
                 else:
-                    descText = descText + '<p>' + nl2br(self.displayCache.long_desc) + '<p>'
+                    descText = descText + '<p>' + nl2br(self.displayCache.long_desc) + '</p>'
             if len(self.displayCache.encoded_hints) > 0:
                 descText = descText + '<h2>Encoded Hints</h2><p>' + nl2br(self.displayCache.encoded_hints.encode('rot13')) + '</p>'
         self.Description.SetPage(descText)
@@ -2234,8 +2298,10 @@ class MainWindow(wx.Frame):
                 addWptFiles = []
                 for file in listFiles(dir):
                     if file.rfind('-wpts') >= 0:
+                        print 'Processing: ', file
                         addWptFiles.append(file)
                     else:
+                        print 'Processing: ', file
                         self.LoadFile(file, self.conf.load.mode)
                 for file in addWptFiles:
                     self.LoadFile(file, self.conf.load.mode)
@@ -2422,6 +2488,20 @@ class MainWindow(wx.Frame):
                 self.conf.common.currentLoc or 'Default')
         dlg.Destroy()
 
+    def ShowHideFilterBar(self, show):
+        self.tbFilterName.Show(show)
+        self.cbHideArchived.Show(show)
+        self.cbHideDisabled.Show(show)
+        self.cbHideFound.Show(show)
+        self.cbHideMine.Show(show)
+        self.cbHideOverDist.Show(show)
+        self.tbMaxDistance.Show(show)
+
+    def OnShowFilter(self, event=None):
+        show = self.miShowFilter.IsChecked()
+        self.conf.common.showFilter = show
+        self.ShowHideFilterBar(show)
+
     def OnGpsUpload(self, event=None):
         (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
         if scope == None:
@@ -2479,21 +2559,93 @@ class MainWindow(wx.Frame):
     def OnSelLocation(self, event=None):
         self.updateCurrentLocation(self.selLocation.GetValue())
 
+    def OnHideArchived(self, state):
+        self.conf.filter.archived = state
+        self.miHideArchived.Check(state)
+        self.cbHideArchived.SetValue(state)
+        self.updateFilter()
+
     def OnCbHideArchived(self, event=None):
-        self.conf.filter.archived = self.cbHideArchived.GetValue()
+        self.OnHideArchived(self.cbHideArchived.GetValue())
+
+    def OnMiHideArchived(self, event=None):
+        self.OnHideArchived(self.miHideArchived.IsChecked())
+
+    def OnHideDisabled(self, state):
+        self.conf.filter.disabled = state
+        self.miHideDisabled.Check(state)
+        self.cbHideDisabled.SetValue(state)
         self.updateFilter()
 
     def OnCbHideDisabled(self, event=None):
-        self.conf.filter.disabled = self.cbHideDisabled.GetValue()
+        self.OnHideDisabled(self.cbHideDisabled.GetValue())
+
+    def OnMiHideDisabled(self, event=None):
+        self.OnHideDisabled(self.miHideDisabled.IsChecked())
+
+    def OnHideFound(self, state):
+        self.conf.filter.found = state
+        self.miHideFound.Check(state)
+        self.cbHideFound.SetValue(state)
         self.updateFilter()
 
     def OnCbHideFound(self, event=None):
-        self.conf.filter.found = self.cbHideFound.GetValue()
+        self.OnHideFound(self.cbHideFound.GetValue())
+
+    def OnMiHideFound(self, event=None):
+        self.OnHideFound(self.miHideFound.IsChecked())
+
+    def OnHideMine(self, state):
+        self.conf.filter.mine = state
+        self.miHideMine.Check(state)
+        self.cbHideMine.SetValue(state)
         self.updateFilter()
 
     def OnCbHideMine(self, event=None):
-        self.conf.filter.mine = self.cbHideMine.GetValue()
+        self.OnHideMine(self.cbHideMine.GetValue())
+
+    def OnMiHideMine(self, event=None):
+        self.OnHideMine(self.miHideMine.IsChecked())
+
+    def OnHideOverDist(self, state):
+        self.conf.filter.overDist = state
+        self.miHideOverDist.Check(state)
+        self.cbHideOverDist.SetValue(state)
         self.updateFilter()
+
+    def OnCbHideOverDist(self, event=None):
+        self.OnHideOverDist(self.cbHideOverDist.GetValue())
+
+    def OnMiHideOverDist(self, event=None):
+        self.OnHideOverDist(self.miHideOverDist.IsChecked())
+
+    def OnMaxDistVal(self, event=None):
+        dlg = wx.TextEntryDialog(self,
+            _('Please enter the maximum distance from your home location to display caches from'),
+            caption=_('Maximum Distance'),
+            defaultValue=str(self.conf.filter.maxDistVal or 50.0),
+            style=wx.OK | wx.CANCEL)
+        bad = True
+        while bad:
+            response = dlg.ShowModal() == wx.ID_OK
+            if response:
+                try:
+                    dist = float(dlg.GetValue())
+                    bad = False
+                except:
+                    errdlg = wx.MessageDialog(
+                        self, 'Please enter a decimal number for the maximum distance',
+                        caption='Bad Maximum Distance',
+                        style=wx.OK)
+                    errdlg.ShowModal()
+                    errdlg.Destroy()
+            else:
+                bad = False
+        dlg.Destroy()
+        if response:
+            self.conf.filter.maxDistVal = dist
+            self.tbMaxDistance.SetValue(str(dist))
+            self.updateFilter()
 
     def OnQuit(self, event=None):
         """Exit application."""
