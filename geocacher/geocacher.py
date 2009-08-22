@@ -11,7 +11,6 @@
 # TODO: Make relivant menu items pop-up on right-click on cell in cache grid
 # TODO: Enable context menu key in main cache grid
 # TODO: Enable context menu key in locations grid
-# TODO: Add use cache as home Location
 
 
 from datetime import datetime
@@ -71,7 +70,6 @@ class DegRenderer(Grid.PyGridCellRenderer):
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
         format = self.conf.common.coordFmt or 'hdd mm.mmm'
-        #print value, self.mode, type(value)
         try: text = degToStr(value, format, self.mode)
         except: text = ''
         hAlign, vAlign = attr.GetAlignment()
@@ -918,6 +916,11 @@ class CacheGrid(Grid.Grid):
             dlg = ViewTravelBugsWindow(self.mainWin, cache)
             dlg.ShowModal()
 
+        def cacheAsHome(event, self=self, cache=cache):
+            self.mainWin.NewLocation(cache.lat, cache.lon,
+                                     'cache ' + cache.code,
+                                     'cache ' + cache.code)
+
         #---Non row/col pop-up functions---#000000#FFFFAA-------------------------------
         def sortByCodeAscending(event, self=self):
             '''Perform an ascending sort based on the cache code'''
@@ -936,6 +939,7 @@ class CacheGrid(Grid.Grid):
         cacheRmCorrID   = wx.NewId()
         cacheViewLogsID = wx.NewId()
         cacheViewBugsID = wx.NewId()
+        cacheAsHomeID   = wx.NewId()
         colDeleteID     = wx.NewId()
         colSortAsID     = wx.NewId()
         colSortDsID     = wx.NewId()
@@ -966,6 +970,7 @@ class CacheGrid(Grid.Grid):
                 menu.Append(cacheCorrectID, _('Correct Cordinates'))
             if cache.getNumLogs() > 0: menu.Append(cacheViewLogsID, _('View Logs'))
             if cache.hasTravelBugs(): menu.Append(cacheViewBugsID, _('View Travel Bugs'))
+            menu.Append(cacheAsHomeID, _('Add cache as Home location'))
 
         #---Bind functions---#000000#FFFFAA---------------------------------------------
         self.Bind(wx.EVT_MENU, cacheAdd, id=cacheAddID)
@@ -974,6 +979,7 @@ class CacheGrid(Grid.Grid):
         self.Bind(wx.EVT_MENU, cacheRemCorrection, id=cacheRmCorrID)
         self.Bind(wx.EVT_MENU, cacheViewLogs, id=cacheViewLogsID)
         self.Bind(wx.EVT_MENU, cacheViewBugs, id=cacheViewBugsID)
+        self.Bind(wx.EVT_MENU, cacheAsHome, id=cacheAsHomeID)
 
         self.Bind(wx.EVT_MENU, colDelete, id=colDeleteID)
         self.Bind(wx.EVT_MENU, colSortAscending, id=colSortAsID)
@@ -2144,7 +2150,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideArchived, self.cbHideArchived)
         self.cbHideArchived.SetValue(self.conf.filter.archived or False)
 
-        self.cbHideOverDist = wx.CheckBox(tb, wx.ID_ANY, _('Hide Over Max Dist'))
+        self.cbHideOverDist = wx.CheckBox(tb, wx.ID_ANY, _('Hide Over'))
         tb.AddControl(self.cbHideOverDist)
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideOverDist, self.cbHideOverDist)
         self.cbHideOverDist.SetValue(self.conf.filter.overDist or False)
@@ -2602,12 +2608,17 @@ class MainWindow(wx.Frame):
         gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
                         port=self.conf.gps.connection or 'usb:')
         ok, lat, lon, message = gpsCom.getCurrentPos()
-        if not ok:
+        if ok:
+            self.NewLocation(lat, lon, _('the GPS'), _('GPS Point'))
+        else:
             self.GpsError(message)
             return
+
+    def NewLocation(self, lat, lon, source, name=''):
         dlg = wx.TextEntryDialog(self,
-            _('Please enter a name for the new Location from the GPS'),
-            caption=_('Location Name'))
+            _('Please enter a name for the new Location from ') + source,
+            caption=_('Location Name'),
+            defaultValue = name)
         if dlg.ShowModal() != wx.ID_OK:
             dlg.Destroy()
             return
