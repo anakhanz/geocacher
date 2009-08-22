@@ -3,16 +3,15 @@
 
 # TODO: Add icon to main Window
 # TODO: Add view only mode
-# TODO: Add view additional waypoints
+# TODO: Add view/edit additional waypoints
 # TODO: Add Sub-menu item for selecting the current location
-# TODO: Replace Mi/km text in Distance column with a smart distance renderer
 # TODO: Make hyperlink in main window active and add option to display as cache code/name
 # TODO: Add "Mark found" and Mark Found today menu items
 # TODO: Add "Mark DNF" and "Mark DNF today" menu items
 # TODO: Make relivant menu items pop-up on right-click on cell in cache grid
 # TODO: Enable context menu key in main cache grid
 # TODO: Enable context menu key in locations grid
-# TODO: Add use cache as home Locaion
+# TODO: Add use cache as home Location
 
 
 from datetime import datetime
@@ -153,6 +152,50 @@ class ImageRenderer(Grid.PyGridCellRenderer):
         dc.Blit(rect.x+1, rect.y+1, width, height,
                 image,
                 0, 0, wx.COPY, True)
+
+class DistRenderer(Grid.PyGridCellRenderer):
+    '''Renderer for cells containing distances'''
+    def __init__(self, table, conf):
+        Grid.PyGridCellRenderer.__init__(self)
+        self.conf = conf
+        self.table = table
+
+        self.colSize = None
+        self.rowSize = None
+
+    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
+        value = self.table.GetValue(row, col)
+        if self.conf.common.miles or False:
+            text = '%0.2f Mi' % (value * 0.621371192)
+        else:
+            text = '%0.2f km' % value
+        hAlign, vAlign = attr.GetAlignment()
+        dc.SetFont(attr.GetFont())
+        if isSelected:
+            bg = grid.GetSelectionBackground()
+            fg = grid.GetSelectionForeground()
+        else:
+            bg = grid.GetDefaultCellBackgroundColour()
+            fg = grid.GetDefaultCellTextColour()
+
+        dc.SetTextBackground(bg)
+        dc.SetTextForeground(fg)
+        dc.SetBrush(wx.Brush(bg, wx.SOLID))
+        dc.SetPen(wx.TRANSPARENT_PEN)
+        dc.DrawRectangleRect(rect)
+        grid.DrawTextRectangle(dc, text, rect, hAlign, vAlign)
+
+    def GetBestSize(self, grid, attr, dc, row, col):
+        value = self.table.GetValue(row, col)
+        if self.conf.common.miles or False:
+            text = '%0.2f Mi' % (value * 0.621371192)
+        else:
+            text = '%0.2f km' % value
+        w, h = dc.GetTextExtent(text)
+        return wx.Size(w, h)
+
+    def clone(self):
+        return DegRenderer(self.table, self.conf)
 
 class DegEditor(Grid.PyGridCellEditor):
     def __init__(self, conf, mode = 'pure'):
@@ -350,7 +393,8 @@ class CacheDataTable(Grid.PyGridTableBase):
             'oLat'        :LatRenderer,
             'oLon'        :LonRenderer,
             'size'        :CacheSizeRenderer,
-            'type'        :CacheTypeRenderer}
+            'type'        :CacheTypeRenderer,
+            'distance'    :DistRenderer}
 
         self._sortCol = self.conf.common.sortCol or 'code'
         self._sortDescend = self.conf.common.sortDescend or False
@@ -401,18 +445,6 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def __calcDistBearing(self, cache):
         '''
-        Calculates the distance as a string and cardinalBearing of the given cache and
-        returns it as a tuple
-        '''
-        dist, cBear = self.__calcRawDistBearing(cache)
-        if self.conf.common.miles or False:
-            distStr = '%0.2f Mi' % dist
-        else:
-            distStr = '%0.2f km' % dist
-        return distStr, cBear
-
-    def __calcRawDistBearing(self, cache):
-        '''
         Calculates the distance and cardinalBearing of the given cache and
         returns it as a tuple
         '''
@@ -420,9 +452,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         hLat = location.lat
         hLon = location.lon
 
-        dist = distance(hLat,hLon,
-                        cache.currentLat,cache.currentLon,
-                        (self.conf.common.miles or False))
+        dist = distance(hLat,hLon,cache.currentLat,cache.currentLon)
         cBear = cardinalBearing(hLat,hLon,cache.currentLat,cache.currentLon)
         return dist, cBear
 
@@ -430,7 +460,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''Returns true if the given cache should be filtered out of the list'''
         mine = cache.owner == self.conf.gc.userName or\
                cache.owner_id == self.conf.gc.userId
-        dist, cBear = self.__calcRawDistBearing(cache)
+        dist, cBear = self.__calcDistBearing(cache)
         return (bool(self.conf.filter.archived) and cache.archived) or\
                (bool(self.conf.filter.disabled) and (not cache.available)) or\
                (bool(self.conf.filter.found) and cache.found) or\
@@ -1590,8 +1620,7 @@ class ViewLogsWindow(wx.Dialog):
         buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
         buttonBox.Add(closeButton, 0, wx.EXPAND)
 
-        # finally, put the scrolledPannel and buttons in a sizerto manage the layout
-
+        # finally, put the scrolledPannel and buttons in a sizer to manage the layout
         mainSizer = wx.BoxSizer(orient=wx.VERTICAL)
         mainSizer.Add(sw)
         mainSizer.Add(buttonBox, 0, wx.EXPAND)
