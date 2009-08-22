@@ -37,6 +37,16 @@ def textToDateTime(t): # TODO: add microsecond
         return datetime.datetime(int(t[:4]),int(t[5:7]),int(t[8:10]),
                                   int(t[11:13]),int(t[14:16]),int(t[17:19]))
 
+def wxDateTimeToPy(wxDateTime):
+    '''Converts a wx.DateTime object to a datetime object'''
+    return datetime.datetime(wxDateTime.GetYear(),
+                             wxDateTime.GetMonth()+1,
+                             wxDateTime.GetDay(),
+                             wxDateTime.GetHour(),
+                             wxDateTime.GetMinute(),
+                             wxDateTime.GetSecond(),
+                             wxDateTime.GetMillisecond()*1000)
+
 
 def getTextFromPath(root, relativePath, nameSpaces=None, default=None):
     '''

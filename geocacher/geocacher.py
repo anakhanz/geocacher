@@ -6,8 +6,6 @@
 # TODO: Add view/edit additional waypoints
 # TODO: Add Sub-menu item for selecting the current location
 # TODO: Make hyperlink in main window active and add option to display as cache code/name
-# TODO: Add "Mark found" and Mark Found today menu items
-# TODO: Add "Mark DNF" and "Mark DNF today" menu items
 # TODO: Make relivant menu items pop-up on right-click on cell in cache grid
 # TODO: Enable context menu key in main cache grid
 # TODO: Enable context menu key in locations grid
@@ -42,7 +40,7 @@ from libs.i18n import createGetText
 # make translation available in the code
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
 
-from libs.common import nl2br, listFiles, dateCmp
+from libs.common import nl2br, listFiles, dateCmp, wxDateTimeToPy
 from libs.db import Geocacher
 from libs.gpsbabel import GpsCom
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
@@ -921,6 +919,34 @@ class CacheGrid(Grid.Grid):
                                      'cache ' + cache.code,
                                      'cache ' + cache.code)
 
+        def cacheSetFound(event, self=self, cache=cache):
+            dlg = FoundCacheDialog(self.mainWin,cache.code,_('found'),
+                                   cache.found_date,cache.own_log,
+                                   cache.own_log_encoded)
+            if dlg.ShowModal() == wx.ID_OK:
+                cache.found_date = wxDateTimeToPy(dlg.date.GetValue())
+                cache.own_log = dlg.logText.GetValue()
+                cache.own_log_encoded = dlg.encodeLog.GetValue()
+                cache.found = True
+                cache.user_date = datetime.now()
+                self._table.ReloadRow(row)
+                self.Reset()
+            dlg.Destroy()
+
+        def cacheSetDnf(event, self=self, cache=cache):
+            dlg = FoundCacheDialog(self.mainWin,cache.code,_('found'),
+                                   cache.dnf_date,cache.own_log,
+                                   cache.own_log_encoded)
+            if dlg.ShowModal() == wx.ID_OK:
+                cache.dnf_date = wxDateTimeToPy(dlg.date.GetValue())
+                cache.own_log = dlg.logText.GetValue()
+                cache.own_log_encoded = dlg.encodeLog.GetValue()
+                cache.dnf = True
+                cache.user_date = datetime.now()
+                self._table.ReloadRow(row)
+                self.Reset()
+            dlg.Destroy()
+
         #---Non row/col pop-up functions---#000000#FFFFAA-------------------------------
         def sortByCodeAscending(event, self=self):
             '''Perform an ascending sort based on the cache code'''
@@ -940,6 +966,8 @@ class CacheGrid(Grid.Grid):
         cacheViewLogsID = wx.NewId()
         cacheViewBugsID = wx.NewId()
         cacheAsHomeID   = wx.NewId()
+        cacheSetFoundID = wx.NewId()
+        cacheSetDnfID   = wx.NewId()
         colDeleteID     = wx.NewId()
         colSortAsID     = wx.NewId()
         colSortDsID     = wx.NewId()
@@ -971,6 +999,8 @@ class CacheGrid(Grid.Grid):
             if cache.getNumLogs() > 0: menu.Append(cacheViewLogsID, _('View Logs'))
             if cache.hasTravelBugs(): menu.Append(cacheViewBugsID, _('View Travel Bugs'))
             menu.Append(cacheAsHomeID, _('Add cache as Home location'))
+            menu.Append(cacheSetFoundID, _('Set cache as Found'))
+            menu.Append(cacheSetDnfID, _('Set cache as Did Not Find'))
 
         #---Bind functions---#000000#FFFFAA---------------------------------------------
         self.Bind(wx.EVT_MENU, cacheAdd, id=cacheAddID)
@@ -980,6 +1010,8 @@ class CacheGrid(Grid.Grid):
         self.Bind(wx.EVT_MENU, cacheViewLogs, id=cacheViewLogsID)
         self.Bind(wx.EVT_MENU, cacheViewBugs, id=cacheViewBugsID)
         self.Bind(wx.EVT_MENU, cacheAsHome, id=cacheAsHomeID)
+        self.Bind(wx.EVT_MENU, cacheSetFound, id=cacheSetFoundID)
+        self.Bind(wx.EVT_MENU, cacheSetDnf, id=cacheSetDnfID)
 
         self.Bind(wx.EVT_MENU, colDelete, id=colDeleteID)
         self.Bind(wx.EVT_MENU, colSortAscending, id=colSortAsID)
@@ -1032,6 +1064,27 @@ class CacheGrid(Grid.Grid):
 
     def GetSort(self):
         return self._table.GetSort()
+
+class FoundCacheDialog(wx.Dialog):
+    '''Dialog to get date and Log Text for marking a cache as Found/DNF'''
+    def __init__(self,parent,cache,markType,date=None, logText='',encoded=False):
+        pre = wx.PreDialog()
+        self.res = wx.xrc.XmlResource('xrc\geocacher.xrc')
+        self.res.LoadOnDialog(pre, parent, 'FoundCacheDialog')
+        self.PostCreate(pre)
+
+        self.SetTitle(_('Mark cache ') + cache + _(' as ') + markType)
+
+        self.date = wx.xrc.XRCCTRL(self, 'datePick')
+        self.logText = wx.xrc.XRCCTRL(self, 'logText')
+        self.encodeLog = wx.xrc.XRCCTRL(self, 'encodeLogCb')
+
+        if date != None:
+            self.date.SetValue(wx.DateTimeFromDMY(date.day,date.month-1,date.year))
+        if logText == None:
+            logText = ''
+        self.logText.SetValue(logText)
+        self.encodeLog.SetValue(encoded)
 
 class PreferencesWindow(wx.Dialog):
     """Preferences Dialog"""
