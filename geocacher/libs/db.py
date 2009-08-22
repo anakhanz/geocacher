@@ -1066,6 +1066,7 @@ class Geocacher:
                        'cacheCols'  :['code','id','lat','lon','name','found',
                                       'type','size','distance','bearing'],
                        'sortCol'    :'code',
+                       'sortDescend':False,
                        'userData1'  :'User Data 1',
                        'userData2'  :'User Data 2',
                        'userData3'  :'User Data 3',

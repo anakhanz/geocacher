@@ -4,9 +4,7 @@
 # TODO: Add icon to main Window
 # TODO: Add view only mode
 # TODO: Add view additional waypoints
-# TODO: Add filtering by distance
 # TODO: Add Sub-menu item for selecting the current location
-# TODO: Splt toolbar and add menu items to show/hide toolbars
 # TODO: Replace Mi/km text in Distance column with a smart distance renderer
 # TODO: Make hyperlink in main window active and add option to display as cache code/name
 # TODO: Add "Mark found" and Mark Found today menu items
@@ -355,6 +353,7 @@ class CacheDataTable(Grid.PyGridTableBase):
             'type'        :CacheTypeRenderer}
 
         self._sortCol = self.conf.common.sortCol or 'code'
+        self._sortDescend = self.conf.common.sortDescend or False
 
         self.ReloadCaches()
 
@@ -626,14 +625,23 @@ class CacheDataTable(Grid.PyGridTableBase):
                 # to make sure we delete the right rows
                 deleteCount += 1
 
-    def SortColumn(self, col):
+    def SortColumn(self, col, descending=None):
         """
         col -> sort the data based on the column indexed by col
         """
-        # TODO : Decending sort
-        name = self.colNames[col]
-        self._sortCol = self.colNames[col]
-        self.DoSort()
+        self.SortColumnName(self.colNames[col], descending)
+
+    def SortColumnName(self, name, descending=None):
+        """
+        name -> name of the column to sort the data by
+        """
+        if self.colLabels.has_key(name):
+            if descending == None:
+                descending = (not self._sortDescend) and self._sortCol == name
+            if self._sortCol != name or self._sortDescend != descending:
+                self._sortCol = name
+                self._sortDescend = descending
+                self.DoSort()
 
     def SortDataItem(self, rowData):
         return rowData[self._sortCol]
@@ -646,7 +654,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         else:
             cmp = None
 
-        self.data.sort(cmp=cmp, key=self.SortDataItem)
+        self.data.sort(cmp=cmp, key=self.SortDataItem, reverse=self._sortDescend)
 
     def _updateColAttrs(self, grid):
         """
@@ -681,8 +689,8 @@ class CacheDataTable(Grid.PyGridTableBase):
     def GetAllCols(self):
         return self.colLabels.keys()
 
-    def GetSortCol(self):
-        return self._sortCol
+    def GetSort(self):
+        return (self._sortCol, self._sortDescend)
 
 class CacheGrid(Grid.Grid):
     # TODO: add icon to Sorted Column Name
@@ -703,9 +711,10 @@ class CacheGrid(Grid.Grid):
         # Enable Column moving
         Gridmovers.GridColMover(self)
         self.Bind(Gridmovers.EVT_GRID_COL_MOVE, self.OnColMove, self)
-        self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnLabelRightClicked)
         self.Bind(Grid.EVT_GRID_LABEL_LEFT_CLICK, self.OnLabelLeftClicked)
         self.Bind(Grid.EVT_GRID_CELL_LEFT_CLICK, self.OnCellLeftClicked)
+        self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnLabelRightClicked)
+        self.Bind(Grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnCellRightClicked)
 
         self.SetRowLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
         self.SetColLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
@@ -736,120 +745,22 @@ class CacheGrid(Grid.Grid):
         evt.Skip()
 
     def OnLabelRightClicked(self, evt):
-        # Did we click on a row or a column?
+        '''Handle grod label right mouse button clicks'''
+        self.Popup(evt)
+
+    def OnCellRightClicked(self, evt):
+        '''Handle grod label right mouse button clicks'''
+        self.Popup(evt)
+
+    def Popup (self, evt):
+        '''Build and handle events from the rigth click pop-up menu'''
         row, col = evt.GetRow(), evt.GetCol()
-        if row == -1: self.ColPopup(col, evt)
-        elif col == -1: self.RowPopup(row, evt)
-
-    def RowPopup(self, row, evt):
-        '''(row, evt) -> display a popup menu when a row label is right clicked'''
-
-        cache = self._table.GetRowCache(row)
-
-        addID = wx.NewId()
-        deleteID = wx.NewId()
-        correctID = wx.NewId()
-        rmCorrID = wx.NewId()
-        viewLogsID = wx.NewId()
-        viewBugsID = wx.NewId()
-        x = self.GetRowSize(row)/2
-
-        if not self.GetSelectedRows():
-            self.SelectRow(row)
-
-        menu = wx.Menu()
-        xo, yo = evt.GetPosition()
-        menu.Append(addID, _('Add Cache'))
-        menu.Append(deleteID, _('Delete Cache(s)'))
-        menu.AppendSeparator()
-        if cache.corrected:
-            menu.Append(correctID, _('Edit Cordinate Correction'))
-            menu.Append(rmCorrID, _('Remove Cordinate Correction'))
-        else:
-            menu.Append(correctID, _('Correct Cordinates'))
-        if cache.getNumLogs() > 0: menu.Append(viewLogsID, _('View Logs'))
-        if cache.hasTravelBugs(): menu.Append(viewBugsID, _('View Travel Bugs'))
-
-        def add(event, self=self, row=row):
-            # TODO implement manually adding cache
-            #self._table.AddCache(cache)
-            #self.Reset()
-            print "adding cache not yet implemented"
-
-        def delete(event, self=self, row=row):
-            '''Delete the selected cache'''
-            rows = self.GetSelectedRows()
-            self._table.DeleteRows(rows)
-            self.Reset()
-
-        def correct(event, self=self, row=row, cache=cache):
-            '''Add/Edit Correction of the Lat/Lon for the selected row'''
-            self.SelectRow(row)
+        if row != -1:
             cache = self._table.GetRowCache(row)
-            # create data dictionary for the dialog and it's validators
-            data = {'lat': cache.lat, 'lon': cache.lon,
-                    'clat': cache.clat, 'clon': cache.clon,
-                    'cnote': cache.cnote}
-            dlg = CorrectLatLon(self, wx.ID_ANY, self.conf, cache.code, data,
-                not cache.corrected)
-            # show the dialog and update the cache if OK clicked and there
-            # where changes
-            if dlg.ShowModal() == wx.ID_OK and (data['clat'] != cache.clat or
-                                                data['clon'] != cache.clon or
-                                                data['cnote'] != cache.cnote):
-                cache.clat = data['clat']
-                cache.clon = data['clon']
-                cache.cnote = data['cnote']
-                cache.corrected = True
-                cache.user_date = datetime.now()
-                self._table.ReloadRow(row)
-                self.Reset()
-            dlg.Destroy()
+        else:
+            cache = None
 
-        def remCorrection(event, self=self, row=row, cache=cache):
-            '''Remoce the Lat/Lon correction for the slected row'''
-            self.SelectRow(row)
-            dlg = wx.MessageDialog(None,
-                message=_('Are you sure you want to remove the cordinate correction for ')+cache.code,
-                caption=_('Remove Cordinate Correction'),
-                style=wx.YES_NO|wx.ICON_QUESTION)
-            if dlg.ShowModal() == wx.ID_YES:
-                cache.clat = 0.0
-                cache.clon = 0.0
-                cache.corrected = False
-                cache.cnote = ''
-                cache.user_date = datetime.now()
-                self._table.ReloadRow(row)
-                self.Reset()
-
-        def viewLogs(event, self=self, cache=cache):
-            dlg = ViewLogsWindow(self.mainWin, cache)
-            dlg.ShowModal()
-
-        def viewBugs(event, self=self, cache=cache):
-            dlg = ViewTravelBugsWindow(self.mainWin, cache)
-            dlg.ShowModal()
-
-        self.Bind(wx.EVT_MENU, add, id=addID)
-        self.Bind(wx.EVT_MENU, delete, id=deleteID)
-        self.Bind(wx.EVT_MENU, correct, id=correctID)
-        self.Bind(wx.EVT_MENU, remCorrection, id=rmCorrID)
-        self.Bind(wx.EVT_MENU, viewLogs, id=viewLogsID)
-        self.Bind(wx.EVT_MENU, viewBugs, id=viewBugsID)
-        self.PopupMenu(menu)
-        menu.Destroy()
-        return
-
-    def NumSelectedRows(self):
-        return len(self.GetSelectedRows())
-
-    def GetSelectedCaches(self):
-        return self._table.GetRowCaches(self.GetSelectedRows())
-
-    def ColPopup(self, col, evt):
-        """(col, evt) -> display a popup menu when a column label is
-        right clicked"""
-        x = self.GetColSize(col)/2
+        #---Build Append/Insert Column sub-menus---#000000#FFFFAA------------------------------------------------------
         activeColNames = self._table.GetCols()
 
         # Build a list mapping column display names to table cloum names
@@ -876,52 +787,184 @@ class CacheGrid(Grid.Grid):
             colId = wx.NewId()
             insColIds[colId]=colName
             insMenu.Append(colId, colDisp)
-        menu = wx.Menu()
-        id1 = wx.NewId()
-        sortID = wx.NewId()
 
-        xo, yo = evt.GetPosition()
-        self.SelectCol(col)
-        colNames = self.GetSelectedCols()
-        self.Refresh()
-        menu.Append(id1, _("Delete Col(s)"))
-        menu.Append(sortID, _("Sort Column"))
-        menu.AppendMenu(wx.ID_ANY, _("Append Column"), appMenu)
-        menu.AppendMenu(wx.ID_ANY, _("Insert Column"), insMenu)
-
-        def delete(event, self=self, col=col):
+        #---Column pop-up functions---#000000#FFFFAA------------------------------------------------------
+        def colDelete(event, self=self, col=col):
+            '''Delete (Hide) the selected columns'''
             cols = self.GetSelectedCols()
+            if len(cols) == 0:
+                cols = [col]
             self._table.DeleteCols(cols)
             self.Reset()
 
-        def sort(event, self=self, col=col):
-            self._table.SortColumn(col)
+        def colSortAscending(event, self=self, col=col):
+            '''Perform an ascending sort on the selected column'''
+            self._table.SortColumn(col, False)
             self.Reset()
 
-        def insert(event, self=self, colIds=insColIds, col=col):
+        def colSortDescending(event, self=self, col=col):
+            '''Perform an descending sort on the selected column'''
+            self._table.SortColumn(col, True)
+            self.Reset()
+
+        def colInsert(event, self=self, colIds=insColIds, col=col):
+            '''Insert the given column before the currently selected column'''
             if col == -1:
                 self._table.AppendColumn(colIds[event.Id])
             else:
                 self._table.InsertColumn(col, colIds[event.Id])
             self.Reset()
 
-        def append(event, self=self, colIds=appColIds):
+        def colAppend(event, self=self, colIds=appColIds):
+            '''Append the given column to the end of the grid'''
             self._table.AppendColumn(colIds[event.Id])
             self.Reset()
 
-        self.Bind(wx.EVT_MENU, delete, id=id1)
+        #---Row pop-up functions---#000000#FFFFAA------------------------------------------------------
+        def cacheAdd(event, self=self, row=row):
+            '''Add a new cache to the grid/database'''
+            # TODO implement manually adding cache
+            #self._table.AddCache(cache)
+            #self.Reset()
+            print "adding cache not yet implemented"
 
-        if len(colNames) == 1:
-            self.Bind(wx.EVT_MENU, sort, id=sortID)
+        def cacheDelete(event, self=self, row=row):
+            '''Delete the selected cache(s) (row(s))'''
+            rows = self.GetSelectedRows()
+            if len(rows) == 0:
+                rows = [row]
+            self._table.DeleteRows(rows)
+            self.Reset()
+
+        def cacheCorrect(event, self=self, row=row, cache=cache):
+            '''Add/Edit Correction of the Lat/Lon for the selected cache (row)'''
+            self.SelectRow(row)
+            cache = self._table.GetRowCache(row)
+            # create data dictionary for the dialog and it's validators
+            data = {'lat': cache.lat, 'lon': cache.lon,
+                    'clat': cache.clat, 'clon': cache.clon,
+                    'cnote': cache.cnote}
+            dlg = CorrectLatLon(self, wx.ID_ANY, self.conf, cache.code, data,
+                not cache.corrected)
+            # show the dialog and update the cache if OK clicked and there
+            # where changes
+            if dlg.ShowModal() == wx.ID_OK and (data['clat'] != cache.clat or
+                                                data['clon'] != cache.clon or
+                                                data['cnote'] != cache.cnote):
+                cache.clat = data['clat']
+                cache.clon = data['clon']
+                cache.cnote = data['cnote']
+                cache.corrected = True
+                cache.user_date = datetime.now()
+                self._table.ReloadRow(row)
+                self.Reset()
+            dlg.Destroy()
+
+        def cacheRemCorrection(event, self=self, row=row, cache=cache):
+            '''Remove the Lat/Lon correction for the slected cache (row)'''
+            self.SelectRow(row)
+            dlg = wx.MessageDialog(None,
+                message=_('Are you sure you want to remove the cordinate correction for ')+cache.code,
+                caption=_('Remove Cordinate Correction'),
+                style=wx.YES_NO|wx.ICON_QUESTION)
+            if dlg.ShowModal() == wx.ID_YES:
+                cache.clat = 0.0
+                cache.clon = 0.0
+                cache.corrected = False
+                cache.cnote = ''
+                cache.user_date = datetime.now()
+                self._table.ReloadRow(row)
+                self.Reset()
+
+        def cacheViewLogs(event, self=self, cache=cache):
+            '''View the logs for the selected cache (row).'''
+            self.SelectRow(row)
+            dlg = ViewLogsWindow(self.mainWin, cache)
+            dlg.ShowModal()
+
+        def cacheViewBugs(event, self=self, cache=cache):
+            '''View the travel bugs for the selected cache (row).'''
+            self.SelectRow(row)
+            dlg = ViewTravelBugsWindow(self.mainWin, cache)
+            dlg.ShowModal()
+
+        #---Non row/col pop-up functions---#000000#FFFFAA-------------------------------
+        def sortByCodeAscending(event, self=self):
+            '''Perform an ascending sort based on the cache code'''
+            self._table.SortColumnName('code', False)
+            self.Reset()
+
+        def sortByCodeDescending(event, self=self):
+            '''Perform an descending sort based on the cache code'''
+            self._table.SortColumnName('code', True)
+            self.Reset()
+
+        #---Menu ID's---#000000#FFFFAA------------------------------------------------------
+        cacheAddID      = wx.NewId()
+        cacheDeleteID   = wx.NewId()
+        cacheCorrectID  = wx.NewId()
+        cacheRmCorrID   = wx.NewId()
+        cacheViewLogsID = wx.NewId()
+        cacheViewBugsID = wx.NewId()
+        colDeleteID     = wx.NewId()
+        colSortAsID     = wx.NewId()
+        colSortDsID     = wx.NewId()
+        sortByCodeAsID  = wx.NewId()
+        sortByCodeDsID  = wx.NewId()
+
+        #---Build the pop-up menu---#000000#FFFFAA--------------------------------------
+        menu = wx.Menu()
+        if col == -1:
+            menu.Append(sortByCodeAsID, _('Ascending Sort By Cache Code'))
+            menu.Append(sortByCodeDsID, _('Descending Sort By Cache Code'))
+        else:
+            menu.Append(colSortAsID, _('Ascending Sort By Column'))
+            menu.Append(colSortDsID, _('Descending Sort By Column'))
+        menu.AppendSeparator()
+        menu.AppendMenu(wx.ID_ANY, _('Append Column'), appMenu)
+        menu.AppendMenu(wx.ID_ANY, _('Insert Column'), insMenu)
+        menu.Append(colDeleteID, _('Delete Column(s)'))
+        menu.AppendSeparator()
+        menu.Append(cacheAddID, _('Add Cache'))
+        if row >= 0:
+            menu.Append(cacheDeleteID, _('Delete Cache(s)'))
+            menu.AppendSeparator()
+            if cache.corrected:
+                menu.Append(cacheCorrectID, _('Edit Cordinate Correction'))
+                menu.Append(cacheRmCorrID, _('Remove Cordinate Correction'))
+            else:
+                menu.Append(cacheCorrectID, _('Correct Cordinates'))
+            if cache.getNumLogs() > 0: menu.Append(cacheViewLogsID, _('View Logs'))
+            if cache.hasTravelBugs(): menu.Append(cacheViewBugsID, _('View Travel Bugs'))
+
+        #---Bind functions---#000000#FFFFAA---------------------------------------------
+        self.Bind(wx.EVT_MENU, cacheAdd, id=cacheAddID)
+        self.Bind(wx.EVT_MENU, cacheDelete, id=cacheDeleteID)
+        self.Bind(wx.EVT_MENU, cacheCorrect, id=cacheCorrectID)
+        self.Bind(wx.EVT_MENU, cacheRemCorrection, id=cacheRmCorrID)
+        self.Bind(wx.EVT_MENU, cacheViewLogs, id=cacheViewLogsID)
+        self.Bind(wx.EVT_MENU, cacheViewBugs, id=cacheViewBugsID)
+
+        self.Bind(wx.EVT_MENU, colDelete, id=colDeleteID)
+        self.Bind(wx.EVT_MENU, colSortAscending, id=colSortAsID)
+        self.Bind(wx.EVT_MENU, colSortDescending, id=colSortDsID)
         for colId in appColIds:
-            self.Bind(wx.EVT_MENU, append, id=colId)
+            self.Bind(wx.EVT_MENU, colAppend, id=colId)
         for colId in insColIds:
-            self.Bind(wx.EVT_MENU, insert, id=colId)
+            self.Bind(wx.EVT_MENU, colInsert, id=colId)
 
+        self.Bind(wx.EVT_MENU, sortByCodeAscending, id=sortByCodeAsID)
+        self.Bind(wx.EVT_MENU, sortByCodeDescending, id=sortByCodeDsID)
 
         self.PopupMenu(menu)
         menu.Destroy()
         return
+
+    def NumSelectedRows(self):
+        return len(self.GetSelectedRows())
+
+    def GetSelectedCaches(self):
+        return self._table.GetRowCaches(self.GetSelectedRows())
 
     def Reset(self):
         """reset the view based on the data in the table.  Call
@@ -948,8 +991,11 @@ class CacheGrid(Grid.Grid):
     def GetCols(self):
         return self._table.GetCols()
 
-    def GetSortCol(self):
-        return self._table.GetSortCol()
+    def GetNumCols(self):
+        return len(self._table.GetCols())
+
+    def GetSort(self):
+        return self._table.GetSort()
 
 class PreferencesWindow(wx.Dialog):
     """Preferences Dialog"""
@@ -2652,7 +2698,7 @@ class MainWindow(wx.Frame):
         (self.conf.common.mainWidth,self.conf.common.mainHeight) = self.GetSizeTuple()
         self.conf.common.mainSplit = self.splitter.GetSashPosition()
         self.conf.common.cacheCols = self.cacheGrid.GetCols()
-        self.conf.common.sortCol = self.cacheGrid.GetSortCol()
+        (self.conf.common.sortCol,self.conf.common.sortDecending) = self.cacheGrid.GetSort()
         if self.displayCache != None:
             self.conf.common.dispCache = self.displayCache.code
         else:
