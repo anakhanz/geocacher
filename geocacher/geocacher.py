@@ -6,10 +6,14 @@
 # TODO: Add view/edit additional waypoints
 # TODO: Add Sub-menu item for selecting the current location
 # TODO: Make hyperlink in main window active and add option to display as cache code/name
-# TODO: Make relivant menu items pop-up on right-click on cell in cache grid
 # TODO: Enable context menu key in main cache grid
 # TODO: Enable context menu key in locations grid
+# TODO: Add user feedback through statusbar
 
+STATUS_MAIN = 0
+STATUS_SHOWN = 1
+STATUS_TOTAL = 2
+STATUS_FILTERED = 3
 
 from datetime import datetime
 import logging
@@ -825,13 +829,17 @@ class CacheGrid(Grid.Grid):
 
         def colSortAscending(event, self=self, col=col):
             '''Perform an ascending sort on the selected column'''
+            self.mainWin.pushStatus(_('Sorting caches'))
             self._table.SortColumn(col, False)
             self.Reset()
+            self.mainWin.popStatus()
 
         def colSortDescending(event, self=self, col=col):
             '''Perform an descending sort on the selected column'''
+            self.mainWin.pushStatus(_('Sorting caches'))
             self._table.SortColumn(col, True)
             self.Reset()
+            self.mainWin.popStatus()
 
         def colInsert(event, self=self, colIds=insColIds, col=col):
             '''Insert the given column before the currently selected column'''
@@ -856,11 +864,13 @@ class CacheGrid(Grid.Grid):
 
         def cacheDelete(event, self=self, row=row):
             '''Delete the selected cache(s) (row(s))'''
+            self.mainWin.pushStatus(_('Deleting caches'))
             rows = self.GetSelectedRows()
             if len(rows) == 0:
                 rows = [row]
             self._table.DeleteRows(rows)
             self.Reset()
+            self.mainWin.popStatus()
 
         def cacheCorrect(event, self=self, row=row, cache=cache):
             '''Add/Edit Correction of the Lat/Lon for the selected cache (row)'''
@@ -877,6 +887,7 @@ class CacheGrid(Grid.Grid):
             if dlg.ShowModal() == wx.ID_OK and (data['clat'] != cache.clat or
                                                 data['clon'] != cache.clon or
                                                 data['cnote'] != cache.cnote):
+                self.mainWin.pushStatus(_('Correcting cache: %s') % cache.code)
                 cache.clat = data['clat']
                 cache.clon = data['clon']
                 cache.cnote = data['cnote']
@@ -884,6 +895,7 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
+                self.mainWin.popStatus()
             dlg.Destroy()
 
         def cacheRemCorrection(event, self=self, row=row, cache=cache):
@@ -894,6 +906,7 @@ class CacheGrid(Grid.Grid):
                 caption=_('Remove Cordinate Correction'),
                 style=wx.YES_NO|wx.ICON_QUESTION)
             if dlg.ShowModal() == wx.ID_YES:
+                self.mainWin.pushStatus(_('Removing correction from cache: %s') % cache.code)
                 cache.clat = 0.0
                 cache.clon = 0.0
                 cache.corrected = False
@@ -901,18 +914,22 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
+                self.mainWin.popStatus()
+            dlg.Destroy()
 
         def cacheViewLogs(event, self=self, cache=cache):
             '''View the logs for the selected cache (row).'''
             self.SelectRow(row)
             dlg = ViewLogsWindow(self.mainWin, cache)
             dlg.ShowModal()
+            dlg.Destroy()
 
         def cacheViewBugs(event, self=self, cache=cache):
             '''View the travel bugs for the selected cache (row).'''
             self.SelectRow(row)
             dlg = ViewTravelBugsWindow(self.mainWin, cache)
             dlg.ShowModal()
+            dlg.Destroy()
 
         def cacheAsHome(event, self=self, cache=cache):
             self.mainWin.NewLocation(cache.lat, cache.lon,
@@ -924,6 +941,7 @@ class CacheGrid(Grid.Grid):
                                    cache.found_date,cache.own_log,
                                    cache.own_log_encoded)
             if dlg.ShowModal() == wx.ID_OK:
+                self.mainWin.pushStatus(_('Marking cache %s as found') % cache.code)
                 cache.found_date = wxDateTimeToPy(dlg.date.GetValue())
                 cache.own_log = dlg.logText.GetValue()
                 cache.own_log_encoded = dlg.encodeLog.GetValue()
@@ -931,6 +949,7 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
+                self.mainWin.popStatus()
             dlg.Destroy()
 
         def cacheSetDnf(event, self=self, cache=cache):
@@ -938,6 +957,7 @@ class CacheGrid(Grid.Grid):
                                    cache.dnf_date,cache.own_log,
                                    cache.own_log_encoded)
             if dlg.ShowModal() == wx.ID_OK:
+                self.mainWin.pushStatus(_('Marking cache %s as did not find') % cache.code)
                 cache.dnf_date = wxDateTimeToPy(dlg.date.GetValue())
                 cache.own_log = dlg.logText.GetValue()
                 cache.own_log_encoded = dlg.encodeLog.GetValue()
@@ -945,18 +965,23 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
+                self.mainWin.popStatus()
             dlg.Destroy()
 
         #---Non row/col pop-up functions---#000000#FFFFAA-------------------------------
         def sortByCodeAscending(event, self=self):
             '''Perform an ascending sort based on the cache code'''
+            self.mainWin.pushStatus(_('Sorting caches'))
             self._table.SortColumnName('code', False)
             self.Reset()
+            self.mainWin.popStatus()
 
         def sortByCodeDescending(event, self=self):
             '''Perform an descending sort based on the cache code'''
+            self.mainWin.pushStatus(_('Sorting caches'))
             self._table.SortColumnName('code', True)
             self.Reset()
+            self.mainWin.popStatus()
 
         #---Menu ID's---#000000#FFFFAA------------------------------------------------------
         cacheAddID      = wx.NewId()
@@ -1043,6 +1068,7 @@ class CacheGrid(Grid.Grid):
         # disapear
         self.AutoSizeColumns()
         self.AutoSizeRows()
+        self.mainWin.updateStatus(self.GetNumberRows())
 
     def ReloadCaches(self):
         self._table.ReloadCaches()
@@ -1059,8 +1085,11 @@ class CacheGrid(Grid.Grid):
     def GetCols(self):
         return self._table.GetCols()
 
-    def GetNumCols(self):
-        return len(self._table.GetCols())
+    def GetNumberCols(self):
+        return self._table.GetNumberCols()
+
+    def GetNumberRows(self):
+        return self._table.GetNumberRows()
 
     def GetSort(self):
         return self._table.GetSort()
@@ -2070,11 +2099,13 @@ class MainWindow(wx.Frame):
         self.buildToolBar()
 
         self.splitter = MainSplitter(self, wx.ID_ANY)
-        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db,  self)
+        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db, self)
         self.Description = wx.html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
         panel2 = wx.Window(self.splitter, wx.ID_ANY, style=wx.BORDER_SUNKEN)
         self.splitter.SetMinimumPaneSize(20)
         self.splitter.SplitHorizontally(self.cacheGrid, self.Description, conf.common.mainSplit or 400)
+
+        self.updateStatus()
 
         self.updateDetail(self.conf.common.dispCache or '')
 
@@ -2231,18 +2262,37 @@ class MainWindow(wx.Frame):
         self.ShowHideFilterBar(self.conf.common.showFilter or False)
 
     def buildStatusBar(self):
-        self.CreateStatusBar()
+        self.statusbar = self.CreateStatusBar()
+        self.statusbar.SetFieldsCount(4)
+        self.statusbar.SetStatusWidths([-1,180,80,120])
+        self.statusbar.SetStatusText(_('Geocacher - idle'),STATUS_MAIN)
+
+    def pushStatus(self, text):
+        self.statusbar.PushStatusText(text, STATUS_MAIN)
+
+    def popStatus(self):
+        self.statusbar.PopStatusText(STATUS_MAIN)
+
+    def updateStatus(self, rows=None):
+        self.statusbar.SetStatusText(_('Total: %i') % self.db.getNumberCaches(),STATUS_TOTAL)
+        if rows==None:
+            self.statusbar.SetStatusText(_('After Filter: %i') % self.cacheGrid.GetNumberRows(),STATUS_FILTERED)
+        else:
+            self.statusbar.SetStatusText(_('After Filter: %i') % rows,STATUS_FILTERED)
 
     def updateDetail(self, newCache=''):
         # TODO: put loading of cache detail int it's own thread
         # TODO: add further information to cache detail display
         # TODO: add option to view actual webpage
+        self.pushStatus(_('Loading cache: ') + newCache)
         newCacheObj = self.db.getCacheByCode(newCache)
         if newCacheObj != None:
             self.displayCache = newCacheObj
         if self.displayCache == None:
+            self.statusbar.SetStatusText('',STATUS_SHOWN)
             descText = _('Select a Cache to display from the table above')
         else:
+            self.statusbar.SetStatusText(_('Veiwing cache: ')+newCache,STATUS_SHOWN)
             descText = '<h1>' + self.displayCache.code + ' - ' + self.displayCache.name + '</h1>'
             if self.displayCache.url != '':
                 descText = descText + '<p><a href="' + self.displayCache.url + '">View online page</a></p>'
@@ -2259,6 +2309,7 @@ class MainWindow(wx.Frame):
             if len(self.displayCache.encoded_hints) > 0:
                 descText = descText + '<h2>Encoded Hints</h2><p>' + nl2br(self.displayCache.encoded_hints.encode('rot13')) + '</p>'
         self.Description.SetPage(descText)
+        self.popStatus()
 
     def selectCaches(self, scope, destText):
         options = [_('All'),_('Marked with User Flag')]
@@ -2313,7 +2364,10 @@ class MainWindow(wx.Frame):
         return (scope, caches)
 
     def updateFilter(self):
+        self.pushStatus(_('Updating filter'))
         self.cacheGrid.ReloadCaches()
+        self.updateStatus()
+        self.popStatus()
 
     def updateLocations(self):
         for i in range(0,self.selLocation.GetCount()):
@@ -2322,9 +2376,12 @@ class MainWindow(wx.Frame):
             self.selLocation.Append(location)
 
     def updateCurrentLocation(self, name):
+        self.pushStatus(_('Updating home location to: %s') % name)
         self.selLocation.SetValue(name)
         self.conf.common.currentLoc = name
         self.cacheGrid.UpdateLocation()
+        self.updateStatus()
+        self.popStatus()
 
 
     def GpsError(self, message):
@@ -2345,6 +2402,7 @@ class MainWindow(wx.Frame):
         wx.AboutBox(HelpAbout)
 
     def OnLoadWpt(self, event=None):
+        self.pushStatus(_('Loading caches from file'))
         wildcard = "GPX File (*.gpx)|*.gpx|"\
                    "LOC file (*.loc)|*.loc|"\
                    "Compressed GPX File (*.zip)|*.zip|"\
@@ -2393,12 +2451,15 @@ class MainWindow(wx.Frame):
                     self.conf.load.mode = 'replace'
 
                 for path in paths:
+                    self.pushStatus(_('Loading caches from file: ')% path)
                     self.LoadFile(path, self.conf.load.mode)
+                    self.popStatus()
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
+            self.popStatus()
 
     def OnLoadWptDir(self, event=None):
-
+        self.pushStatus(_('Loading caches from folder'))
         if os.path.isdir(self.conf.load.lastFolder):
             dir = self.conf.load.lastFolder
 
@@ -2432,15 +2493,18 @@ class MainWindow(wx.Frame):
                 addWptFiles = []
                 for file in listFiles(dir):
                     if file.rfind('-wpts') >= 0:
-                        print 'Processing: ', file
                         addWptFiles.append(file)
                     else:
-                        print 'Processing: ', file
+                        self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
                         self.LoadFile(file, self.conf.load.mode)
+                        self.popStatus()
                 for file in addWptFiles:
+                    self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
                     self.LoadFile(file, self.conf.load.mode)
+                    self.popStatus()
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
+            self.popStatus()
 
     def LoadFile(self, path, mode):
         ext = os.path.splitext(path)[1]
@@ -2458,6 +2522,7 @@ class MainWindow(wx.Frame):
     def OnExportWpt(self, event=None):
         '''Function to export waypoints to a file'''
 
+        self.pushStatus(_('Exporting caches to file'))
         (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
         if scope == None:
             return
@@ -2492,6 +2557,8 @@ class MainWindow(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             self.conf.export.lastFolder = dlg.GetDirectory()
             path = dlg.GetPath()
+            self.popStatus()
+            self.pushStatus(_('Exporting caches to file: %s') % path)
             if dlg.GetFilterIndex() == 0:
                 ext = '.gpx'
                 zip = False
@@ -2511,6 +2578,7 @@ class MainWindow(wx.Frame):
                                )
                 if question.ShowModal() == wx.ID_NO:
                     question.destroy()
+                    self.popStatus()
                     return
             if ext == '.loc':
                 locExport(path, caches)
@@ -2561,8 +2629,10 @@ class MainWindow(wx.Frame):
                 opts.Destroy()
         dlg.Destroy()
         self.conf.export.scope = scope
+        self.popStatus()
 
     def OnBackupDb(self, event=None):
+        self.pushStatus(_('Backing up the Database'))
         wildcard = "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
         dir = os.getcwd()
@@ -2575,6 +2645,8 @@ class MainWindow(wx.Frame):
             )
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
+            self.popStatus()
+            self.pushStatus(_('Backing up the Database to: %s') % path)
             if os.path.isfile(path):
                 question = wx.MessageDialog(None,
                                message=path + _(" already exists are you sure you want to replace it ?"),
@@ -2583,12 +2655,16 @@ class MainWindow(wx.Frame):
                                )
                 if question.ShowModal() == wx.ID_NO:
                     question.Destroy()
+                    dlg.Destroy()
+                    self.popStatus()
                     return
                 question.Destroy()
             self.db.backup(path)
         dlg.Destroy()
+        self.popStatus()
 
     def OnRestoreDb(self, event=None):
+        self.pushStatus(_('Restoring database from file'))
         wildcard = "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
         dir = os.getcwd()
@@ -2601,6 +2677,8 @@ class MainWindow(wx.Frame):
             )
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
+            self.popStatus()
+            self.pushStatus(_('Restoring database from file: %s') % path)
             question = wx.MessageDialog(None,
                            message=_("Are you sure you want to replace the contents of the DB with ") + path + '?',
                            caption=_("Replace DB?"),
@@ -2611,6 +2689,7 @@ class MainWindow(wx.Frame):
                 self.cacheGrid.ReloadCaches()
             question.Destroy()
         dlg.Destroy()
+        self.popStatus()
 
 
     def OnPrefs(self, event=None):
@@ -2637,6 +2716,7 @@ class MainWindow(wx.Frame):
         self.ShowHideFilterBar(show)
 
     def OnGpsUpload(self, event=None):
+        self.pushStatus(_('Uploading caches to GPS'))
         (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
         if scope == None:
             return
@@ -2656,8 +2736,10 @@ class MainWindow(wx.Frame):
         if not ok:
             self.GpsError( message)
         os.remove(tmpFile)
+        self.popStatus()
 
     def OnGpsLocation(self, event=None):
+        self.pushStatus(_('Loading new loaction form GPS'))
         gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
                         port=self.conf.gps.connection or 'usb:')
         ok, lat, lon, message = gpsCom.getCurrentPos()
@@ -2665,7 +2747,7 @@ class MainWindow(wx.Frame):
             self.NewLocation(lat, lon, _('the GPS'), _('GPS Point'))
         else:
             self.GpsError(message)
-            return
+        self.popStatus()
 
     def NewLocation(self, lat, lon, source, name=''):
         dlg = wx.TextEntryDialog(self,

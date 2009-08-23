@@ -67,6 +67,10 @@ class DB:
             cacheCodeList.append(cacheNode.attrib["code"])
         return cacheCodeList
 
+    def getNumberCaches(self):
+        '''Returns the number of caches in the database'''
+        return len(self.root.xpath(u"cache"))
+
     def getCacheByCode(self,code):
         '''Returns the cache with the given code if found, otherwise "None"'''
         caches = self.root.xpath(u"""cache[@code="%s"]""" % code)

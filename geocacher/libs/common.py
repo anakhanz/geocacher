@@ -28,7 +28,7 @@ def dateTimeToText(dt):
         return dt.isoformat()+'Z'
 
 
-def textToDateTime(t): # TODO: add microsecond
+def textToDateTime(t):
     '''Converts a date/time string in iso format to a datetime object'''
     assert type(t)==unicode or type(t)==str
     if t == "":
