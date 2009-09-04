@@ -4,12 +4,11 @@ from datetime import datetime
 from lxml.etree import Element,ElementTree,XML
 import os
 import shutil
-import string
 import tempfile
 import zipfile
 
-from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
-from libs.common import getTextFromPath,getAttribFromPath
+from libs.common import textToBool,textToDateTime,dateTimeToText #@UnresolvedImport
+from libs.common import getTextFromPath,getAttribFromPath #@UnresolvedImport
 
 NS = {'gpx': "http://www.topografix.com/GPX/1/0",
       'gs': "http://www.groundspeak.com/cache/1/0"}
@@ -174,7 +173,6 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
             cache.gpx_date = gpxDate
             cache.source = os.path.abspath(filename)
 
-    cacheCodes = DB.getCacheCodeList()
     for wpt in extraWpts:
         updated = False
         lon = float(wpt.attrib['lon'])
@@ -258,7 +256,6 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
         if gc:
             GS_NAMESPACE = "http://www.groundspeak.com/cache/1/0"
             GS = "{%s}" %GS_NAMESPACE
-            NSMAP = {'groundspeak': GS_NAMESPACE}
             gsCache = Element(GS + 'cache',id=cache.id,
                                 available=str(cache.available),
                                 archived=str(cache.archived))
@@ -410,9 +407,12 @@ def zipLoad(filename,DB,mode="update",userName="",userId=""):
     # TODO: implement returning of changes from zipped GPX file for reporting to user
     if os.path.isfile(filename):
         tempDir = tempfile.mkdtemp()
-        archive = zipfile.ZipFile(filename, mode='r')
-        archive.extractall(tempDir)
-        archive.close()
+        try:
+            archive = zipfile.ZipFile(filename, mode='r')
+            archive.extractall(tempDir)
+            archive.close()
+        except:
+            return False
         addWptFiles=[]
         for file in os.listdir(tempDir):
             if file.rfind('-wpts') >= 0:
@@ -422,8 +422,9 @@ def zipLoad(filename,DB,mode="update",userName="",userId=""):
         for file in addWptFiles:
             gpxLoad(os.path.join(tempDir,file),DB,mode=mode,userName=userName,userId=userId)
         shutil.rmtree(tempDir)
+        return True
     else:
-        return
+        return False
 
 def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple=False,full=False, sepAddWpts=False):
     assert os.path.isdir(os.path.split(filename)[0])

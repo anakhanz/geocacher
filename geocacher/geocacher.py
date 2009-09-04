@@ -3,12 +3,12 @@
 
 # TODO: Add icon to main Window
 # TODO: Add view only mode
-# TODO: Add view/edit additional waypoints
+# TODO: Add view/edit additional way points
 # TODO: Add Sub-menu item for selecting the current location
-# TODO: Make hyperlink in main window active and add option to display as cache code/name
+# TODO: Make hyper link in main window active and add option to display as cache code/name
 # TODO: Enable context menu key in main cache grid
 # TODO: Enable context menu key in locations grid
-# TODO: Add user feedback through statusbar
+# TODO: Add user feedback through status bar
 
 STATUS_MAIN = 0
 STATUS_SHOWN = 1
@@ -19,10 +19,7 @@ from datetime import datetime
 import logging
 import optparse
 import os
-import string
 import sys
-import time
-import traceback
 import tempfile
 
 try:
@@ -33,11 +30,9 @@ except:
 import wx
 import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
-import  wx.lib.scrolledpanel as Scrolled
-import wx.html
-from wx import xrc
-
-import locale
+import wx.lib.scrolledpanel as Scrolled
+import wx.html as Html
+import wx.xrc as Xrc
 
 from libs.i18n import createGetText
 
@@ -101,12 +96,12 @@ class DegRenderer(Grid.PyGridCellRenderer):
         return DegRenderer(self.table, self.conf, self.mode)
 
 class LatRenderer(DegRenderer):
-    '''Renderer for cells containiny Latitudes (subcalss of DegRenderer)'''
+    '''Renderer for cells containing Latitudes (subclass of DegRenderer)'''
     def __init__(self, table, conf):
         DegRenderer.__init__(self, table, conf, 'lat')
 
 class LonRenderer(DegRenderer):
-    '''Renderer for cells containiny Longitudes (subcalss of DegRenderer)'''
+    '''Renderer for cells containing Longitudes (subclass of DegRenderer)'''
     def __init__(self, table, conf):
         DegRenderer.__init__(self, table, conf, 'lon')
 
@@ -241,7 +236,7 @@ class DegEditor(Grid.PyGridCellEditor):
         self._tc.SetInsertionPointEnd()
 
     def Clone(self):
-        return DegEditor(conf, mode)
+        return DegEditor(self.conf, self.mode)
 
     def StartingKey(self, evt):
         self.OnChar(evt)
@@ -249,12 +244,12 @@ class DegEditor(Grid.PyGridCellEditor):
             self._tc.EmulateKeyPress(evt)
 
 class LatEditor(DegEditor):
-    '''Editor for cells containiny Latitudes (subcalss of DegEditor)'''
+    '''Editor for cells containing Latitudes (subcalss of DegEditor)'''
     def __init__(self, conf):
         DegEditor.__init__(self, conf, 'lat')
 
 class LonEditor(DegEditor):
-    '''Editor for cells containiny Longitudes (subcalss of DegEditor)'''
+    '''Editor for cells containing Longitudes (subcalss of DegEditor)'''
     def __init__(self, conf):
         DegEditor.__init__(self, conf, 'lon')
 
@@ -312,12 +307,12 @@ class CacheDataTable(Grid.PyGridTableBase):
             'size'        :_('Size'),
             'distance'    :_('Distance'),
             'bearing'     :_('Bearing'),
-            'oLat'        :_('Origional Latitude'),
-            'oLon'        :_("Origional Longitude"),
+            'oLat'        :_('Original Latitude'),
+            'oLon'        :_("Original Longitude"),
             'cLat'        :_('Corrected Latitude'),
             'cLon'        :_("Corrected Longitude"),
-            'corrected'   :_('Corrected Cordinates'),
-            'available'   :_('Avaliable'),
+            'corrected'   :_('Corrected Coordinates'),
+            'available'   :_('Available'),
             'archived'    :_('Archived'),
             'state'       :_('State'),
             'country'     :_('Country'),
@@ -406,7 +401,7 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def ReloadCaches(self):
         self.data = []
-        for cache in Geocacher.db.getCacheList():
+        for cache in self.db.getCacheList():
             self.__addRow(cache)
         self.DoSort()
 
@@ -460,7 +455,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''Returns true if the given cache should be filtered out of the list'''
         mine = cache.owner == self.conf.gc.userName or\
                cache.owner_id == self.conf.gc.userId
-        dist, cBear = self.__calcDistBearing(cache)
+        dist, cBear = self.__calcDistBearing(cache) #@UnusedVariable
         return (bool(self.conf.filter.archived) and cache.archived) or\
                (bool(self.conf.filter.disabled) and (not cache.available)) or\
                (bool(self.conf.filter.found) and cache.found) or\
@@ -1098,15 +1093,15 @@ class FoundCacheDialog(wx.Dialog):
     '''Dialog to get date and Log Text for marking a cache as Found/DNF'''
     def __init__(self,parent,cache,markType,date=None, logText='',encoded=False):
         pre = wx.PreDialog()
-        self.res = wx.xrc.XmlResource('xrc\geocacher.xrc')
+        self.res = Xrc.XmlResource('xrc\geocacher.xrc')
         self.res.LoadOnDialog(pre, parent, 'FoundCacheDialog')
         self.PostCreate(pre)
 
         self.SetTitle(_('Mark cache ') + cache + _(' as ') + markType)
 
-        self.date = wx.xrc.XRCCTRL(self, 'datePick')
-        self.logText = wx.xrc.XRCCTRL(self, 'logText')
-        self.encodeLog = wx.xrc.XRCCTRL(self, 'encodeLogCb')
+        self.date = Xrc.XRCCTRL(self, 'datePick')
+        self.logText = Xrc.XRCCTRL(self, 'logText')
+        self.encodeLog = Xrc.XRCCTRL(self, 'encodeLogCb')
 
         if date != None:
             self.date.SetValue(wx.DateTimeFromDMY(date.day,date.month-1,date.year))
@@ -1190,7 +1185,7 @@ class PreferencesWindow(wx.Dialog):
             _('User Data Column Names'))
         displayGrid.Add(label, (2,0), (1,2))
 
-        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 1'))
+        label = wx.StaticText(panel,wx.ID_ANY,_('User Datae 1'))
         displayGrid.Add(label, (3,0))
         self.dispUserData1 = wx.TextCtrl(panel, wx.ID_ANY,
             self.conf.common.userData1 or label.GetLabel(),
@@ -1510,10 +1505,8 @@ class LocationsGrid(Grid.Grid):
         addID = wx.NewId()
         editID = wx.NewId()
         deleteID = wx.NewId()
-        x = self.GetRowSize(row)/2
 
         menu = wx.Menu()
-        xo, yo = evt.GetPosition()
         menu.Append(addID, _('Add Location'))
         if row != -1:
             menu.Append(editID, _('Edit Location'))
@@ -1521,7 +1514,6 @@ class LocationsGrid(Grid.Grid):
                 menu.Append(deleteID, _('Delete Location'))
 
         def add(event, self=self, row=row):
-            name = self._table.GetValue(row,0)
             data = {'name':'',
                     'lat' :0,
                     'lon' :0}
@@ -1626,7 +1618,7 @@ class ViewTravelBugsWindow(wx.Dialog):
         wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Travel Bugs for ")+cache.code,size = (420,500),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
 
-        res = xrc.XmlResource('xrc\geocacher.xrc')
+        res = Xrc.XmlResource('xrc\geocacher.xrc')
 
         # Create a scrolled panel and a vertical sizer within it to take the bugs
         sw = Scrolled.ScrolledPanel(self, -1, size=(400, 450),
@@ -1634,8 +1626,8 @@ class ViewTravelBugsWindow(wx.Dialog):
         bugSizer = wx.BoxSizer(orient=wx.VERTICAL)
         for travelBug in cache.getTravelBugs():
             bugPanel = res.LoadPanel(sw, 'bugPanel')
-            ref = xrc.XRCCTRL(bugPanel, 'refText')
-            name = xrc.XRCCTRL(bugPanel, 'nameText')
+            ref = Xrc.XRCCTRL(bugPanel, 'refText')
+            name = Xrc.XRCCTRL(bugPanel, 'nameText')
 
             ref.SetValue(travelBug.ref)
             name.SetValue(travelBug.name)
@@ -1678,15 +1670,15 @@ class ViewLogsWindow(wx.Dialog):
                                  style = wx.TAB_TRAVERSAL)
         logSizer = wx.BoxSizer(orient=wx.VERTICAL)
 
-        res = xrc.XmlResource('xrc\geocacher.xrc')
+        res = Xrc.XmlResource('xrc\geocacher.xrc')
 
         # Create a block for each log and add it to the logs sizer
         for log in cache.getLogs():
             logPanel = res.LoadPanel(sw, 'logPanel')
-            date = xrc.XRCCTRL(logPanel, 'dateText')
-            type = xrc.XRCCTRL(logPanel, 'typeText')
-            finder = xrc.XRCCTRL(logPanel, 'finderText')
-            message = xrc.XRCCTRL(logPanel, 'messageText')
+            date     = Xrc.XRCCTRL(logPanel, 'dateText')
+            type     = Xrc.XRCCTRL(logPanel, 'typeText')
+            finder   = Xrc.XRCCTRL(logPanel, 'finderText')
+            message  = Xrc.XRCCTRL(logPanel, 'messageText')
 
             date.SetValue(log.date.strftime("%x"))
             type.SetValue(log.type)
@@ -2100,8 +2092,8 @@ class MainWindow(wx.Frame):
 
         self.splitter = MainSplitter(self, wx.ID_ANY)
         self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db, self)
-        self.Description = wx.html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
-        panel2 = wx.Window(self.splitter, wx.ID_ANY, style=wx.BORDER_SUNKEN)
+        self.Description = Html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
+        #panel2 = wx.Window(self.splitter, wx.ID_ANY, style=wx.BORDER_SUNKEN)
         self.splitter.SetMinimumPaneSize(20)
         self.splitter.SplitHorizontally(self.cacheGrid, self.Description, conf.common.mainSplit or 400)
 
@@ -2205,8 +2197,6 @@ class MainWindow(wx.Frame):
 
     def buildToolBar(self):
         TBFLAGS = ( wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
-
-        tsize = (24,24)
 
         tb = self.CreateToolBar(TBFLAGS)
         self.tb = tb
@@ -2370,7 +2360,7 @@ class MainWindow(wx.Frame):
         self.popStatus()
 
     def updateLocations(self):
-        for i in range(0,self.selLocation.GetCount()):
+        for i in range(0,self.selLocation.GetCount()): #@UnusedVariable
             self.selLocation.Delete(0)
         for location in self.db.getLocationNameList():
             self.selLocation.Append(location)
@@ -2509,15 +2499,20 @@ class MainWindow(wx.Frame):
     def LoadFile(self, path, mode):
         ext = os.path.splitext(path)[1]
         if ext == '.gpx':
-            gpxLoad(path,self.db,mode=mode,
-                    userId=self.conf.gc.userId,
-                    userName=self.conf.gc.userName)
+            ret = gpxLoad(path,self.db,mode=mode,
+                          userId=self.conf.gc.userId,
+                          userName=self.conf.gc.userName)
         elif ext == '.loc':
-            locLoad(path,self.db,mode=mode)
+            ret = locLoad(path,self.db,mode=mode)
         elif ext == '.zip':
-            zipLoad(path,self.db,mode=mode,
-                    userId=self.conf.gc.userId,
-                    userName=self.conf.gc.userName)
+            ret = zipLoad(path,self.db,mode=mode,
+                          userId=self.conf.gc.userId,
+                          userName=self.conf.gc.userName)
+        if ret == False:
+            wx.MessageDialog(self,
+                             _('Could not import "%s" due to an error accessing the file') % path,
+                             caption=_("File import error"),
+                             style=wx.OK|wx.ICON_WARNING)
 
     def OnExportWpt(self, event=None):
         '''Function to export waypoints to a file'''
@@ -2720,7 +2715,7 @@ class MainWindow(wx.Frame):
         (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
         if scope == None:
             return
-        fd,tmpFile = tempfile.mkstemp()
+        fd,tmpFile = tempfile.mkstemp() #@UnusedVariable
         dlg = wx.MessageDialog(None,
             message=_("Do you want to include the additional waypoints?"),
             caption=_("GPS Upload"),
@@ -2894,8 +2889,10 @@ class GeocacherApp (wx.App):
             dlg.ShowModal()
             return False
         else:
-            Geocacher.init(True)
-            frame = MainWindow(None,-1,Geocacher.conf, Geocacher.db)
+            geocacher = Geocacher(True)
+            conf = geocacher.conf
+            db = geocacher.db
+            frame = MainWindow(None,-1,conf, db)
             self.SetTopWindow(frame)
             frame.Show(True)
             return True

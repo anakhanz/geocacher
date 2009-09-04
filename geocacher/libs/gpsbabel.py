@@ -23,7 +23,7 @@ class GpsCom:
         p = Popen(['gpsbabel','-i',self.gps+',get_posn','-f',self.port],stdout=PIPE, stderr=PIPE)
         stdout, stderr = p.communicate()
         if p.returncode == 0:
-            blank,latStr,lonStr,name = stdout.splitlines()[1].split(' ')
+            blank,latStr,lonStr,name = stdout.splitlines()[1].split(' ') #@UnusedVariable
             lat = float(latStr[:-1])
             if latStr[-1:] == 'S': lat = - lat
             lon = float(lonStr[:-1])

@@ -16,8 +16,9 @@
 import locale,gettext
 
 def createGetText(app_name, locale_dir):
-    """ create the _() function for translation of 'app_name' in 'locale_dir'
-        return the function
+    """ 
+    create the _() function for translation of 'app_name' in 'locale_dir'
+    return the function
     """
     # make translation available in the code
     lc = locale.getdefaultlocale()[0]

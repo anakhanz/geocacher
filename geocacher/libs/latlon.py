@@ -6,14 +6,14 @@ import re
 
 def distance(lat1, lon1, lat2, lon2, miles = False):
     '''
-    Takes a pair of cordinates and returns the distance between them in
+    Takes a pair of coordinates and returns the distance between them in
     Kilometers or Miles.
 
     Arguments:
-        lat1  - Lattitude of the first pair of cordinates
-        lon1  - Longitude of the first pair of cordinates
-        lat2  - Lattitude of the second pair of cordinates
-        lon2  - Longitude of the second pair of cordinates
+        lat1  - Latitude of the first pair of coordinates
+        lon1  - Longitude of the first pair of coordinates
+        lat2  - Latitude of the second pair of coordinates
+        lon2  - Longitude of the second pair of coordinates
     Keyword Argument:
         miles - Sets the output unit to Miles instead of Kilometers if defined
                 as True
@@ -41,14 +41,14 @@ def distance(lat1, lon1, lat2, lon2, miles = False):
 
 def bearing(lat1, lon1, lat2, lon2):
     '''
-    Takes a pair of cordinates and returns the bearing in degrees from the
-    first pair of cordinates to the second pair of cordinates.
+    Takes a pair of coordinates and returns the bearing in degrees from the
+    first pair of coordinates to the second pair of coordinates.
 
     Arguments:
-        lat1  - Lattitude of the first pair of cordinates
-        lon1  - Longitude of the first pair of cordinates
-        lat2  - Lattitude of the second pair of cordinates
-        lon2  - Longitude of the second pair of cordinates
+        lat1  - Latitude of the first pair of coordinates
+        lon1  - Longitude of the first pair of coordinates
+        lat2  - Latitude of the second pair of coordinates
+        lon2  - Longitude of the second pair of coordinates
     '''
     # Convert to radians
     rLat1 = radians(lat1)
@@ -85,14 +85,14 @@ def toCardinal(bearing):
 
 def cardinalBearing(lat1, lon1, lat2, lon2):
     '''
-    Takes a pair of cordinates and returns the bearing as a cardinal point from
-    the first pair of cordinates to the second pair of cordinates.
+    Takes a pair of coordinates and returns the bearing as a cardinal point from
+    the first pair of coordinates to the second pair of coordinates.
 
     Arguments:
-        lat1  - Lattitude of the first pair of cordinates
-        lon1  - Longitude of the first pair of cordinates
-        lat2  - Lattitude of the second pair of cordinates
-        lon2  - Longitude of the second pair of cordinates
+        lat1  - Latitude of the first pair of coordinates
+        lon1  - Longitude of the first pair of coordinates
+        lat2  - Latitude of the second pair of coordinates
+        lon2  - Longitude of the second pair of coordinates
     '''
     return toCardinal(bearing(lat1, lon1, lat2, lon2))
 

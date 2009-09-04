@@ -1,13 +1,11 @@
 # -*- coding: UTF-8 -*-
-'''Module to implement the persistant data stores'''
+'''Module to implement the persistent data stores'''
 import datetime
 from lxml.etree import Element,ElementTree
 import os
-import string
 
-from libs import dict4ini
-from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
-from libs.common import getTextFromPath,getAttribFromPath
+from libs import dict4ini #@UnresolvedImport
+from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText #@UnresolvedImport
 
 VERSION = 1
 ROOT_ELEMENT = 'db'
@@ -16,14 +14,14 @@ class DB:
     '''Database for all non configuration data in the geocacher application'''
 
     def __init__(self,file):
-        '''Load the DB or initalise if missing'''
+        '''Load the DB or initialise if missing'''
         try:
             self.root = ElementTree(file=file).getroot()
-            version = int(self.root.attrib["version"])
+            #version = int(self.root.attrib["version"])
             self.update()
         except:
             self.root = Element(ROOT_ELEMENT,version=str(VERSION))
-            version=VERSION
+            #version=VERSION
             self.addLocation('Default')
         self.file = file
 
@@ -187,7 +185,7 @@ class DB:
         locationList = []
         for locationNode in self.root.xpath(u"location"):
             locationList.append(Location(locationNode))
-        return cacheList
+        return locationList
 
     def getLocationNameList(self):
         '''Returns a list of home location names'''
@@ -882,7 +880,7 @@ class AddWaypoint(object):
     def __getCode(self):    return self.__node.attrib["code"]
 
     def __setCode(self,t):
-        assert type(t) == uniceode or type(t)==str
+        assert type(t) == unicode or type(t)==str
         self.__node.attrib["code"] = t
 
     code = property(__getCode, __setCode)
@@ -954,7 +952,7 @@ class Location(object):
     def __getName(self):    return self.__node.attrib["name"]
 
     def __setName(self,t):
-        assert type(t) == uniceode or type(t)==str
+        assert type(t) == unicode or type(t)==str
         self.__node.attrib["name"] = t
 
     name = property(__getName, __setName)
@@ -1058,7 +1056,7 @@ class Geocacher:
                 return name
 
     @staticmethod
-    def init(canModify=True):
+    def __init__(canModify=True):
         Geocacher.canModify = canModify
         # load/initalise the database
         Geocacher.db = DB( Geocacher.getConfFile("db.xml") )

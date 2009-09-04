@@ -5,8 +5,7 @@ from lxml.etree import Element,ElementTree
 import os
 import string
 
-from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
-from libs.common import getTextFromPath,getAttribFromPath
+from libs.common import getTextFromPath,getAttribFromPath #@UnresolvedImport
 
 def locLoad(filename,DB,mode="update"):
     # Load LOC file
@@ -17,7 +16,7 @@ def locLoad(filename,DB,mode="update"):
         return
     locDate = datetime.utcfromtimestamp(os.path.getmtime(filename))
 
-    # Find the waypoints and process them
+    # Find the way points and process them
     for wpt in locDoc.xpath("//loc//waypoint"):
         code = getAttribFromPath(wpt,"name","id")
         if code[:2] !="GC":

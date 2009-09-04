@@ -1,9 +1,8 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 
 import logging
 import os
 import datetime
-from string import digits
 
 
 def boolToText(bool):

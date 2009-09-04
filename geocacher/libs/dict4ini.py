@@ -98,7 +98,7 @@ section_delimeter = '/'
 
 import base64
 try:
-    import p3 as crypt
+    import crypt
 except:
     crypt = None
     
@@ -240,7 +240,7 @@ class DictNode(object):
         for key, value in values.items():
             s.append((self._root._orders.get(self._section_delimeter.join(sec + [key]), 99999), key, value))
         s.sort()
-        return [(x, y) for z, x, y in s]
+        return [(x, y) for z, x, y in s] #@UnusedVariable
     
     def clear(self):
         self._items = {}
@@ -429,7 +429,7 @@ class DictIni(DictNode):
                     if comments:
                         self.comment(key, '\n'.join(comments))
                         comments = []
-            except Exception, err:
+            except Exception, err: #@UnusedVariable
                 import traceback
                 traceback.print_exc()
                 print 'Error in [line %d]: %s' % (lineno, line)
@@ -537,9 +537,9 @@ class DictIni(DictNode):
     
     def uni_str(self, a, encoding=None, section=None):
         if section and isinstance(section, list):
-            current_section = section[0]
+            current_section = section[0] #@UnusedVariable
         else:
-            current_section = section
+            current_section = section #@UnusedVariable
         
         if self._normal:
             if isinstance(a, (int, float, str)):
@@ -590,7 +590,7 @@ def escstr(value):
 def uni_prt(a, encoding=None):
     s = []
     if isinstance(a, (list, tuple)):
-        for i, k in enumerate(a):
+        for i, k in enumerate(a): #@UnusedVariable
             s.append(uni_prt(k, encoding))
             s.append(',')
     elif isinstance(a, str):
