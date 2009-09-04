@@ -336,7 +336,7 @@ class Cache(object):
 
     def __setContainer(self,t):
         assert type(t)==unicode or type(t)==str
-        # TODO: add assertion that the container type is a valid one
+        assert t in ['Micro','Small','Regular','Large','Not chosen','Virtual','Other']
         self.__node.attrib["container"] = t
 
     container = property(__getContainer, __setContainer)
@@ -363,7 +363,9 @@ class Cache(object):
 
     def __setType(self,t):
         assert type(t)==unicode or type(t)==str
-        # TODO: add assertion that the type is a valid one
+        assert t in ['Traditional Cache','Ape','CITO','Earthcache','Event Cache',
+                     'Maze','Letterbox Hybrid','Mega','Multi-cache','Unknown Cache',
+                     'Reverse','Virtual Cache','Webcam','WhereIGo']
         self.__node.attrib["type"] = t
 
     type= property(__getType, __setType)
