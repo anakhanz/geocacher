@@ -51,7 +51,7 @@ def locLoad(filename,DB,mode="update"):
 
 def locExport(filename,caches):
     if len(caches) == 0:
-        return
+        return True
     root = Element("loc",version="1.0", src="Geocacher")
     for cache in caches:
         waypoint = Element("waypoint")
@@ -65,6 +65,10 @@ def locExport(filename,caches):
         link = Element("link", text="Cache Details")
         link.text = cache.url
         waypoint.append(link)
-    fid = open(filename,"w")
-    ElementTree(root).write(fid,encoding="utf-8")
-    fid.close()
+    try:
+        fid = open(filename,"w")
+        ElementTree(root).write(fid,encoding="utf-8")
+        fid.close()
+        return True
+    except:
+        return False

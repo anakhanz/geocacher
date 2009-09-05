@@ -209,7 +209,7 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
     addWpts = addWpts and (not simple) or full
 
     if len(caches) == 0:
-        return
+        return True
 
     root = gpxInit(caches)
 
@@ -326,7 +326,11 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
         if addWpts:
             gpxExportAddWptProcess(root, cache)
 
-    gpxSave(filename,root)
+    try:
+        gpxSave(filename,root)
+        return True
+    except:
+        return False
 
 def gpxExportAddWptProcess(root, cache):
     for addWpt in cache.getAddWaypoints():
@@ -358,16 +362,19 @@ def gpxExportAddWptProcess(root, cache):
         wpt.append(type)
 
 def gpxExportAddWpt(filename,caches):
+    count = 0
     if len(caches) == 0:
-        return
+        return True, 0
     root = gpxInit(caches)
     for cache in caches:
         gpxExportAddWptProcess(root, cache)
-    if len(root.xpath("wpt")) == 0:
-        return False
-    else:
-        gpxSave(filename,root)
-    return True
+    count = len(root.xpath("wpt"))
+    if count != 0:
+        try:
+            gpxSave(filename,root)
+        except:
+            return False,0
+    return True, count
 
 def gpxInit(caches):
     time = dateTimeToText(datetime.now())
@@ -430,10 +437,13 @@ def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
     assert os.path.isdir(os.path.split(filename)[0])
 
     if len(caches) == 0:
-        return
+        return True
 
     if os.path.isfile(filename):
-        os.remove(filename)
+        try:
+            os.remove(filename)
+        except:
+            return False
 
     gc = (gc and (not simple)) or full
     logs = (logs and (not simple)) or full
@@ -441,21 +451,25 @@ def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
     addWpts = addWpts and (not simple) or full
 
     baseName = os.path.splitext(os.path.basename(filename))[0]
-
-    tempDir = tempfile.mkdtemp()
-    archive = zipfile.ZipFile(filename, mode='w', compression=zipfile.ZIP_DEFLATED)
+    try:
+        tempDir = tempfile.mkdtemp()
+        archive = zipfile.ZipFile(filename, mode='w', compression=zipfile.ZIP_DEFLATED)
+    except:
+        return False
 
     gpxFileName = os.path.join(tempDir, baseName+'.gpx')
-    gpxExport(gpxFileName,caches,gc=gc,logs=logs,tbs=tbs,addWpts=addWpts and not sepAddWpts)
+    ret1 = gpxExport(gpxFileName,caches,gc=gc,logs=logs,tbs=tbs,addWpts=addWpts and not sepAddWpts)
     archive.write(gpxFileName, os.path.basename(gpxFileName).encode("utf_8"))
 
     if addWpts and sepAddWpts:
 
         gpxAddFileName = os.path.join(tempDir, baseName+'-wpts.gpx')
-        if gpxExportAddWpt(gpxAddFileName,caches):
+        ret2, count = gpxExportAddWpt(gpxAddFileName,caches)
+        if count != 0:
             archive.write(gpxAddFileName, os.path.basename(gpxAddFileName).encode("utf_8"))
 
     archive.close()
 
     shutil.rmtree(tempDir)
+    return ret1 and ret2
 

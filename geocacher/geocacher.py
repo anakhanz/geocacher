@@ -47,6 +47,8 @@ from libs.loc import locLoad, locExport
 from libs.latlon import distance, cardinalBearing
 from libs.latlon import degToStr, strToDeg
 
+from dialogs.export import ExportOptions
+
 try:
     __version__ = open(os.path.join(os.path.dirname(__file__),
         "data","version.txt")).read().strip()
@@ -508,6 +510,12 @@ class CacheDataTable(Grid.PyGridTableBase):
         caches = []
         for row in rows:
             caches.append(self.GetRowCache(row))
+        return caches
+    
+    def GetDisplayedCaches(self):
+        caches = []
+        for row in self.data:
+            caches.append(self.db.getCacheByCode(row['code']))
         return caches
 
     def GetRowLabelValue(self, row):
@@ -1051,6 +1059,9 @@ class CacheGrid(Grid.Grid):
     def NumSelectedRows(self):
         return len(self.GetSelectedRows())
 
+    def GetDisplayedCaches(self):
+        return self._table.GetDisplayedCaches()
+    
     def GetSelectedCaches(self):
         return self._table.GetRowCaches(self.GetSelectedRows())
 
@@ -1709,145 +1720,6 @@ class ViewLogsWindow(wx.Dialog):
     def OnClose(self, event=None):
         self.Destroy()
 
-class ExportOptions(wx.Dialog):
-    '''Get the import options from the user'''
-    def __init__(self,parent,id,type='simple',gc=False,logs=False,tbs=False,addWpts=False,sepAddWpts=True,zip=False):
-        '''Creates the Preferences Frame'''
-        wx.Dialog.__init__(self,parent,wx.ID_ANY,_('GPX File Export options'),
-                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
-
-        self.zip = zip
-        self.options = [[  'simple',    'full',    'custom'],
-                        [_('Simple'), _('Full'), _('Custom')]]
-
-        self.type= wx.RadioBox(self, wx.ID_ANY,
-                                label=_("Export Type"),
-                                choices = self.options[1],
-                                style=wx.RA_VERTICAL)
-
-        extsStaticBox = wx.StaticBox(self, wx.ID_ANY, 'Additional infromation')
-        self.gc = wx.CheckBox(self, wx.ID_ANY, _('Geocaching.com Extensions'))
-
-        self.logs = wx.CheckBox(self, wx.ID_ANY, _('Include Logs'))
-        self.tbs = wx.CheckBox(self, wx.ID_ANY, _('Include Travel Bugs'))
-        self.addWpts = wx.CheckBox(self, wx.ID_ANY, _('Include Additional Waypoints'))
-        self.sepAddWpts = wx.CheckBox(self, wx.ID_ANY, _('Additioal Waypoints in seperate file'))
-
-        extsBox = wx.StaticBoxSizer(extsStaticBox, wx.VERTICAL)
-        extsBox.Add(self.logs,    0, wx.EXPAND, 5)
-        extsBox.Add(self.tbs,     0, wx.EXPAND, 5)
-        extsBox.Add(self.addWpts, 0, wx.EXPAND, 5)
-
-        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
-        mainBox.Add(self.type, 0, wx.EXPAND)
-        mainBox.Add(self.gc, 0, wx.EXPAND)
-        mainBox.Add(extsBox, 0, wx.EXPAND, 15)
-        mainBox.Add(self.sepAddWpts, 0, wx.EXPAND)
-
-        # Ok and Cancel Buttons
-        okButton = wx.Button(self,wx.ID_OK)
-        cancelButton = wx.Button(self,wx.ID_CANCEL)
-        buttonBox = wx.StdDialogButtonSizer()
-        buttonBox.AddButton(okButton)
-        buttonBox.AddButton(cancelButton)
-        buttonBox.Realize()
-
-        self.Bind(wx.EVT_BUTTON,   self.OnExit,          okButton)
-        self.Bind(wx.EVT_BUTTON,   self.OnExit,          cancelButton)
-        self.Bind(wx.EVT_RADIOBOX, self.OnChangeType,    self.type)
-        self.Bind(wx.EVT_CHECKBOX, self.OnToggleGc,      self.gc)
-        self.Bind(wx.EVT_CHECKBOX, self.OnToggleAddWpts, self.addWpts)
-
-        mainBox.Add(buttonBox, 0, wx.EXPAND)
-        self.SetSizer(mainBox)
-        self.SetAutoLayout(True)
-
-        self.gc.Disable()
-        self.logs.Disable()
-        self.tbs.Disable()
-        self.addWpts.Disable()
-        self.sepAddWpts.Disable()
-        if type == self.options[0][0]:
-            self.type.SetSelection(0)
-        elif type == self.options[0][1]:
-            self.type.SetSelection(1)
-            if zip:
-                self.sepAddWpts.Enable()
-                self.sepAddWpts.SetValue(sepAddWpts)
-        else:
-            self.type.SetSelection(2)
-            self.gc.Enable()
-            self.gc.SetValue(gc)
-            if self.gc.GetValue():
-                self.logs.Enable()
-                self.logs.SetValue(logs)
-                self.tbs.Enable()
-                self.tbs.SetValue(tbs)
-                self.addWpts.Enable()
-                self.addWpts.SetValue(addWpts)
-                if zip and self.addWpts.GetValue():
-                    self.sepAddWpts.Enable()
-                    self.sepAddWpts.SetValue(sepAddWpts)
-
-    def OnChangeType(self, event=None):
-        if self.type.GetSelection() == 2:
-            self.gc.Enable()
-        else:
-            self.gc.SetValue(False)
-            self.gc.Disable()
-            self.logs.SetValue(False)
-            self.logs.Disable()
-            self.tbs.SetValue(False)
-            self.tbs.Disable()
-            self.addWpts.SetValue(False)
-            self.addWpts.Disable()
-            if self.type.GetSelection() == 1 and self.zip:
-                self.sepAddWpts.Enable()
-            else:
-                self.sepAddWpts.SetValue(False)
-                self.sepAddWpts.Disable()
-
-    def OnToggleGc(self, event=None):
-        if self.gc.GetValue():
-            self.logs.Enable()
-            self.tbs.Enable()
-            self.addWpts.Enable()
-        else:
-            self.logs.SetValue(False)
-            self.logs.Disable()
-            self.tbs.SetValue(False)
-            self.tbs.Disable()
-            self.addWpts.SetValue(False)
-            self.addWpts.Disable()
-            self.sepAddWpts.SetValue(False)
-            self.sepAddWpts.Disable()
-
-    def OnToggleAddWpts(self, event=None):
-        if self.zip and self.addWpts.GetValue():
-            self.sepAddWpts.Enable()
-
-    def OnExit(self, event=None):
-        self.Destroy()
-        wx.Dialog.EndModal(self, event.GetId())
-
-    def GetType(self):
-        return self.options[0][self.type.GetSelection()]
-
-    def GetGc(self):
-        return self.gc.GetValue()
-
-    def GetLogs(self):
-        return self.logs.GetValue()
-
-    def GetTbs(self):
-        return self.tbs.GetValue()
-
-    def GetAddWpts(self):
-        return self.addWpts.GetValue()
-
-    def GetSepAddWpts(self):
-        return self.sepAddWpts.GetValue()
-
 class NotEmptyValidator(wx.PyValidator):
     def __init__(self, data, key):
         wx.PyValidator.__init__(self)
@@ -2301,57 +2173,22 @@ class MainWindow(wx.Frame):
         self.Description.SetPage(descText)
         self.popStatus()
 
-    def selectCaches(self, scope, destText):
-        options = [_('All'),_('Marked with User Flag')]
-        if self.cacheGrid.NumSelectedRows() > 0:
-            options += ([_('Selected'),_('Selected and marked with User Flag')])
-            selection = True
+    def selectCaches(self):
+        if self.conf.export.filterSel or False:
+            caches = self.cacheGrid.GetSelectedCaches()
+        elif self.conf.export.filterDisp or False:
+            caches = self.cacheGrid.GetDisplayedCaches()
         else:
-            selection = False
-        dlg = wx.SingleChoiceDialog(self, _('Export Option'),
-                                    _('Caches to export to ') + destText,
-                                    choices=options,
-                                    style=wx.CHOICEDLG_STYLE)
-        if scope == 'userFlag':
-            dlg.SetSelection(1)
-        elif scope == 'selection' and selection:
-            dlg.SetSelection(2)
-        elif scope == 'selection_userFlag' and selection:
-            dlg.SetSelection(3)
+            caches = self.db.getCacheList()
+        if self.conf.export.filterUser or False:
+            filteredCaches = []
+            for cache in caches:
+                if cache.user_flag:
+                    print cache.code
+                    filteredCaches.append(cache)
+            return filteredCaches
         else:
-            dlg.SetSelection(0)
-        if dlg.ShowModal() == wx.ID_OK:
-            if dlg.GetSelection() == 2:
-                scope = 'selection'
-                caches = self.cacheGrid.GetSelectedCaches()
-            elif dlg.GetSelection() == 1 or dlg.GetSelection() == 3:
-                if dlg.GetSelection() == 1:
-                    scope = 'userFlag'
-                    cachesTmp = self.db.getCacheList()
-                else:
-                    scope = 'selection_userFlag'
-                    cachesTmp = self.cacheGrid.GetSelectedCaches()
-                caches = []
-                for cache in cachesTmp:
-                    if cache.user_flag:
-                        caches.append(cache)
-            else:
-                scope = 'all'
-                caches = self.db.getCacheList()
-            if len(caches) == 0:
-                msg = wx.MessageDialog(self,
-                    caption=_('No caches selected'),
-                    message=_('No caches selected to export to ') + destText,
-                    style=wx.OK | wx.ICON_HAND)
-                msg.ShowModal()
-                msg.Destroy()
-                scope = None
-                caches = None
-        else:
-            scope = None
-            caches = None
-        dlg.Destroy()
-        return (scope, caches)
+            return caches
 
     def updateFilter(self):
         self.pushStatus(_('Updating filter'))
@@ -2516,115 +2353,57 @@ class MainWindow(wx.Frame):
 
     def OnExportWpt(self, event=None):
         '''Function to export waypoints to a file'''
-
         self.pushStatus(_('Exporting caches to file'))
-        (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
-        if scope == None:
-            return
-
-        wildcard = "GPX File (*.gpx)|*.gpx|"\
-                   "LOC file (*.loc)|*.loc|"\
-                   "Compressed GPX File (*.zip)|*.zip|"\
-
-        if os.path.isdir(self.conf.export.lastFolder):
-            dir = self.conf.export.lastFolder
-        else:
-            dir = os.getcwd()
-
-        dlg = wx.FileDialog(
-            self, message=_("Choose a file to export as"),
-            defaultDir=dir,
-            defaultFile="",
-            wildcard=wildcard,
-            style=wx.SAVE
-            )
-        if os.path.isfile(self.conf.export.lastFile):
-            dlg.SetPath(self.conf.export.lastFile)
-        ext = os.path.splitext(self.conf.export.lastFile)[1]
-        if ext != '':
-            if ext == '.gpx':
-                dlg.SetFilterIndex(0)
-            elif ext == '.loc':
-                dlg.SetFilterIndex(1)
-            elif ext == '.zip':
-                dlg.SetFilterIndex(2)
-
-        if dlg.ShowModal() == wx.ID_OK:
-            self.conf.export.lastFolder = dlg.GetDirectory()
-            path = dlg.GetPath()
+        opts = ExportOptions(self, self.conf, False)
+        if opts.ShowModal() == wx.ID_OK:
+            opts.SaveConf()
+            path = opts.GetPath()
             self.popStatus()
             self.pushStatus(_('Exporting caches to file: %s') % path)
-            if dlg.GetFilterIndex() == 0:
-                ext = '.gpx'
-                zip = False
-            elif dlg.GetFilterIndex() == 1:
-                ext = '.loc'
-            elif dlg.GetFilterIndex() == 2:
-                ext = '.zip'
-                zip = True
-            if os.path.splitext(path)[1] != ext:
-                    path = path + ext
-
             if os.path.isfile(path):
                 question = wx.MessageDialog(None,
-                               message=path + _(" already exists are you sure you want to replace it ?"),
-                               caption=_("File Already Exists"),
+                               message=_('"%s" already exists are you sure you want to replace it ?') % path,
+                               caption=_('File Already Exists'),
                                style=wx.YES_NO|wx.ICON_WARNING
                                )
                 if question.ShowModal() == wx.ID_NO:
                     question.destroy()
                     self.popStatus()
                     return
-            if ext == '.loc':
-                locExport(path, caches)
+            ext = os.path.splitext(path)[1]
+            caches = self.selectCaches()
+            if len(caches) == 0:
+                wx.MessageBox(parent = self,
+                                  message = _('With the current settings there is nothing to export!'),
+                                  caption = _('Nothing to export'),
+                                  style = wx.OK | wx.ICON_ERROR)
             else:
-                opts = ExportOptions(self, wx.ID_ANY,
-                        type       = self.conf.export.type        or 'simple',
-                        gc         = self.conf.export.gc          or False,
-                        logs       = self.conf.export.logs        or False,
-                        tbs        = self.conf.export.tbs         or False,
-                        addWpts    = self.conf.export.addWpts     or False,
-                        sepAddWpts = self.conf.export.sepAddWptsv or True,
-                        zip = zip)
-                if opts.ShowModal() ==wx.ID_OK:
-                    if opts.GetType() == 'full':
-                        full   = True
-                        simple = False
-                    elif opts.GetType() == 'simple':
-                        full   = False
-                        simple = True
-                    else:
-                        full   = False
-                        simple = False
-                    self.conf.export.lastFile = path
-                    self.conf.export.type     = opts.GetType()
-                    self.conf.export.gc       = opts.GetGc()
-                    self.conf.export.logs     = opts.GetLogs()
-                    self.conf.export.tbs      = opts.GetTbs()
-                    self.conf.export.addWpts  = opts.GetAddWpts()
-
-                    if ext == '.gpx':
-                        gpxExport(path, caches,
-                                        full       = full,
-                                        simple     = simple,
-                                        gc         = opts.GetGc(),
-                                        logs       = opts.GetLogs(),
-                                        tbs        = opts.GetTbs(),
-                                        addWpts    = opts.GetAddWpts())
-                    elif ext == '.zip':
-                        self.conf.export.sepAddWpts = opts.GetSepAddWpts()
-                        zipExport(path, caches,
-                                        full       = full,
-                                        simple     = simple,
-                                        gc         = opts.GetGc(),
-                                        logs       = opts.GetLogs(),
-                                        tbs        = opts.GetTbs(),
-                                        addWpts    = opts.GetAddWpts(),
-                                        sepAddWpts = opts.GetSepAddWpts())
-                opts.Destroy()
-        dlg.Destroy()
-        self.conf.export.scope = scope
-        self.popStatus()
+                if ext == '.loc':
+                    ret = locExport(path, caches)
+                elif ext == '.gpx':
+                    ret = gpxExport(path, caches,
+                                    full       = opts.GetType() == 'full',
+                                    simple     = opts.GetType() == 'simple',
+                                    gc         = opts.GetGc(),
+                                    logs       = opts.GetLogs(),
+                                    tbs        = opts.GetTbs(),
+                                    addWpts    = opts.GetAddWpts())
+                elif ext == '.zip':
+                    self.conf.export.sepAddWpts = opts.GetSepAddWpts()
+                    ret = zipExport(path, caches,
+                                    full       = opts.GetType() == 'full',
+                                    simple     = opts.GetType() == 'simple',
+                                    gc         = opts.GetGc(),
+                                    logs       = opts.GetLogs(),
+                                    tbs        = opts.GetTbs(),
+                                    addWpts    = opts.GetAddWpts(),
+                                    epAddWpts = opts.GetSepAddWpts())
+                if not ret:
+                    wx.MessageBox(parent = self,
+                                  message = _('Error exporting to file: %s') % path,
+                                  caption = _('Way point export Error'),
+                                  style = wx.OK | wx.ICON_ERROR)
+            self.popStatus()
 
     def OnBackupDb(self, event=None):
         self.pushStatus(_('Backing up the Database'))
@@ -2711,26 +2490,34 @@ class MainWindow(wx.Frame):
         self.ShowHideFilterBar(show)
 
     def OnGpsUpload(self, event=None):
+        '''
+        Uploads caches to GPS
+        '''
         self.pushStatus(_('Uploading caches to GPS'))
-        (scope, caches) = self.selectCaches(self.conf.export.scope, _('file'))
-        if scope == None:
-            return
-        fd,tmpFile = tempfile.mkstemp() #@UnusedVariable
-        dlg = wx.MessageDialog(None,
-            message=_("Do you want to include the additional waypoints?"),
-            caption=_("GPS Upload"),
-            style=wx.YES_NO|wx.ICON_QUESTION)
-        if dlg.ShowModal() == wx.ID_YES:
-            addWpts = True
-        else:
-            addWpts = False
-        gpxExport(tmpFile, caches, addWpts = addWpts)
-        gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
-                        port=self.conf.gps.connection or 'usb:')
-        ok, message = gpsCom.gpxToGps(tmpFile)
-        if not ok:
-            self.GpsError( message)
-        os.remove(tmpFile)
+        opts = ExportOptions(self, self.conf, True)
+        if opts.ShowModal() == wx.ID_OK:
+            opts.SaveConf()
+            caches = self.selectCaches()
+            if len(caches) == 0:
+                wx.MessageBox(parent = self,
+                                  message = _('With the current settings there is nothing to export!'),
+                                  caption = _('Nothing to export'),
+                                  style = wx.OK | wx.ICON_ERROR)
+            else:
+                fd,tmpFile = tempfile.mkstemp() #@UnusedVariable
+                if gpxExport(tmpFile, caches,
+                            full       = opts.GetType() == 'full',
+                            simple     = opts.GetType() == 'simple',
+                            gc         = opts.GetGc(),
+                            logs       = opts.GetLogs(),
+                            tbs        = opts.GetTbs(),
+                            addWpts    = opts.GetAddWpts()):
+                    gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
+                                    port=self.conf.gps.connection or 'usb:')
+                    ok, message = gpsCom.gpxToGps(tmpFile)
+                    if not ok:
+                        self.GpsError( message)
+                os.remove(tmpFile)
         self.popStatus()
 
     def OnGpsLocation(self, event=None):
