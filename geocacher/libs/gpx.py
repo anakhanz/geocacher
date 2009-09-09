@@ -362,7 +362,6 @@ def gpxExportAddWptProcess(root, cache):
         wpt.append(type)
 
 def gpxExportAddWpt(filename,caches):
-    count = 0
     if len(caches) == 0:
         return True, 0
     root = gpxInit(caches)

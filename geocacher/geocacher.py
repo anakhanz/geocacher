@@ -8,7 +8,6 @@
 # TODO: Make hyper link in main window active and add option to display as cache code/name
 # TODO: Enable context menu key in main cache grid
 # TODO: Enable context menu key in locations grid
-# TODO: Add user feedback through status bar
 
 STATUS_MAIN = 0
 STATUS_SHOWN = 1
@@ -16,7 +15,7 @@ STATUS_TOTAL = 2
 STATUS_FILTERED = 3
 
 from datetime import datetime
-import logging
+import logging #@UnusedImport
 import optparse
 import os
 import sys
@@ -30,14 +29,14 @@ except:
 import wx
 import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
-import wx.lib.scrolledpanel as Scrolled
 import wx.html as Html
-import wx.xrc as Xrc
 
 from libs.i18n import createGetText
 
 # make translation available in the code
 __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
+#def _ (t):
+#    return t
 
 from libs.common import nl2br, listFiles, dateCmp, wxDateTimeToPy
 from libs.db import Geocacher
@@ -45,9 +44,17 @@ from libs.gpsbabel import GpsCom
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
 from libs.loc import locLoad, locExport
 from libs.latlon import distance, cardinalBearing
-from libs.latlon import degToStr, strToDeg
 
+from dialogs.correctLatLon import CorrectLatLon
 from dialogs.export import ExportOptions
+from dialogs.foundCache import FoundCache
+from dialogs.preferences import Preferences
+from dialogs.viewLogs import ViewLogs
+from dialogs.viewTravelBugs import ViewTravelBugs
+
+from renderers.deg import LatRenderer, LonRenderer
+from renderers.dist import DistRenderer
+from renderers.image import CacheSizeRenderer, CacheTypeRenderer
 
 try:
     __version__ = open(os.path.join(os.path.dirname(__file__),
@@ -55,240 +62,19 @@ try:
 except:
     __version__ = "src"
 
-class DegRenderer(Grid.PyGridCellRenderer):
-    '''Renderer for cells containing measurements in degrees'''
-    def __init__(self, table, conf, mode = 'pure'):
-        Grid.PyGridCellRenderer.__init__(self)
-        self.conf = conf
-        self.table = table
-        self.mode = mode
-
-        self.colSize = None
-        self.rowSize = None
-
-    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
-        value = self.table.GetValue(row, col)
-        format = self.conf.common.coordFmt or 'hdd mm.mmm'
-        try: text = degToStr(value, format, self.mode)
-        except: text = ''
-        hAlign, vAlign = attr.GetAlignment()
-        dc.SetFont(attr.GetFont())
-        if isSelected:
-            bg = grid.GetSelectionBackground()
-            fg = grid.GetSelectionForeground()
-        else:
-            bg = grid.GetDefaultCellBackgroundColour()
-            fg = grid.GetDefaultCellTextColour()
-
-        dc.SetTextBackground(bg)
-        dc.SetTextForeground(fg)
-        dc.SetBrush(wx.Brush(bg, wx.SOLID))
-        dc.SetPen(wx.TRANSPARENT_PEN)
-        dc.DrawRectangleRect(rect)
-        grid.DrawTextRectangle(dc, text, rect, hAlign, vAlign)
-
-    def GetBestSize(self, grid, attr, dc, row, col):
-        value = self.table.GetValue(row, col)
-        format = self.conf.common.coordFmt or 'hdd mm.mmm'
-        text = degToStr(value, format, self.mode)
-        w, h = dc.GetTextExtent(text)
-        return wx.Size(w, h)
-
-    def clone(self):
-        return DegRenderer(self.table, self.conf, self.mode)
-
-class LatRenderer(DegRenderer):
-    '''Renderer for cells containing Latitudes (subclass of DegRenderer)'''
-    def __init__(self, table, conf):
-        DegRenderer.__init__(self, table, conf, 'lat')
-
-class LonRenderer(DegRenderer):
-    '''Renderer for cells containing Longitudes (subclass of DegRenderer)'''
-    def __init__(self, table, conf):
-        DegRenderer.__init__(self, table, conf, 'lon')
-
-class ImageRenderer(Grid.PyGridCellRenderer):
-    def __init__(self, table, conf):
-        Grid.PyGridCellRenderer.__init__(self)
-        self.table = table
-        self._images = {}
-        self._default = None
-
-        self.colSize = None
-        self.rowSize = None
-
-    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
-        value = self.table.GetValue(row, col)
-        if value not in self._images:
-            logging.warn("Image not defined for '%s'" % value)
-            value = self._default
-        bmp = self._images[value]
-        image = wx.MemoryDC()
-        image.SelectObject(bmp)
-
-        # clear the background
-        dc.SetBackgroundMode(wx.SOLID)
-
-        if isSelected:
-            dc.SetBrush(wx.Brush(wx.BLUE, wx.SOLID))
-            dc.SetPen(wx.Pen(wx.BLUE, 1, wx.SOLID))
-        else:
-            dc.SetBrush(wx.Brush(wx.WHITE, wx.SOLID))
-            dc.SetPen(wx.Pen(wx.WHITE, 1, wx.SOLID))
-        dc.DrawRectangleRect(rect)
-
-        # copy the image but only to the size of the grid cell
-        width, height = bmp.GetWidth(), bmp.GetHeight()
-
-        if width > rect.width-2:
-            width = rect.width-2
-
-        if height > rect.height-2:
-            height = rect.height-2
-
-        dc.Blit(rect.x+1, rect.y+1, width, height,
-                image,
-                0, 0, wx.COPY, True)
-
-class DistRenderer(Grid.PyGridCellRenderer):
-    '''Renderer for cells containing distances'''
-    def __init__(self, table, conf):
-        Grid.PyGridCellRenderer.__init__(self)
-        self.conf = conf
-        self.table = table
-
-        self.colSize = None
-        self.rowSize = None
-
-    def Draw(self, grid, attr, dc, rect, row, col, isSelected):
-        value = self.table.GetValue(row, col)
-        if self.conf.common.miles or False:
-            text = '%0.2f Mi' % (value * 0.621371192)
-        else:
-            text = '%0.2f km' % value
-        hAlign, vAlign = attr.GetAlignment()
-        dc.SetFont(attr.GetFont())
-        if isSelected:
-            bg = grid.GetSelectionBackground()
-            fg = grid.GetSelectionForeground()
-        else:
-            bg = grid.GetDefaultCellBackgroundColour()
-            fg = grid.GetDefaultCellTextColour()
-
-        dc.SetTextBackground(bg)
-        dc.SetTextForeground(fg)
-        dc.SetBrush(wx.Brush(bg, wx.SOLID))
-        dc.SetPen(wx.TRANSPARENT_PEN)
-        dc.DrawRectangleRect(rect)
-        grid.DrawTextRectangle(dc, text, rect, hAlign, vAlign)
-
-    def GetBestSize(self, grid, attr, dc, row, col):
-        value = self.table.GetValue(row, col)
-        if self.conf.common.miles or False:
-            text = '%0.2f Mi' % (value * 0.621371192)
-        else:
-            text = '%0.2f km' % value
-        w, h = dc.GetTextExtent(text)
-        return wx.Size(w, h)
-
-    def clone(self):
-        return DegRenderer(self.table, self.conf)
-
-class DegEditor(Grid.PyGridCellEditor):
-    def __init__(self, conf, mode = 'pure'):
-        Grid.PyGridCellEditor.__init__(self)
-        self.conf = conf
-        self.mode = mode
-
-    def Create(self, parent, id, evtHandler):
-        self.newValue = [0]
-
-        self._tc = wx.TextCtrl(parent, id,'')
-        self._tc.SetInsertionPoint(0)
-        self.SetControl(self._tc)
-
-        if evtHandler:
-            self._tc.PushEventHandler(evtHandler)
-
-    def SetSize(self, rect):
-        self._tc.SetDimensions(rect.x, rect.y, rect.width+2, rect.height+2,
-                               wx.SIZE_ALLOW_MINUS_ONE)
-
-    def BeginEdit(self, row, col, grid):
-        self.startValue = grid.GetTable().GetValue(row, col)
-        format = self.conf.common.coordFmt or 'hdd mm.mmm'
-        self._tc.SetValue(degToStr(self.startValue, format, self.mode))
-        self._tc.SetInsertionPointEnd()
-        self._tc.SetFocus()
-        self._tc.SetSelection(0, self._tc.GetLastPosition())
-
-    def EndEdit(self, row, col, grid):
-        changed = False
-
-        value = strToDeg(self._tc.GetValue(), self.mode)
-
-        if value != self.startValue:
-            changed = True
-            grid.GetTable().SetValue(row, col, value)
-
-        return changed
-
-    def Reset(self):
-        self._tc.SetValue(degToStr(self.startValue, format, self.mode))
-        self._tc.SetInsertionPointEnd()
-
-    def Clone(self):
-        return DegEditor(self.conf, self.mode)
-
-    def StartingKey(self, evt):
-        self.OnChar(evt)
-        if evt.GetSkipped():
-            self._tc.EmulateKeyPress(evt)
-
-class LatEditor(DegEditor):
-    '''Editor for cells containing Latitudes (subcalss of DegEditor)'''
-    def __init__(self, conf):
-        DegEditor.__init__(self, conf, 'lat')
-
-class LonEditor(DegEditor):
-    '''Editor for cells containing Longitudes (subcalss of DegEditor)'''
-    def __init__(self, conf):
-        DegEditor.__init__(self, conf, 'lon')
-
-class CacheSizeRenderer(ImageRenderer):
-    def __init__(self, table, conf):
-        ImageRenderer.__init__(self, table, conf)
-        self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
-                        'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
-                        'Regular':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-regular.gif'), wx.BITMAP_TYPE_GIF),
-                        'Large':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-large.gif'), wx.BITMAP_TYPE_GIF),
-                        'Not chosen':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-not_chosen.gif'), wx.BITMAP_TYPE_GIF),
-                        'Virtual':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-virtual.gif'), wx.BITMAP_TYPE_GIF),
-                        'Other':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-other.gif'), wx.BITMAP_TYPE_GIF)}
-        self._default='Not chosen'
-
-class CacheTypeRenderer(ImageRenderer):
-    def __init__(self, table, conf):
-        ImageRenderer.__init__(self, table, conf)
-        self._images = {'Traditional Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-traditional.gif'), wx.BITMAP_TYPE_GIF),
-                        'Ape':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-ape.gif'), wx.BITMAP_TYPE_GIF),
-                        'CITO':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-cito.gif'), wx.BITMAP_TYPE_GIF),
-                        'Earthcache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-earthcache.gif'), wx.BITMAP_TYPE_GIF),
-                        'Event Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-event.gif'), wx.BITMAP_TYPE_GIF),
-                        'Maze':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-gps_maze.gif'), wx.BITMAP_TYPE_GIF),
-                        'Letterbox Hybrid':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-letterbox.gif'), wx.BITMAP_TYPE_GIF),
-                        'Mega':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-mega.gif'), wx.BITMAP_TYPE_GIF),
-                        'Multi-cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-multi-cache.gif'), wx.BITMAP_TYPE_GIF),
-                        'Unknown Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-mystery.gif'), wx.BITMAP_TYPE_GIF),
-                        'Reverse':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-reverse.gif'), wx.BITMAP_TYPE_GIF),
-                        'Virtual Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-virtual.gif'), wx.BITMAP_TYPE_GIF),
-                        'Webcam':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-webcam.gif'), wx.BITMAP_TYPE_GIF),
-                        'WhereIGo':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-whereigo.gif'), wx.BITMAP_TYPE_GIF)
-                        }
-        self._default='Traditional Cache'
 
 class CacheDataTable(Grid.PyGridTableBase):
+    '''
+    Provides the Grid Table implementation for the cache data display grid
+    '''
     def __init__(self, conf, db):
+        '''
+        Initialisation function for the cache grid.  
+        
+        Arguments
+        conf: configuration object fort he program
+        db:   database containing the cache information
+        '''
         self.conf = conf
         self.db = db
         Grid.PyGridTableBase.__init__(self)
@@ -402,23 +188,42 @@ class CacheDataTable(Grid.PyGridTableBase):
         self._cols = self.GetNumberCols()
 
     def ReloadCaches(self):
+        '''
+        Reloads all of the caches in the table from the database.
+        '''
         self.data = []
         for cache in self.db.getCacheList():
             self.__addRow(cache)
         self.DoSort()
 
     def ReloadRow(self, row):
+        '''
+        Reloads the given row in the table from the database.  
+        
+        Argument
+        row: The row number to reload.
+        '''
         cache = self.GetRowCache(row)
         self.data.pop(row)
         if not self.__cacheFilter(cache):
             self.data.insert(row, self.__buildRow(cache))
 
     def __addRow(self, cache):
+        '''
+        Adds the given cache to the table.  
+        cache: Cache to add to the table
+        '''
         if not self.__cacheFilter(cache):
             self.data.append(self.__buildRow(cache))
 
     def __buildRow(self, cache):
-
+        '''
+        Builds a set of row data form the given cache ready for adding to the
+        table.
+          
+        Argument
+        cache: Cache to build row data from.  
+        '''
         dist, cBear = self.__calcDistBearing(cache)
 
         row = {'code':cache.code,'id':cache.id,'lon':cache.currentLon,'lat':cache.currentLat,
@@ -442,8 +247,11 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def __calcDistBearing(self, cache):
         '''
-        Calculates the distance and cardinalBearing of the given cache and
+        Calculates the distance and cardinal Bearing of the given cache and
         returns it as a tuple
+        
+        Argument
+        cache: Cache to perform calculations on.  
         '''
         location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
         hLat = location.lat
@@ -454,7 +262,12 @@ class CacheDataTable(Grid.PyGridTableBase):
         return dist, cBear
 
     def __cacheFilter(self, cache):
-        '''Returns true if the given cache should be filtered out of the list'''
+        '''
+        Returns true if the given cache should be filtered out of the list.  
+        
+        Argument
+        cache: cache to evaluate filter for.  
+        '''
         mine = cache.owner == self.conf.gc.userName or\
                cache.owner_id == self.conf.gc.userId
         dist, cBear = self.__calcDistBearing(cache) #@UnusedVariable
@@ -465,13 +278,18 @@ class CacheDataTable(Grid.PyGridTableBase):
                ((self.conf.filter.overDist) and ((self.conf.filter.maxDistVal or 50.0) <= dist))
 
     def UpdateLocation(self):
-        '''Updates the location based information in all cache rows'''
+        '''
+        Updates the location based information in all cache rows.  
+        '''
         for row in self.data:
             row['distance'], row['bearing'] = self.__calcDistBearing(self.db.getCacheByCode(row['code']))
         if self._sortCol in ['distance','bearing']:
             self.DoSort()
 
     def UpdateUserDataLabels(self):
+        '''
+        Updates the user data column labels from the program configuration.  
+        '''
         self.colLabels['user_data1'] = \
             self.conf.common.userData1 or _('User Data 1')
         self.colLabels['user_data2'] = \
@@ -482,57 +300,144 @@ class CacheDataTable(Grid.PyGridTableBase):
             self.conf.common.userData4 or _('User Data 4')
 
     def GetNumberRows(self):
+        '''
+        Returns the number of rows int eh table.  
+        '''
         return len(self.data)
 
     def GetNumberCols(self):
+        '''
+        Returns the number of columns in the table.  
+        '''
         return len(self.colNames)
 
     def IsEmptyCell(self, row, col):
+        '''
+        Returns True if the cell at the given coordinates is empty.  
+        otherwise False.  
+        
+        Arguments
+        row: Row coordinate the cell to check.  
+        col: Column coordinate the cell to check
+        '''
         id = self.colNames[col]
         return self.data[row][id] is not None
 
     def GetValue(self, row, col):
+        '''
+        Returns the value in the cell at the given coordinates.  
+        otherwise False.  
+        
+        Arguments
+        row: Row coordinate of the cell to return the value for.  
+        col: Column coordinate of the cell to return the value for.  
+        '''
         id = self.colNames[col]
         return self.data[row][id]
 
     def SetValue(self, row, col, value):
+        '''
+        Sets the cell at the given coordinates to the given value.
+        
+        Arguments:
+        row:   Row coordinate of the cell to change the value for.  
+        col:   Column coordinate of the cell to change the value for.  
+        value: Value to set the cell to.  
+        '''
         pass # leave this as pass until the editable elements are implemented
 ##        id = self.colNames[col]
 ##        self.data[row][id] = value
 
     def GetRowCode(self, row):
+        '''
+        Returns the code of the cache on the given row.  
+        
+        Argument
+        row: Row to get the cache code for.  
+        '''
         return self.data[row]['code']
 
     def GetRowCache(self, row):
+        '''
+        Returns the cache object associated with the given row.  
+        
+        Argument
+        row: Row to get the cache object for.  
+        '''
         return self.db.getCacheByCode(self.GetRowCode(row))
 
     def GetRowCaches(self, rows):
+        '''
+        Returns a list of the cache objects associated with the given list of
+        rows.
+        
+        Argument
+        rows: List of rows to return the cache objects for.
+        '''
         caches = []
         for row in rows:
             caches.append(self.GetRowCache(row))
         return caches
     
     def GetDisplayedCaches(self):
+        '''
+        Returns a list containing the cache objects for the selected rows in
+        the table.
+        '''
         caches = []
         for row in self.data:
             caches.append(self.db.getCacheByCode(row['code']))
         return caches
 
     def GetRowLabelValue(self, row):
+        '''
+        Returns the label for the given row.  
+        
+        Argument
+        row: Row number to return the label for.
+        '''
         return self.GetRowCode(row)
 
     def GetColLabelValue(self, col):
+        '''
+        Returns the label for the given column.  
+        
+        Argument
+        row: Column number to return the label for.
+        '''
         id = self.colNames[col]
         return self.colLabels[id]
 
     def GetColLabelValueByName(self, name):
+        '''
+        Returns the label for the given column name.  
+        
+        Argument
+        name: Column name to return the label for.
+        '''
         return self.colLabels[name]
 
     def GetTypeName(self, row, col):
+        '''
+        Returns the type of the data in the cell at the given coordinates.
+        
+        Arguments
+        row:    Row coordinate of the cell to return the data type of.
+        column: Column coordinate of the cell to return the data type of.
+        '''
         id = self.colNames[col]
         return self.dataTypes[id]
 
     def CanGetValueAs(self, row, col, typeName):
+        '''
+        Returns True if the data in the cell at the given coordinates can be
+        fetched as the given type.
+        
+        Arguments
+        row:      Roe coordinate of the cell to be checked.  
+        col:      Column coordinate of the cell to be checked.  
+        typeName: Name of the type the compare the cell data to.
+        '''
         id = self.colNames[col]
         colType = self.dataTypes[id].split(':')[0]
         if typeName == colType:
@@ -541,18 +446,47 @@ class CacheDataTable(Grid.PyGridTableBase):
             return False
 
     def CanSetValueAs(self, row, col, typeName):
+        '''
+        Returns True if the data in the cell at the given coordinates can be
+        set using the given type.
+        
+        Arguments
+        row:      Roe coordinate of the cell to be checked.  
+        col:      Column coordinate of the cell to be checked.  
+        typeName: Name of the type the compare the cell data to.
+        '''
         id = self.cols[col]
         return self.CanGetValueAs(row, id, typeName)
 
     def AppendColumn(self,col):
+        '''
+        Appends the given column to the table.
+        
+        Argument
+        col: The name of the column to append to the table.
+        '''
         self.colNames.append(col)
         if len(self.colNames) == 1:
             self.ReloadCaches()
 
     def InsertColumn(self,pos,col):
+        '''
+        Inserts a column into the table at the given position.
+        
+        Arguments:
+        pos: Position at which to insert the column.  
+        col: The name of the column to insert into the table.
+        '''
         self.colNames.insert(pos,col)
 
     def MoveColumn(self,frm,to):
+        '''
+        Moves a column from one given location to another.
+        
+        Arguments
+        frm: Location to move the column from.
+        to:  Location to move the column. 
+        '''
         grid = self.GetView()
 
         if grid:
@@ -582,8 +516,10 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def DeleteCols(self, cols):
         """
-        cols -> delete the columns from the dataset
-        cols hold the column indices
+        Delete the given list of columns form the table.  
+        
+        Argument
+        cols: List containing the positions of the columns to delete.
         """
         # we'll cheat here and just remove the name from the
         # list of column names.  The data will remain but
@@ -603,14 +539,21 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def ResetView(self, grid):
         """
-        (Grid) -> Reset the grid view.   Call this to
-        update the grid if rows and columns have been added or deleted
+        Resets (Updates) the GridView associated with the data table when rows
+        or columns are added or deleted.
+        
+        Argument
+        grid: The GirdView to be updated.  
         """
         grid.BeginBatch()
 
         for current, new, delmsg, addmsg in [
-            (self._rows, self.GetNumberRows(), Grid.GRIDTABLE_NOTIFY_ROWS_DELETED, Grid.GRIDTABLE_NOTIFY_ROWS_APPENDED),
-            (self._cols, self.GetNumberCols(), Grid.GRIDTABLE_NOTIFY_COLS_DELETED, Grid.GRIDTABLE_NOTIFY_COLS_APPENDED),
+            (self._rows, self.GetNumberRows(),
+             Grid.GRIDTABLE_NOTIFY_ROWS_DELETED,
+             Grid.GRIDTABLE_NOTIFY_ROWS_APPENDED),
+            (self._cols, self.GetNumberCols(),
+             Grid.GRIDTABLE_NOTIFY_COLS_DELETED,
+             Grid.GRIDTABLE_NOTIFY_COLS_APPENDED),
         ]:
 
             if new < current:
@@ -633,8 +576,10 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def DeleteRows(self, rows):
         """
-        rows -> delete the rows from the dataset
-        rows hold the row indices
+        Delete the given list of rows form the table.  
+        
+        Argument
+        rows: List containing the positions of the columns to delete.
         """
         deleteCount = 0
         rows = rows[:]
@@ -660,13 +605,29 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def SortColumn(self, col, descending=None):
         """
-        col -> sort the data based on the column indexed by col
+        Sorts the data in the table based on the given column and in the given
+        direction
+        
+        Arguments
+        col:       Position of the column to sort by.
+        decending: Controls the direction of the sort as follows:
+                        None: Toggle the direction of the sort
+                        False: Ascending sort.
+                        True:  Descending sort.
         """
         self.SortColumnName(self.colNames[col], descending)
 
     def SortColumnName(self, name, descending=None):
         """
-        name -> name of the column to sort the data by
+        Sorts the data in the table based on the given column and in the given
+        direction
+        
+        Arguments
+        name:      Name of the column to sort by.
+        decending: Controls the direction of the sort as follows:
+                        None: Toggle the direction of the sort
+                        False: Ascending sort.
+                        True:  Descending sort.
         """
         if self.colLabels.has_key(name):
             if descending == None:
@@ -677,9 +638,19 @@ class CacheDataTable(Grid.PyGridTableBase):
                 self.DoSort()
 
     def SortDataItem(self, rowData):
+        '''
+        Returns the data item to be sorted by for a given table row.  
+        
+        Argument
+        rowData: The row data set to return the data item to sort by.
+        '''
         return rowData[self._sortCol]
 
     def DoSort(self):
+        '''
+        Performs the actual data sort on the table based on the stored
+        parameters.
+        '''
 
         # Fix the comparison function for dates
         if self.dataTypes[self._sortCol] == Grid.GRID_VALUE_DATETIME:
@@ -691,11 +662,11 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def _updateColAttrs(self, grid):
         """
-        wx.Grid -> update the column attributes to add the
-        appropriate renderer given the column name.  (renderers
-        are stored in the self.plugins dictionary)
-
-        Otherwise default to the default renderer.
+        Update the column attributes for the given Grid and add the
+        appropriate renderer.
+        
+        Argument
+        grid: The grid view to update.  
         """
         colNum = 0
 
@@ -717,17 +688,40 @@ class CacheDataTable(Grid.PyGridTableBase):
             colNum += 1
 
     def GetCols(self):
+        '''
+        Returns a dictionary of the names of the visible columns.  
+        '''
         return self.colNames
 
     def GetAllCols(self):
+        '''
+        Returns a list of all of the column identifiers.  
+        '''
         return self.colLabels.keys()
 
     def GetSort(self):
+        '''
+        Returns a tuple containing the sort column and the sort direction.
+        '''
         return (self._sortCol, self._sortDescend)
 
+
 class CacheGrid(Grid.Grid):
+    '''
+    Grid to display the cache information.
+    '''
     # TODO: add icon to Sorted Column Name
     def __init__(self, parent, conf, db, mainWin):
+        '''
+        Initialisation function for the grid
+        
+        Argumnets
+        parent:  Parent window for the grid.
+        conf:    Program configuration object
+        db:      Database to build table data form.  
+        mainWin: Reference to the main application window for call back
+                 functions.
+        '''
         self.conf = conf
         self.mainWin = mainWin
         Grid.Grid.__init__(self, parent, -1)
@@ -756,6 +750,12 @@ class CacheGrid(Grid.Grid):
 
     # Event method called when a column move needs to take place
     def OnColMove(self,evt):
+        '''
+        Event handler for grid column moves.
+        
+        Argumnet
+        evt: Event object.
+        '''
         frm = evt.GetMoveColumn()       # Column being moved
         to = evt.GetBeforeColumn()      # Before which column to insert
         self._table.MoveColumn(frm,to)
@@ -763,30 +763,64 @@ class CacheGrid(Grid.Grid):
 
     # Event method called when a row move needs to take place
     def OnRowMove(self,evt):
+        '''
+        Event handler for grid row moves.
+        
+        Argumnet
+        evt: Event object.
+        '''
         frm = evt.GetMoveRow()          # Row being moved
         to = evt.GetBeforeRow()         # Before which row to insert
         self._table.MoveRow(frm,to)
 
     def OnLabelLeftClicked(self, evt):
+        '''
+        Event handler for left click events on grid labels.
+        
+        Argumnet
+        evt: Event object.
+        '''
         # Did we click on a row or a column?
         if evt.GetRow() != -1:
             self.mainWin.updateDetail(self._table.GetRowCode(evt.GetRow()))
         evt.Skip()
 
     def OnCellLeftClicked(self, evt):
+        '''
+        Event handler for left click events on grid cells.
+        
+        Argumnet
+        evt: Event object.
+        '''
         self.mainWin.updateDetail(self._table.GetRowCode(evt.GetRow()))
         evt.Skip()
 
     def OnLabelRightClicked(self, evt):
-        '''Handle grod label right mouse button clicks'''
+        '''
+        Event handler for right click events on grid labels.
+        
+        Argumnet
+        evt: Event object.
+        '''
         self.Popup(evt)
 
     def OnCellRightClicked(self, evt):
-        '''Handle grod label right mouse button clicks'''
+        '''
+        Event handler for right click events on grid cells.
+        
+        Argumnet
+        evt: Event object.
+        '''
         self.Popup(evt)
 
     def Popup (self, evt):
-        '''Build and handle events from the rigth click pop-up menu'''
+        '''
+        Handler caled form all gid right click handlers to perform the actual
+        event handling and generate the the context sensitive menu.
+        
+        Argumnet
+        evt: Event object.
+        '''
         row, col = evt.GetRow(), evt.GetCol()
         if row != -1:
             cache = self._table.GetRowCache(row)
@@ -902,7 +936,7 @@ class CacheGrid(Grid.Grid):
             dlg.Destroy()
 
         def cacheRemCorrection(event, self=self, row=row, cache=cache):
-            '''Remove the Lat/Lon correction for the slected cache (row)'''
+            '''Remove the Lat/Lon correction for the selected cache (row)'''
             self.SelectRow(row)
             dlg = wx.MessageDialog(None,
                 message=_('Are you sure you want to remove the cordinate correction for ')+cache.code,
@@ -923,14 +957,14 @@ class CacheGrid(Grid.Grid):
         def cacheViewLogs(event, self=self, cache=cache):
             '''View the logs for the selected cache (row).'''
             self.SelectRow(row)
-            dlg = ViewLogsWindow(self.mainWin, cache)
+            dlg = ViewLogs(self.mainWin, cache)
             dlg.ShowModal()
             dlg.Destroy()
 
         def cacheViewBugs(event, self=self, cache=cache):
             '''View the travel bugs for the selected cache (row).'''
             self.SelectRow(row)
-            dlg = ViewTravelBugsWindow(self.mainWin, cache)
+            dlg = ViewTravelBugs(self.mainWin, cache)
             dlg.ShowModal()
             dlg.Destroy()
 
@@ -940,9 +974,9 @@ class CacheGrid(Grid.Grid):
                                      'cache ' + cache.code)
 
         def cacheSetFound(event, self=self, cache=cache):
-            dlg = FoundCacheDialog(self.mainWin,cache.code,_('found'),
-                                   cache.found_date,cache.own_log,
-                                   cache.own_log_encoded)
+            dlg = FoundCache(self.mainWin,cache.code,_('found'),
+                             cache.found_date,cache.own_log,
+                             cache.own_log_encoded)
             if dlg.ShowModal() == wx.ID_OK:
                 self.mainWin.pushStatus(_('Marking cache %s as found') % cache.code)
                 cache.found_date = wxDateTimeToPy(dlg.date.GetValue())
@@ -956,9 +990,9 @@ class CacheGrid(Grid.Grid):
             dlg.Destroy()
 
         def cacheSetDnf(event, self=self, cache=cache):
-            dlg = FoundCacheDialog(self.mainWin,cache.code,_('found'),
-                                   cache.dnf_date,cache.own_log,
-                                   cache.own_log_encoded)
+            dlg = FoundCache(self.mainWin,cache.code,_('found'),
+                             cache.dnf_date,cache.own_log,
+                             cache.own_log_encoded)
             if dlg.ShowModal() == wx.ID_OK:
                 self.mainWin.pushStatus(_('Marking cache %s as did not find') % cache.code)
                 cache.dnf_date = wxDateTimeToPy(dlg.date.GetValue())
@@ -1057,17 +1091,30 @@ class CacheGrid(Grid.Grid):
         return
 
     def NumSelectedRows(self):
+        '''
+        Returns the number of selected rows int he grid
+        '''
         return len(self.GetSelectedRows())
 
     def GetDisplayedCaches(self):
+        '''
+        Returns a list of the cache objects associated with the caches
+        displayed in the entire grid
+        '''
         return self._table.GetDisplayedCaches()
     
     def GetSelectedCaches(self):
+        '''
+        Returns a list of the cache objects associated with the selected rows
+        in the grid.
+        '''
         return self._table.GetRowCaches(self.GetSelectedRows())
 
     def Reset(self):
-        """reset the view based on the data in the table.  Call
-        this when rows are added or destroyed"""
+        '''
+        reset the view based on the data in the table.  Call
+        this when rows are added or destroyed
+        '''
         self._table.ResetView(self)
         # Use AutoSizeColumns() followed by AutoSizeRows() to avoid issues with
         # AutoSize() doing both and causing the splittter and scroll bars to
@@ -1077,873 +1124,82 @@ class CacheGrid(Grid.Grid):
         self.mainWin.updateStatus(self.GetNumberRows())
 
     def ReloadCaches(self):
+        '''
+        Reloads the grid cache data from the database.
+        '''
         self._table.ReloadCaches()
         self.Reset()
 
     def UpdateUserDataLabels(self):
+        '''
+        Updates the displayed labels for the user data columns.
+        '''
         self._table.UpdateUserDataLabels()
         self.Reset()
 
     def UpdateLocation(self):
+        '''
+        Updates the grid data for the current home location.
+        '''
         self._table.UpdateLocation()
         self.Reset()
 
     def GetCols(self):
+        '''
+        Returns the names of columns in the grid
+        '''
         return self._table.GetCols()
 
     def GetNumberCols(self):
+        '''
+        Returns the number of columns in the grid.
+        '''
         return self._table.GetNumberCols()
 
     def GetNumberRows(self):
+        '''
+        Returns the number of rows in the grid.
+        '''
         return self._table.GetNumberRows()
 
     def GetSort(self):
+        '''
+        Returns the sort column and type for the grid
+        '''
         return self._table.GetSort()
 
-class FoundCacheDialog(wx.Dialog):
-    '''Dialog to get date and Log Text for marking a cache as Found/DNF'''
-    def __init__(self,parent,cache,markType,date=None, logText='',encoded=False):
-        pre = wx.PreDialog()
-        self.res = Xrc.XmlResource('xrc\geocacher.xrc')
-        self.res.LoadOnDialog(pre, parent, 'FoundCacheDialog')
-        self.PostCreate(pre)
-
-        self.SetTitle(_('Mark cache ') + cache + _(' as ') + markType)
-
-        self.date = Xrc.XRCCTRL(self, 'datePick')
-        self.logText = Xrc.XRCCTRL(self, 'logText')
-        self.encodeLog = Xrc.XRCCTRL(self, 'encodeLogCb')
-
-        if date != None:
-            self.date.SetValue(wx.DateTimeFromDMY(date.day,date.month-1,date.year))
-        if logText == None:
-            logText = ''
-        self.logText.SetValue(logText)
-        self.encodeLog.SetValue(encoded)
-
-class PreferencesWindow(wx.Dialog):
-    """Preferences Dialog"""
-    def __init__(self,parent,id,conf, db):
-        """Creates the Preferences Frame"""
-        self.conf = conf
-        self.db = db
-        self.labelWidth = 150
-        self.entryWidth = 200
-        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Preferences"),size = (400,350),
-                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
-
-        nb = wx.Notebook(self)
-
-        # create the page windows as children of the notebook
-        self.Display   = self.__buildDisplayPanel(nb)
-        self.GC        = self.__buildGCPanel(nb)
-        self.GPS       = self.__buildGpsPanel(nb)
-        self.Locations = self.__buildLocationsPanel(nb)
-
-        # add the pages to the notebook with the label to show on the tab
-        nb.AddPage(self.Display,   _('Display'))
-        nb.AddPage(self.GC,        _('Geocaching.Com'))
-        nb.AddPage(self.GPS,        _('GPS'))
-        nb.AddPage(self.Locations, _('Locations'))
-
-        # Ok and Cancel Buttons
-        okButton = wx.Button(self,wx.ID_OK)
-        cancelButton = wx.Button(self,wx.ID_CANCEL)
-
-        self.Bind(wx.EVT_BUTTON, self.OnOk,okButton)
-        self.Bind(wx.EVT_BUTTON, self.OnCancel,cancelButton)
-
-        buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
-        buttonBox.Add(okButton, 0, wx.EXPAND)
-        buttonBox.Add(cancelButton, 0, wx.EXPAND)
-
-        # finally, put the notebook and buttons in a sizerto manage the layout
-        mainSizer = wx.BoxSizer(orient=wx.VERTICAL)
-        mainSizer.Add(nb, 1, wx.EXPAND)
-        mainSizer.Add(buttonBox, 0, wx.EXPAND)
-        self.SetSizer(mainSizer)
-
-    def __buildDisplayPanel(self, parent):
-        panel = wx.Panel(parent, wx.ID_ANY)
-
-        displayGrid = wx.GridBagSizer(5, 5)
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('Units'),
-            size = (self.labelWidth,-1))
-        displayGrid.Add(label, (0,0))
-        self.dispUnitsChoices = [_('Kilometers'), _('Miles')]
-        if self.conf.common.miles or False:
-            value = self.dispUnitsChoices[1]
-        else:
-            value = self.dispUnitsChoices[0]
-        self.dispUnits = wx.ComboBox(panel, wx.ID_ANY,
-            value=value,
-            choices=self.dispUnitsChoices,
-            style=wx.CB_READONLY,
-            size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUnits, (0,1))
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('Coordinate Format'))
-        displayGrid.Add(label, (1,0))
-        self.dispCoordFmt = wx.ComboBox(panel, wx.ID_ANY,
-            value=self.conf.common.coordFmt or 'hdd mm.mmm',
-            choices=['hdd.ddddd', 'hdd mm.mmm', 'hdd mm ss.s'],
-            style=wx.CB_READONLY,
-            size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispCoordFmt, (1,1))
-
-        label = wx.StaticText(panel,wx.ID_ANY,
-            _('User Data Column Names'))
-        displayGrid.Add(label, (2,0), (1,2))
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('User Datae 1'))
-        displayGrid.Add(label, (3,0))
-        self.dispUserData1 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData1 or label.GetLabel(),
-            size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData1, (3,1))
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 2'))
-        displayGrid.Add(label, (4,0))
-        self.dispUserData2 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData2 or label.GetLabel(),
-            size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData2, (4,1))
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 3'))
-        displayGrid.Add(label, (5,0))
-        self.dispUserData3 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData3 or label.GetLabel(),
-            size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData3, (5,1))
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 4'))
-        displayGrid.Add(label, (6,0))
-        self.dispUserData4 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData4 or label.GetLabel(),
-            size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData4, (6,1))
-
-
-        panel.SetSizer(displayGrid)
-        return panel
-
-    def __saveDisplayConf(self):
-        if self.dispUnits.GetValue() == self.dispUnitsChoices[0]:
-            self.conf.common.miles = False
-        else:
-            self.conf.common.miles = True
-        self.conf.common.coordFmt = self.dispCoordFmt.GetValue()
-        self.conf.common.userData1 = self.dispUserData1.GetValue()
-        self.conf.common.userData2 = self.dispUserData2.GetValue()
-        self.conf.common.userData3 = self.dispUserData3.GetValue()
-        self.conf.common.userData4 = self.dispUserData4.GetValue()
-
-    def __buildGCPanel(self, parent):
-        panel = wx.Panel(parent, wx.ID_ANY)
-        gcGrid = wx.GridBagSizer(5, 5)
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('User Name'),
-            size = (self.labelWidth,-1))
-        gcGrid.Add(label, (0,0))
-        self.gcUserName = wx.TextCtrl(panel,
-            wx.ID_ANY,self.conf.gc.userName or '',
-            size = (self.entryWidth,-1))
-        gcGrid.Add(self.gcUserName, (0,1))
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('User ID'))
-        gcGrid.Add(label, (1,0))
-        self.gcUserId = wx.TextCtrl(panel,wx.ID_ANY,
-            self.conf.gc.userId or '',
-            size = (self.entryWidth,-1))
-        gcGrid.Add(self.gcUserId, (1,1))
-
-        panel.SetSizer(gcGrid)
-        return panel
-
-    def __saveGCConf(self):
-        self.conf.gc.userName = self.gcUserName.GetValue()
-        self.conf.gc.userId = self.gcUserId.GetValue()
-
-    def __buildGpsPanel(self,parent):
-        panel = wx.Panel(parent, wx.ID_ANY)
-        gpsGrid = wx.GridBagSizer(5, 5)
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('Type'),
-            size = (self.labelWidth,-1))
-        gpsGrid.Add(label, (0,0))
-        self.gpsType = wx.ComboBox(panel, wx.ID_ANY,
-            value=self.conf.gps.type or 'garmin',
-            choices=['garmin'],
-            style=wx.CB_SORT|wx.CB_READONLY,
-            size = (self.entryWidth,-1))
-        gpsGrid.Add(self.gpsType, (0,1))
-
-        label = wx.StaticText(panel,wx.ID_ANY,_('Port'))
-        gpsGrid.Add(label, (1,0))
-        self.gpsConnection = wx.ComboBox(panel, wx.ID_ANY,
-            value=self.conf.gps.connection or 'usb:',
-            choices=['usb:'],
-            style=wx.CB_SORT,
-            size = (self.entryWidth,-1))
-        gpsGrid.Add(self.gpsConnection, (1,1))
-
-        panel.SetSizer(gpsGrid)
-        return panel
-
-    def __saveGpsConf(self):
-        self.conf.gps.type = self.gpsType.GetValue()
-        self.conf.gps.connection = self.gpsConnection.GetValue()
-
-    def __buildLocationsPanel(self, parent):
-        grid = LocationsGrid(parent, self.conf, self.db)
-        return grid
-
-    def __saveLocationsConf(self):
-        self.Locations.Save()
-
-    def OnCancel(self, event=None):
-        self.Destroy()
-
-    def OnOk(self, event=None):
-        self.__saveDisplayConf()
-        self.__saveGCConf()
-        self.__saveGpsConf()
-        self.__saveLocationsConf()
-
-        event.Skip()
-
-class LocationsDataTable(Grid.PyGridTableBase):
-    def __init__(self, conf, db):
-        self.conf = conf
-        self.db = db
-        Grid.PyGridTableBase.__init__(self)
-        self.colLabels = [_('Name'), _('Latitude'), _('Longitude')]
-        self.renderers=[None, LatRenderer, LonRenderer]
-        self.editors = [None, LatEditor, LonEditor]
-        self.data = []
-        locationNames = self.db.getLocationNameList()
-        for locationName in locationNames:
-            location = self.db.getLocationByName(locationName)
-            self.data.append([location.name, location.lat, location.lon])
-
-        self._rows = self.GetNumberRows()
-        self._cols = self.GetNumberCols()
-
-    def Save(self):
-        existingNames = self.db.getLocationNameList()
-        newNames = self.GetNames()
-        for row in self.data:
-            if row[0] in existingNames:
-                location = self.db.getLocationByName(row[0])
-                location.lat = row[1]
-                location.lon = row[2]
-            else:
-                self.db.addLocation(row[0], row[1], row[2])
-        for name in existingNames:
-            if name not in newNames:
-                location = self.db.getLocationByName(name)
-                location.delete()
-        if (self.conf.common.currentLoc or 'Default') not in newNames:
-            self.conf.common.currentLoc = newNames[0]
-
-    def DeleteRows(self, rows):
-        """
-        rows -> delete the rows from the dataset
-        rows hold the row indices
-        """
-        deleteCount = 0
-        rows = rows[:]
-        rows.sort()
-        toDelStr =""
-        for row in rows:
-            if toDelStr == "":
-                toDelStr = self.data[row][0]
-            else:
-                toDelStr = toDelStr + ', ' + self.data[row][0]
-
-        dlg = wx.MessageDialog(None,
-                               message=_("Are you sure you wish to delete the following: ") + toDelStr,
-                               caption=_("Geocacher Delete Caches?"),
-                               style=wx.YES_NO|wx.ICON_QUESTION)
-        if dlg.ShowModal() == wx.ID_YES:
-            for row in rows:
-                self.data.pop(row-deleteCount)
-                # we need to advance the delete count
-                # to make sure we delete the right rows
-                deleteCount += 1
-
-    def GetNumberRows(self):
-        return len(self.data)
-
-    def GetNumberCols(self):
-        return 3
-
-    def IsEmptyCell(self, row, col):
-        return False
-
-    def GetValue(self, row, col):
-        return self.data[row][col]
-
-    def SetValue(self, row, col, value):
-        otherLocations = []
-        for i in range(len(self.data)):
-            if i != row:
-                otherLocations.append(self.data[i][0])
-        if col in [1,2] and value == None:
-            message = _('The active cell must be in one of the following formats:')
-            if col == 1:
-                message = message + '''
-    N12 34.345
-    S12 34 45.6
-    S12.34567
-    -12.34567'''
-            elif col == 2:
-                message = message + '''
-    E12 34.345
-    W12 34 45.6
-    W12.34567
-    -12.34567'''
-            wx.MessageBox(message, _('Input Error'))
-        elif col == 0 and value == '':
-            wx.MessageBox(_('The Location name must not be empty'),
-                          _('Input Error'))
-        elif col == 0 and value in otherLocations:
-            wx.MessageBox(_('Each location must have a different name'),
-                          _('Input Error'))
-        else:
-            self.data[row][col] = value
-
-    def GetColLabelValue(self, col):
-        return self.colLabels[col]
-
-    def GetRowLabelValue(self, row):
-        return ''
-
-    def AddRow(self, data):
-        self.data.append(data)
-        self.data.sort()
-
-    def GetNames(self):
-        names = []
-        for row in self.data:
-            names.append(row[0])
-        names.sort()
-        return names
-
-    def ReplaceRow(self, row, data):
-        self.data.pop(row)
-        self.AddRow(data)
-
-    def ResetView(self, grid):
-        """
-        (Grid) -> Reset the grid view.   Call this to
-        update the grid if rows and columns have been added or deleted
-        """
-        grid.BeginBatch()
-
-        for current, new, delmsg, addmsg in [
-            (self._rows, self.GetNumberRows(), Grid.GRIDTABLE_NOTIFY_ROWS_DELETED, Grid.GRIDTABLE_NOTIFY_ROWS_APPENDED),
-            (self._cols, self.GetNumberCols(), Grid.GRIDTABLE_NOTIFY_COLS_DELETED, Grid.GRIDTABLE_NOTIFY_COLS_APPENDED),
-        ]:
-
-            if new < current:
-                msg = Grid.GridTableMessage(self,delmsg,new,current-new)
-                grid.ProcessTableMessage(msg)
-            elif new > current:
-                msg = Grid.GridTableMessage(self,addmsg,new-current)
-                grid.ProcessTableMessage(msg)
-
-        grid.EndBatch()
-
-        self._rows = self.GetNumberRows()
-        self._cols = self.GetNumberCols()
-        # update the column rendering plugins
-        self._updateColAttrs(grid)
-
-        # update the scrollbars and the displayed part of the grid
-        grid.AdjustScrollbars()
-        grid.ForceRefresh()
-
-    def _updateColAttrs(self, grid):
-        """
-        wx.Grid -> update the column attributes to add the
-        appropriate renderer given the column name.
-        """
-        for col in range(len(self.colLabels)):
-            attr = Grid.GridCellAttr()
-            if self.renderers[col] != None:
-                renderer = self.renderers[col](self, self.conf)
-                attr.SetRenderer(renderer)
-
-                if renderer.colSize:
-                    grid.SetColSize(col, renderer.colSize)
-
-                if renderer.rowSize:
-                    grid.SetDefaultRowSize(renderer.rowSize)
-
-            if self.editors[col] != None:
-                attr.SetEditor(self.editors[col](self.conf))
-
-            grid.SetColAttr(col, attr)
-
-class LocationsGrid(Grid.Grid):
-    def __init__(self, parent, conf, db):
-        self.conf = conf
-        Grid.Grid.__init__(self, parent, wx.ID_ANY)
-
-        self._table = LocationsDataTable(conf, db)
-
-        self.SetTable(self._table, True)
-        self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnRightClicked)
-        self.Bind(Grid.EVT_GRID_CELL_RIGHT_CLICK, self.OnRightClicked)
-
-        self.SetRowLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
-        self.SetColLabelAlignment(wx.ALIGN_LEFT, wx.ALIGN_TOP)
-        self.SetMargins(0,0)
-
-        self.Reset()
-
-    def Save(self):
-        self._table.Save()
-
-    def OnRightClicked(self, evt):
-        # Did we click on a row or a column?
-        row = evt.GetRow()
-        if row != -1:
-            self.SelectRow(row)
-
-        addID = wx.NewId()
-        editID = wx.NewId()
-        deleteID = wx.NewId()
-
-        menu = wx.Menu()
-        menu.Append(addID, _('Add Location'))
-        if row != -1:
-            menu.Append(editID, _('Edit Location'))
-            if self._table.GetNumberRows() > 1:
-                menu.Append(deleteID, _('Delete Location'))
-
-        def add(event, self=self, row=row):
-            data = {'name':'',
-                    'lat' :0,
-                    'lon' :0}
-            names = self._table.GetNames()
-            dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, True)
-            if dlg.ShowModal() == wx.ID_OK:
-                self._table.AddRow([data['name'], data['lat'], data['lon']])
-                self.Reset()
-
-        def edit(event, self=self, row=row):
-            data = {'name':self._table.GetValue(row,0),
-                    'lat' :self._table.GetValue(row,1),
-                    'lon' :self._table.GetValue(row,2)}
-            names = self._table.GetNames()
-            dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, False)
-            if dlg.ShowModal() == wx.ID_OK:
-                self._table.ReplaceRow(row,
-                                       [data['name'], data['lat'], data['lon']])
-                self.Reset()
-
-        def delete(event, self=self, row=row):
-            '''Delete the selected cache'''
-            rows = self.GetSelectedRows()
-            self._table.DeleteRows(rows)
-            self.Reset()
-
-        self.Bind(wx.EVT_MENU, add, id=addID)
-        self.Bind(wx.EVT_MENU, edit, id=editID)
-        self.Bind(wx.EVT_MENU, delete, id=deleteID)
-        self.PopupMenu(menu)
-        menu.Destroy()
-        return
-
-    def Reset(self):
-        """reset the view based on the data in the table.  Call
-        this when rows are added or destroyed"""
-        self._table.ResetView(self)
-        # Use AutoSizeColumns() followed by AutoSizeRows() to avoid issues with
-        # AutoSize() doing both and causing the splittter and scroll bars to
-        # disapear
-        self.AutoSizeColumns()
-        self.AutoSizeRows()
-
-class EditLocation(wx.Dialog):
-    '''Add/Edit a new location'''
-    def __init__(self,parent,id, conf, data, names, new):
-        '''Creates the Add/Edit Location Frame'''
-        if new:
-            caption = _('Add New Location')
-        else:
-            caption = _('Edit location ')+ data['name']
-        wx.Dialog.__init__(self,parent,id,
-            caption,size = (400,90),
-           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
-
-        # Create labels for controls
-        nameName = wx.StaticText(self, wx.ID_ANY, _('Name'), size=(80,-1))
-        latName = wx.StaticText(self, wx.ID_ANY, _('Latitude'), size=(80,-1))
-        lonName = wx.StaticText(self, wx.ID_ANY, _('Longitude'), size=(80,-1))
-
-        # Create controls
-        name = wx.TextCtrl(self, wx.ID_ANY, size=(290, -1),
-            #style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER,
-            validator=LocNameValidator(data, 'name', names))
-        lat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatValidator(conf, data, 'lat', new))
-        lon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LonValidator(conf, data, 'lon', new))
-
-        # Create Grid for coordinate information and add the controls
-        detailGrid = wx.GridBagSizer(3, 3)
-        detailGrid.Add(nameName, (0,0), (1,1), wx.ALL, 1)
-        detailGrid.Add(name, (0,1), (1,3), wx.ALL, 1)
-        detailGrid.Add(latName, (1,0), (1,1), wx.ALL, 1)
-        detailGrid.Add(lat, (1,1), (1,1), wx.ALL, 1)
-        detailGrid.Add(lonName, (1,2), (1,1), wx.ALL, 1)
-        detailGrid.Add(lon, (1,3), (1,1), wx.ALL, 1)
-
-        # place the Location information in the vertical box
-        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
-        mainBox.Add(detailGrid)
-
-        # Ok and Cancel Buttons to the bottom of the form
-        okButton = wx.Button(self,wx.ID_OK)
-        cancelButton = wx.Button(self,wx.ID_CANCEL)
-        buttonBox = wx.StdDialogButtonSizer()
-        buttonBox.AddButton(okButton)
-        buttonBox.AddButton(cancelButton)
-        buttonBox.Realize()
-
-        mainBox.Add(buttonBox, 0, wx.EXPAND)
-        self.SetSizer(mainBox)
-        self.SetAutoLayout(True)
-
-        self.Show(True)
-
-class ViewTravelBugsWindow(wx.Dialog):
-    """View Travel Bugs Dialog"""
-    def __init__(self,parent,cache):
-        """Creates the View Travel Bugs Frame"""
-
-        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Travel Bugs for ")+cache.code,size = (420,500),
-                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
-
-        res = Xrc.XmlResource('xrc\geocacher.xrc')
-
-        # Create a scrolled panel and a vertical sizer within it to take the bugs
-        sw = Scrolled.ScrolledPanel(self, -1, size=(400, 450),
-                                 style = wx.TAB_TRAVERSAL)
-        bugSizer = wx.BoxSizer(orient=wx.VERTICAL)
-        for travelBug in cache.getTravelBugs():
-            bugPanel = res.LoadPanel(sw, 'bugPanel')
-            ref = Xrc.XRCCTRL(bugPanel, 'refText')
-            name = Xrc.XRCCTRL(bugPanel, 'nameText')
-
-            ref.SetValue(travelBug.ref)
-            name.SetValue(travelBug.name)
-
-            bugSizer.Add(bugPanel)
-
-        # Final Setup of the scrolled panel
-        sw.SetSizer(bugSizer)
-        sw.SetAutoLayout(1)
-        sw.SetupScrolling()
-
-        # Buttons
-        closeButton = wx.Button(self,wx.ID_CLOSE)
-
-        self.Bind(wx.EVT_BUTTON, self.OnClose,closeButton)
-
-        buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
-        buttonBox.Add(closeButton, 0, wx.EXPAND)
-
-        # finally, put the scrolledPannel and buttons in a sizerto manage the layout
-
-        mainSizer = wx.BoxSizer(orient=wx.VERTICAL)
-        mainSizer.Add(sw)
-        mainSizer.Add(buttonBox, 0, wx.EXPAND)
-        self.SetSizer(mainSizer)
-
-    def OnClose(self, event=None):
-        self.Destroy()
-
-class ViewLogsWindow(wx.Dialog):
-    """View Logs Dialog"""
-    def __init__(self,parent,cache):
-        """Creates the View Logs Frame"""
-
-        wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Logs for ")+cache.code,size = (650,500),
-                           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
-
-        # Create a scrolled panel and a vertical sizer within it to take the logs
-        sw = Scrolled.ScrolledPanel(self, -1, size=(640, 450),
-                                 style = wx.TAB_TRAVERSAL)
-        logSizer = wx.BoxSizer(orient=wx.VERTICAL)
-
-        res = Xrc.XmlResource('xrc\geocacher.xrc')
-
-        # Create a block for each log and add it to the logs sizer
-        for log in cache.getLogs():
-            logPanel = res.LoadPanel(sw, 'logPanel')
-            date     = Xrc.XRCCTRL(logPanel, 'dateText')
-            type     = Xrc.XRCCTRL(logPanel, 'typeText')
-            finder   = Xrc.XRCCTRL(logPanel, 'finderText')
-            message  = Xrc.XRCCTRL(logPanel, 'messageText')
-
-            date.SetValue(log.date.strftime("%x"))
-            type.SetValue(log.type)
-            finder.SetValue(log.finder_name)
-            message.SetValue(log.text)
-
-            logSizer.Add(logPanel)
-
-        # Final Setup of the scrolled panel
-        sw.SetSizer(logSizer)
-        sw.SetAutoLayout(1)
-        sw.SetupScrolling()
-
-        # Buttons
-        closeButton = wx.Button(self,wx.ID_CLOSE)
-
-        self.Bind(wx.EVT_BUTTON, self.OnClose,closeButton)
-
-        buttonBox = wx.BoxSizer(orient=wx.HORIZONTAL)
-        buttonBox.Add(closeButton, 0, wx.EXPAND)
-
-        # finally, put the scrolledPannel and buttons in a sizer to manage the layout
-        mainSizer = wx.BoxSizer(orient=wx.VERTICAL)
-        mainSizer.Add(sw)
-        mainSizer.Add(buttonBox, 0, wx.EXPAND)
-        self.SetSizer(mainSizer)
-
-    def OnClose(self, event=None):
-        self.Destroy()
-
-class NotEmptyValidator(wx.PyValidator):
-    def __init__(self, data, key):
-        wx.PyValidator.__init__(self)
-        self.data = data
-        self.key = key
-
-    def Clone(self):
-        return NotEmptyValidator(self.data, self.key)
-
-    def Validate(self, win):
-        textCtrl = self.GetWindow()
-        text = textCtrl.GetValue()
-        if len(text) == 0:
-            textCtrl.SetBackgroundColour('pink')
-            message = _('The highlighted field must contain some text!')
-            wx.MessageBox(message, _('Input Error'))
-            textCtrl.SetFocus()
-            textCtrl.Refresh()
-            return False
-        else:
-            textCtrl.SetBackgroundColour(
-                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
-            textCtrl.Refresh()
-            return True
-
-    def TransferToWindow(self):
-        textCtrl = self.GetWindow()
-        textCtrl.SetValue(self.data.get(self.key, ""))
-        return True
-
-    def TransferFromWindow(self):
-        textCtrl = self.GetWindow()
-        self.data[self.key] = textCtrl.GetValue()
-        return True
-
-class LocNameValidator(wx.PyValidator):
-    def __init__(self, data, key, names):
-        wx.PyValidator.__init__(self)
-        self.data = data
-        self.key = key
-        self.names = names
-
-    def Clone(self):
-        return LocNameValidator(self.data, self.key, self.names)
-
-    def Validate(self, win):
-        textCtrl = self.GetWindow()
-        text = textCtrl.GetValue()
-        ok = False
-        if len(text) == 0:
-            message = _('The Location Name field must not be empty')
-        elif text != self.data[self.key] and text in self.names:
-            message = _('The Location Name can not be the same as another Location Name')
-        else:
-            ok = True
-        if ok:
-            textCtrl.SetBackgroundColour(
-                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
-            textCtrl.Refresh()
-            return True
-        else:
-            textCtrl.SetBackgroundColour('pink')
-            wx.MessageBox(message, _('Input Error'))
-            textCtrl.SetFocus()
-            textCtrl.Refresh()
-            return False
-
-    def TransferToWindow(self):
-        textCtrl = self.GetWindow()
-        textCtrl.SetValue(self.data.get(self.key, ""))
-        return True
-
-    def TransferFromWindow(self):
-        textCtrl = self.GetWindow()
-        self.data[self.key] = textCtrl.GetValue()
-        return True
-
-class DegValidator(wx.PyValidator):
-    def __init__(self, mode, conf, data, key, new=False):
-        wx.PyValidator.__init__(self)
-        self.mode = mode
-        self.conf = conf
-        self.data = data
-        self.key = key
-        self.new = new
-
-    def Clone(self):
-        return DegValidator(self.mode, self.conf , self.data, self.key, self.new)
-
-    def Validate(self, win):
-        textCtrl = self.GetWindow()
-        if strToDeg(textCtrl.GetValue(), self.mode) == None:
-            textCtrl.SetBackgroundColour('pink')
-            message = _('The highlighted field must be in one of the following formats:')
-            if self.mode == 'lat':
-                message = message + '''
-    N12 34.345
-    S12 34 45.6
-    S12.34567
-    -12.34567'''
-            elif self.mode == 'lon':
-                message = message + '''
-    E12 34.345
-    W12 34 45.6
-    W12.34567
-    -12.34567'''
-            else:
-                message = message + '''
-    12 34.345
-    12 34 45.6
-    12.34567'''
-            wx.MessageBox(message, _('Input Error'))
-            textCtrl.SetFocus()
-            textCtrl.Refresh()
-            return False
-        else:
-            textCtrl.SetBackgroundColour(
-                wx.SystemSettings_GetColour(wx.SYS_COLOUR_WINDOW))
-            textCtrl.Refresh()
-            return True
-
-    def TransferToWindow(self):
-        textCtrl = self.GetWindow()
-        value = self.data.get(self.key, 0)
-        if self.new:
-            textCtrl.SetValue('')
-        else:
-            format = self.conf.common.coordFmt or 'hdd mm.mmm'
-            textCtrl.SetValue(degToStr(value, format, self.mode))
-        return True
-
-    def TransferFromWindow(self):
-        textCtrl = self.GetWindow()
-        self.data[self.key] = strToDeg(textCtrl.GetValue(), self.mode)
-        return True
-
-class LatValidator(DegValidator):
-    def __init__(self, conf, data, key, new=False):
-        DegValidator.__init__(self, 'lat', conf, data, key, new)
-
-class LonValidator(DegValidator):
-    def __init__(self, conf, data, key, new=False):
-        DegValidator.__init__(self, 'lon', conf, data, key, new)
-
-class CorrectLatLon(wx.Dialog):
-    '''Get the import options from the user'''
-    def __init__(self,parent,id, conf, code, data, new):
-        '''Creates the Lat/Lon correction Frame'''
-        wx.Dialog.__init__(self,parent,id,
-            _('Lat/Lon Correction for ')+code,size = (350,250),
-           style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
-
-        # Create labels for controls
-        latName = wx.StaticText(self, wx.ID_ANY, _('Latitude'))
-        lonName = wx.StaticText(self, wx.ID_ANY, _('Longitude'))
-        origName = wx.StaticText(self, wx.ID_ANY, _('Origional'))
-        corName = wx.StaticText(self, wx.ID_ANY, _('Corrected'))
-        commName = wx.StaticText(self, wx.ID_ANY, _('Comment'))
-
-        # Create controls
-        oLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatValidator(conf, data, 'lat'))
-        oLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LonValidator(conf, data, 'lon'))
-        cLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatValidator(conf, data, 'clat', new))
-        cLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LonValidator(conf, data, 'clon', new))
-
-        comment = wx.TextCtrl(self, wx.ID_ANY, size=(200, 100),
-            style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER,
-            validator=NotEmptyValidator(data, 'cnote'))
-
-        # Create Grid for coordinate information and add the controls
-        coordGrid = wx.GridBagSizer(3, 3)
-        coordGrid.Add(latName, (0,1), (1,1), wx.ALL, 1)
-        coordGrid.Add(lonName, (0,2), (1,1), wx.ALL, 1)
-        coordGrid.Add(origName, (1,0), (1,1), wx.ALL, 1)
-        coordGrid.Add(corName, (2,0), (1,1), wx.ALL, 1)
-
-        coordGrid.Add(oLat, (1,1), (1,1), wx.ALL, 1)
-        coordGrid.Add(oLon, (1,2), (1,1), wx.ALL, 1)
-        coordGrid.Add(cLat, (2,1), (1,1), wx.ALL, 1)
-        coordGrid.Add(cLon, (2,2), (1,1), wx.ALL, 1)
-
-        # Put a box around the coordinates section
-        coordSbox = wx.StaticBox(self, wx.ID_ANY, _('Coordinates'))
-        coordSboxSizer = wx.StaticBoxSizer(coordSbox, wx.VERTICAL)
-        coordSboxSizer.Add(coordGrid, 0, 0, 0)
-
-        # place the coordinates section and th ecomment in the vertical box
-        mainBox = wx.BoxSizer(orient=wx.VERTICAL)
-        mainBox.Add(coordSboxSizer)
-        mainBox.Add(commName, 0, wx.EXPAND)
-        mainBox.Add(comment, 0, wx.EXPAND)
-
-        # Ok and Cancel Buttons to the bottom of the form
-        okButton = wx.Button(self,wx.ID_OK)
-        cancelButton = wx.Button(self,wx.ID_CANCEL)
-        buttonBox = wx.StdDialogButtonSizer()
-        buttonBox.AddButton(okButton)
-        buttonBox.AddButton(cancelButton)
-        buttonBox.Realize()
-
-        mainBox.Add(buttonBox, 0, wx.EXPAND)
-        self.SetSizer(mainBox)
-        self.SetAutoLayout(True)
-
-        # Stop the orogional Lat/Lon values being edited
-        oLat.SetEditable(False)
-        oLon.SetEditable(False)
-
-        self.Show(True)
 
 class MainSplitter(wx.SplitterWindow):
+    '''
+    Provides the splitter for the main window.
+    '''
     def __init__(self,parent,id):
+        '''
+        Initialises the splitter for the main window.
+        
+        Arguments
+        parent: parent window for the splitter.
+        id:     ID to give the splitter.
+        '''
+        
         wx.SplitterWindow.__init__(self, parent, id,
             style=wx.SP_LIVE_UPDATE | wx.SP_BORDER)
 
 
 class MainWindow(wx.Frame):
-    """Main Frame"""
+    '''
+    The main frome for the application.
+    '''
     def __init__(self,parent,id, conf, db):
-        """Create the main frame"""
+        '''
+        Initialisation for the main frame.
+        
+        Arguments
+        parent: The parent window of the frame.
+        id:     The ID to give the frame.
+        conf:   The configuration object for the program.
+        db:     The application database.
+        '''
         self.conf = conf
         self.db = db
         self.displayCache = None
@@ -1974,28 +1230,35 @@ class MainWindow(wx.Frame):
         self.updateDetail(self.conf.common.dispCache or '')
 
     def buildMenu(self):
-        '''Builds the menu bar'''
+        '''
+        Builds the menu bar for the main window
+        '''
         MenuBar = wx.MenuBar()
 
         # Build file menu and bind functions
         FileMenu = wx.Menu()
 
-        item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints from File"))
+        item = FileMenu.Append(wx.ID_ANY,
+                               text=_("&Load Waypoints from File"))
         self.Bind(wx.EVT_MENU, self.OnLoadWpt, item)
 
-        item = FileMenu.Append(wx.ID_ANY, text=_("&Load Waypoints from Folder"))
+        item = FileMenu.Append(wx.ID_ANY,
+                               text=_("&Load Waypoints from Folder"))
         self.Bind(wx.EVT_MENU, self.OnLoadWptDir, item)
 
-        item = FileMenu.Append(wx.ID_ANY, text=_("&Export Waypoints"))
+        item = FileMenu.Append(wx.ID_ANY,
+                               text=_("&Export Waypoints"))
         self.Bind(wx.EVT_MENU, self.OnExportWpt, item)
 
         item = FileMenu.Append(wx.ID_ANY, text=_("&Back-up Database"))
         self.Bind(wx.EVT_MENU, self.OnBackupDb, item)
 
-        item = FileMenu.Append(wx.ID_ANY, text=_("&Restore Database"))
+        item = FileMenu.Append(wx.ID_ANY,
+                               text=_("&Restore Database"))
         self.Bind(wx.EVT_MENU, self.OnRestoreDb, item)
 
-        item = FileMenu.Append(wx.ID_EXIT, text=_("&Quit"))
+        item = FileMenu.Append(wx.ID_EXIT,
+                               text=_("&Quit"))
         self.Bind(wx.EVT_MENU, self.OnQuit, item)
 
         MenuBar.Append(FileMenu, _("&File"))
@@ -2003,7 +1266,8 @@ class MainWindow(wx.Frame):
         # Build preferences menu and bind functions
         PrefsMenu = wx.Menu()
 
-        item = PrefsMenu.Append(wx.ID_ANY, text=_("&Preferences"))
+        item = PrefsMenu.Append(wx.ID_ANY,
+                                text=_("&Preferences"))
         self.Bind(wx.EVT_MENU, self.OnPrefs, item)
 
         MenuBar.Append(PrefsMenu, _("&Edit"))
@@ -2011,7 +1275,9 @@ class MainWindow(wx.Frame):
         # Build view menu and bind functions
         ViewMenu = wx.Menu()
 
-        self.miShowFilter = ViewMenu.Append(wx.ID_ANY, text=_('Show Filter Bar'), kind=wx.ITEM_CHECK)
+        self.miShowFilter = ViewMenu.Append(wx.ID_ANY,
+                                            text=_('Show Filter Bar'),
+                                            kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnShowFilter, self.miShowFilter)
         self.miShowFilter.Check(self.conf.common.showFilter or False)
 
@@ -2020,23 +1286,32 @@ class MainWindow(wx.Frame):
         # Build filter menu and bind functions
         FilterMenu = wx.Menu()
 
-        self.miHideMine = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Mine'), kind=wx.ITEM_CHECK)
+        self.miHideMine = FilterMenu.Append(wx.ID_ANY,
+                                            text=_('Hide &Mine'), kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideMine, self.miHideMine)
         self.miHideMine.Check(self.conf.filter.mine or False)
 
-        self.miHideFound = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Found'), kind=wx.ITEM_CHECK)
+        self.miHideFound = FilterMenu.Append(wx.ID_ANY,
+                                             text=_('Hide &Found'),
+                                             kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideFound, self.miHideFound)
         self.miHideFound.Check(self.conf.filter.found or False)
 
-        self.miHideDisabled = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Disabled'), kind=wx.ITEM_CHECK)
+        self.miHideDisabled = FilterMenu.Append(wx.ID_ANY,
+                                                text=_('Hide &Disabled'),
+                                                kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideDisabled, self.miHideDisabled)
         self.miHideDisabled.Check(self.conf.filter.disabled or False)
 
-        self.miHideArchived = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Archived'), kind=wx.ITEM_CHECK)
+        self.miHideArchived = FilterMenu.Append(wx.ID_ANY,
+                                                text=_('Hide &Archived'),
+                                                kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideArchived, self.miHideArchived)
         self.miHideArchived.Check(self.conf.filter.archived or False)
 
-        self.miHideOverDist = FilterMenu.Append(wx.ID_ANY, text=_('Hide &Over Max Dist'), kind=wx.ITEM_CHECK)
+        self.miHideOverDist = FilterMenu.Append(wx.ID_ANY,
+                                                text=_('Hide &Over Max Dist'),
+                                                kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideOverDist, self.miHideOverDist)
         self.miHideOverDist.Check(self.conf.filter.overDist or False)
 
@@ -2068,6 +1343,9 @@ class MainWindow(wx.Frame):
         self.SetMenuBar(MenuBar)
 
     def buildToolBar(self):
+        '''
+        Builds the toolbar for the main window.
+        '''
         TBFLAGS = ( wx.TB_HORIZONTAL | wx.NO_BORDER | wx.TB_FLAT)
 
         tb = self.CreateToolBar(TBFLAGS)
@@ -2101,13 +1379,17 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideOverDist, self.cbHideOverDist)
         self.cbHideOverDist.SetValue(self.conf.filter.overDist or False)
 
-        self.tbMaxDistance = wx.TextCtrl(tb, wx.ID_ANY, value=str(self.conf.filter.maxDistVal or 50.0), size=[100,-1])
+        self.tbMaxDistance = wx.TextCtrl(tb, wx.ID_ANY,
+            value=str(self.conf.filter.maxDistVal or 50.0), size=[100,-1])
         tb.AddControl(self.tbMaxDistance)
         self.tbMaxDistance.Bind(wx.EVT_LEFT_DCLICK, self.OnMaxDistVal)
 
         tb.AddSeparator()
 
-        tb.AddControl(wx.StaticText(tb, -1, _('Home location'), style=wx.TEXT_ATTR_FONT_ITALIC))
+        tb.AddControl(wx.StaticText(tb,
+                                    wx.ID_ANY,
+                                    _('Home location'),
+                                    style=wx.TEXT_ATTR_FONT_ITALIC))
         choices = self.db.getLocationNameList()
         if self.conf.common.currentLoc in choices:
             current = self.conf.common.currentLoc
@@ -2124,25 +1406,59 @@ class MainWindow(wx.Frame):
         self.ShowHideFilterBar(self.conf.common.showFilter or False)
 
     def buildStatusBar(self):
+        '''
+        Builds the status bar for the main window
+        '''
         self.statusbar = self.CreateStatusBar()
         self.statusbar.SetFieldsCount(4)
         self.statusbar.SetStatusWidths([-1,180,80,120])
         self.statusbar.SetStatusText(_('Geocacher - idle'),STATUS_MAIN)
 
     def pushStatus(self, text):
+        '''
+        Pushes the given text onto the stack for the current activity part of
+        the ststus bar.
+        
+        Argument
+        test: Text to push onto the stack.
+        '''
         self.statusbar.PushStatusText(text, STATUS_MAIN)
 
     def popStatus(self):
+        '''
+        Removes the top item form the stack for the current activity part of
+        the status bar.
+        '''
         self.statusbar.PopStatusText(STATUS_MAIN)
 
     def updateStatus(self, rows=None):
-        self.statusbar.SetStatusText(_('Total: %i') % self.db.getNumberCaches(),STATUS_TOTAL)
+        '''
+        Updates the total number of caches and the number of caches after the
+         filter the status bar.
+         
+         Keyword Arguments
+         rows: the number of rows to use as the number of records after
+               filtering.
+        '''
+        self.statusbar.SetStatusText(_('Total: %i') % 
+                                     self.db.getNumberCaches(),
+                                     STATUS_TOTAL)
         if rows==None:
-            self.statusbar.SetStatusText(_('After Filter: %i') % self.cacheGrid.GetNumberRows(),STATUS_FILTERED)
+            self.statusbar.SetStatusText(_('After Filter: %i') %
+                                         self.cacheGrid.GetNumberRows(),
+                                         STATUS_FILTERED)
         else:
-            self.statusbar.SetStatusText(_('After Filter: %i') % rows,STATUS_FILTERED)
+            self.statusbar.SetStatusText(_('After Filter: %i') %
+                                         rows,
+                                         STATUS_FILTERED)
 
     def updateDetail(self, newCache=''):
+        '''
+        Updates the cache detail panel with the details of the selected cache.
+        
+        Keyword Argument
+        newCache: code of the cache to display the details of.
+        '''
         # TODO: put loading of cache detail int it's own thread
         # TODO: add further information to cache detail display
         # TODO: add option to view actual webpage
@@ -2174,6 +1490,10 @@ class MainWindow(wx.Frame):
         self.popStatus()
 
     def selectCaches(self):
+        '''
+        Returns a list of cache objets for export based on the stored export
+        preferences
+        '''
         if self.conf.export.filterSel or False:
             caches = self.cacheGrid.GetSelectedCaches()
         elif self.conf.export.filterDisp or False:
@@ -2191,18 +1511,32 @@ class MainWindow(wx.Frame):
             return caches
 
     def updateFilter(self):
+        '''
+        Updates the data in the cache table/grid after a change of the filter
+        criteria.
+        '''
         self.pushStatus(_('Updating filter'))
         self.cacheGrid.ReloadCaches()
         self.updateStatus()
         self.popStatus()
 
     def updateLocations(self):
+        '''
+        Updates the location selector after a change to lt list of loactions.
+        '''
         for i in range(0,self.selLocation.GetCount()): #@UnusedVariable
             self.selLocation.Delete(0)
         for location in self.db.getLocationNameList():
             self.selLocation.Append(location)
 
     def updateCurrentLocation(self, name):
+        '''
+        Updates the cache data in the table/grid when a new location is
+        selected.
+        
+        Argument
+        name: name of the new home loaction to be used.
+        '''
         self.pushStatus(_('Updating home location to: %s') % name)
         self.selLocation.SetValue(name)
         self.conf.common.currentLoc = name
@@ -2210,14 +1544,25 @@ class MainWindow(wx.Frame):
         self.updateStatus()
         self.popStatus()
 
-
     def GpsError(self, message):
+        '''
+        Displays the given GPS error message to the user.
+        
+        Argument
+        message: The GPS error message to be displayed.
+        '''
         wx.MessageBox(parent = self,
             message = _('Error communicating with GPS, GPSBabel said:\n')+message,
             caption = _('GPS Error'),
             style = wx.OK | wx.ICON_ERROR)
 
     def OnHelpAbout(self, event=None):
+        '''
+        Handles the event from the "Help About" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         HelpAbout = wx.AboutDialogInfo()
         HelpAbout.SetName('Geocacher')
         HelpAbout.SetVersion(__version__)
@@ -2229,6 +1574,12 @@ class MainWindow(wx.Frame):
         wx.AboutBox(HelpAbout)
 
     def OnLoadWpt(self, event=None):
+        '''
+        Handles the event from the "Load Waypoint" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.pushStatus(_('Loading caches from file'))
         wildcard = "GPX File (*.gpx)|*.gpx|"\
                    "LOC file (*.loc)|*.loc|"\
@@ -2278,7 +1629,7 @@ class MainWindow(wx.Frame):
                     self.conf.load.mode = 'replace'
 
                 for path in paths:
-                    self.pushStatus(_('Loading caches from file: ')% path)
+                    self.pushStatus(_('Loading caches from file: %s')% path)
                     self.LoadFile(path, self.conf.load.mode)
                     self.popStatus()
                 self.cacheGrid.ReloadCaches()
@@ -2286,6 +1637,12 @@ class MainWindow(wx.Frame):
             self.popStatus()
 
     def OnLoadWptDir(self, event=None):
+        '''
+        Handles the event from the "Load Waypoints from file" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.pushStatus(_('Loading caches from folder'))
         if os.path.isdir(self.conf.load.lastFolder):
             dir = self.conf.load.lastFolder
@@ -2334,6 +1691,13 @@ class MainWindow(wx.Frame):
             self.popStatus()
 
     def LoadFile(self, path, mode):
+        '''
+        Handles the loading/importing of a waypoint file.
+        
+        Arguments
+        path: Path to the file to be loaded/imported.
+        mode" Mode to addthe file in (merge or Replace).
+        '''
         ext = os.path.splitext(path)[1]
         if ext == '.gpx':
             ret = gpxLoad(path,self.db,mode=mode,
@@ -2352,7 +1716,12 @@ class MainWindow(wx.Frame):
                              style=wx.OK|wx.ICON_WARNING)
 
     def OnExportWpt(self, event=None):
-        '''Function to export waypoints to a file'''
+        '''
+        Handles the event from the "Export Waypoints to file" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.pushStatus(_('Exporting caches to file'))
         opts = ExportOptions(self, self.conf, False)
         if opts.ShowModal() == wx.ID_OK:
@@ -2406,6 +1775,12 @@ class MainWindow(wx.Frame):
             self.popStatus()
 
     def OnBackupDb(self, event=None):
+        '''
+        Handles the event from the "Backup Database" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.pushStatus(_('Backing up the Database'))
         wildcard = "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
@@ -2438,6 +1813,12 @@ class MainWindow(wx.Frame):
         self.popStatus()
 
     def OnRestoreDb(self, event=None):
+        '''
+        Handles the event from the "Restore Database" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.pushStatus(_('Restoring database from file'))
         wildcard = "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
@@ -2467,7 +1848,13 @@ class MainWindow(wx.Frame):
 
 
     def OnPrefs(self, event=None):
-        dlg = PreferencesWindow(self, wx.ID_ANY, self.conf, self.db)
+        '''
+        Handles the event from the "Preferences" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
+        dlg = Preferences(self, wx.ID_ANY, self.conf, self.db)
         if dlg.ShowModal() == wx.ID_OK:
             self.cacheGrid.UpdateUserDataLabels()
             self.updateLocations()
@@ -2521,6 +1908,12 @@ class MainWindow(wx.Frame):
         self.popStatus()
 
     def OnGpsLocation(self, event=None):
+        '''
+        Handles the event from the "Location from GPS" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.pushStatus(_('Loading new loaction form GPS'))
         gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
                         port=self.conf.gps.connection or 'usb:')
@@ -2532,6 +1925,18 @@ class MainWindow(wx.Frame):
         self.popStatus()
 
     def NewLocation(self, lat, lon, source, name=''):
+        '''
+        Handles the creation of a new home loaction.
+        
+        Arguments
+        lat:    Lattitude of the new location.
+        lon:    Longitude of the new location.
+        source: Text describing the source that the new location has come
+                from.
+        
+        Keyword Argument
+        name:   Default name for the new location.
+        '''
         dlg = wx.TextEntryDialog(self,
             _('Please enter a name for the new Location from ') + source,
             caption=_('Location Name'),
@@ -2560,69 +1965,187 @@ class MainWindow(wx.Frame):
         self.updateCurrentLocation(name)
 
     def OnSelLocation(self, event=None):
+        '''
+        Handles the event from the select location toolbar item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.updateCurrentLocation(self.selLocation.GetValue())
 
     def OnHideArchived(self, state):
+        '''
+        Handles the event from the toggling of the "Hide Archived"
+        toolbar or menu item.
+        
+        Argument
+        state: The state of the checkbox causing the function to be called.
+        '''
         self.conf.filter.archived = state
         self.miHideArchived.Check(state)
         self.cbHideArchived.SetValue(state)
         self.updateFilter()
 
     def OnCbHideArchived(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Archived"
+        toolbar item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideArchived(self.cbHideArchived.GetValue())
 
     def OnMiHideArchived(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Archived"
+        menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideArchived(self.miHideArchived.IsChecked())
 
     def OnHideDisabled(self, state):
+        '''
+        Handles the event from the toggling of the "Hide Disabled"
+        toolbar or menu item.
+        
+        Argument
+        state: The state of the checkbox causing the function to be called.
+        '''
         self.conf.filter.disabled = state
         self.miHideDisabled.Check(state)
         self.cbHideDisabled.SetValue(state)
         self.updateFilter()
 
     def OnCbHideDisabled(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Disabled"
+        toolbar item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideDisabled(self.cbHideDisabled.GetValue())
 
     def OnMiHideDisabled(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Disabled"
+        menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideDisabled(self.miHideDisabled.IsChecked())
 
     def OnHideFound(self, state):
+        '''
+        Handles the event from the toggling of the "Hide Found"
+        toolbar or menu item.
+        
+        Argument
+        state: The state of the checkbox causing the function to be called.
+        '''
         self.conf.filter.found = state
         self.miHideFound.Check(state)
         self.cbHideFound.SetValue(state)
         self.updateFilter()
 
     def OnCbHideFound(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Found"
+        toolbar item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideFound(self.cbHideFound.GetValue())
 
     def OnMiHideFound(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Found"
+        menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideFound(self.miHideFound.IsChecked())
 
     def OnHideMine(self, state):
+        '''
+        Handles the event from the toggling of the "Hide Mine"
+        toolbar or menu item.
+        
+        Argument
+        state: The state of the checkbox causing the function to be called.
+        '''
         self.conf.filter.mine = state
         self.miHideMine.Check(state)
         self.cbHideMine.SetValue(state)
         self.updateFilter()
 
     def OnCbHideMine(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Mine
+        toolbar item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideMine(self.cbHideMine.GetValue())
 
     def OnMiHideMine(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Mine"
+        menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideMine(self.miHideMine.IsChecked())
 
     def OnHideOverDist(self, state):
+        '''
+        Handles the event from the toggling of the "Hide Over Distance"
+        toolbar or menu item.
+        
+        Argument
+        state: The state of the checkbox causing the function to be called.
+        '''
         self.conf.filter.overDist = state
         self.miHideOverDist.Check(state)
         self.cbHideOverDist.SetValue(state)
         self.updateFilter()
 
     def OnCbHideOverDist(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Over Distance"
+        toolbar item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideOverDist(self.cbHideOverDist.GetValue())
 
     def OnMiHideOverDist(self, event=None):
+        '''
+        Handles the event from the toggling of the "Hide Over Distance"
+        menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         self.OnHideOverDist(self.miHideOverDist.IsChecked())
 
     def OnMaxDistVal(self, event=None):
+        '''
+        Handles the event from double clicking on the maximum distance box or
+        selecting the "Set Maximum Distance" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         dlg = wx.TextEntryDialog(self,
             _('Please enter the maximum distance from your home location to display caches from'),
             caption=_('Maximum Distance'),
@@ -2651,7 +2174,10 @@ class MainWindow(wx.Frame):
             self.updateFilter()
 
     def OnQuit(self, event=None):
-        """Exit application."""
+        '''
+        Handles the exit application event saving the necessary data before
+        exiting.
+        '''
         (self.conf.common.mainWidth,self.conf.common.mainHeight) = self.GetSizeTuple()
         self.conf.common.mainSplit = self.splitter.GetSashPosition()
         self.conf.common.cacheCols = self.cacheGrid.GetCols()
@@ -2665,8 +2191,13 @@ class MainWindow(wx.Frame):
         self.Destroy()
 
 class GeocacherApp (wx.App):
-    '''Application Class'''
+    '''
+    Application Class
+    '''
     def OnInit(self):
+        '''
+        Provides the additional initalisation needed for the application.
+        '''
         self.checker = wx.SingleInstanceChecker(".Geocacher_"+wx.GetUserId())
         if self.checker.IsAnotherRunning():
             dlg = wx.MessageDialog(None,

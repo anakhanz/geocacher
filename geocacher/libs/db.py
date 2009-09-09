@@ -1,5 +1,8 @@
 # -*- coding: UTF-8 -*-
-'''Module to implement the persistent data stores'''
+'''
+Module to implement the persistent data stores
+'''
+
 import datetime
 from lxml.etree import Element,ElementTree
 import os
@@ -11,10 +14,17 @@ VERSION = 1
 ROOT_ELEMENT = 'db'
 
 class DB:
-    '''Database for all non configuration data in the geocacher application'''
+    '''
+    Database for all non configuration data in the geocacher application
+    '''
 
     def __init__(self,file):
-        '''Load the DB or initialise if missing'''
+        '''
+        Load the database from the given file or initialise if missing
+        
+        Argument
+        file: The file to load the database from
+        '''
         try:
             self.root = ElementTree(file=file).getroot()
             #version = int(self.root.attrib["version"])
@@ -26,18 +36,30 @@ class DB:
         self.file = file
 
     def save(self):
-        '''Saves the DB'''
+        '''
+        Saves the DB
+        '''
         self.backup(self.file)
 
     def backup(self, file):
-        '''Save the DB to the given file'''
+        '''
+        Save the DB to the given file
+        
+        Argument
+        file: file to save the database to
+        '''
         fid = open(file,"w")
         fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
         ElementTree(self.root).write(fid,encoding="utf-8")
         fid.close()
 
     def restore(self, file):
-        '''Restores the DB from the given file'''
+        '''
+        Restores the database from the given file
+        
+        Argument
+        file: file to restore the database form
+        '''
         try:
             newRoot = ElementTree(file=file).getroot()
             tag = newRoot.tag
@@ -49,28 +71,43 @@ class DB:
             self.update()
 
     def update(self):
+        '''
+        Updates the database if the schema has changed
+        '''
+        # Presently this function is a place holder
         pass
 
     def getCacheList(self):
-        '''Returns a list of caches'''
+        '''
+        Returns a list of the caches in the database
+        '''
         cacheList = []
         for cacheNode in self.root.xpath(u"cache"):
             cacheList.append(Cache(cacheNode))
         return cacheList
 
     def getCacheCodeList(self):
-        '''Returns a list of cache codes'''
+        '''
+        Returns a list of the codes of each cache in the database
+        '''
         cacheCodeList = []
         for cacheNode in self.root.xpath(u"cache"):
             cacheCodeList.append(cacheNode.attrib["code"])
         return cacheCodeList
 
     def getNumberCaches(self):
-        '''Returns the number of caches in the database'''
+        '''
+        Returns the number of caches in the database
+        '''
         return len(self.root.xpath(u"cache"))
 
     def getCacheByCode(self,code):
-        '''Returns the cache with the given code if found, otherwise "None"'''
+        '''
+        Returns the cache with the given code if found, otherwise "None"
+        
+        Argument
+        code: code of the cache to be returned
+        '''
         caches = self.root.xpath(u"""cache[@code="%s"]""" % code)
         if len(caches) > 0:
             return Cache(caches[0])
@@ -181,14 +218,18 @@ class DB:
         return Cache(newCache)
 
     def getLocationList(self):
-        '''Returns a list of home locations'''
+        '''
+        Returns a list of home locations
+        '''
         locationList = []
         for locationNode in self.root.xpath(u"location"):
             locationList.append(Location(locationNode))
         return locationList
 
     def getLocationNameList(self):
-        '''Returns a list of home location names'''
+        '''
+        Returns a list of home location names
+        '''
         locationNameList = []
         for locationNode in self.root.xpath(u"location"):
             locationNameList.append(locationNode.attrib["name"])
@@ -196,7 +237,12 @@ class DB:
         return locationNameList
 
     def getLocationByName(self,name):
-        '''Returns the location with the given name if found, otherwise "None"'''
+        '''
+        Returns the location with the given name if found, otherwise "None
+        
+        Argument
+        name: Name of the location to return
+        "'''
         locations = self.root.xpath(u"""location[@name="%s"]""" % name)
         if len(locations) > 0:
             return Location(locations[0])
@@ -363,9 +409,10 @@ class Cache(object):
 
     def __setType(self,t):
         assert type(t)==unicode or type(t)==str
+        print t
         assert t in ['Traditional Cache','Ape','CITO','Earthcache','Event Cache',
                      'Maze','Letterbox Hybrid','Mega','Multi-cache','Unknown Cache',
-                     'Reverse','Virtual Cache','Webcam','WhereIGo']
+                     'Reverse','Virtual Cache','Webcam Cache','Wherigo Cache']
         self.__node.attrib["type"] = t
 
     type= property(__getType, __setType)
