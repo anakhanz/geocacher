@@ -344,9 +344,32 @@ class CacheDataTable(Grid.PyGridTableBase):
         col:   Column coordinate of the cell to change the value for.  
         value: Value to set the cell to.  
         '''
-        pass # leave this as pass until the editable elements are implemented
-##        id = self.colNames[col]
-##        self.data[row][id] = value
+        id = self.colNames[col]
+        cache = self.GetRowCache(row)
+        changed = False
+        if self.dataTypes[id] == Grid.GRID_VALUE_BOOL:
+            value = bool(value)
+        if id == 'user_data1':
+            cache.user_data1 = value
+            changed = True
+        elif id == 'user_data2':
+            cache.user_data1 = value
+            changed = True
+        elif id == 'user_data3':
+            cache.user_data1 = value
+            changed = True
+        elif id == 'user_data4':
+            cache.user_data1 = value
+            changed = True
+        elif id == 'user_flag':
+            cache.user_flag = value
+            changed = True
+        if changed:
+            now = datetime.now()
+            cache.user_date = now
+            self.data[row]['user_date'] = now
+            self.data[row][id] = value
+            self.GetView().ForceRefresh()
 
     def GetRowCode(self, row):
         '''
