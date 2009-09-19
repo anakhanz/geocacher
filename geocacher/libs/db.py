@@ -319,7 +319,12 @@ class Cache(object):
     url = property(__getUrl,__setUrl)
 
     def __getLocked(self):    return textToBool(self.__node.attrib["locked"])
-    locked = property(__getLocked)
+    
+    def __setLocked(self,b):
+        assert type(b) == bool
+        self.__node.attrib["locked"] = boolToText(b)
+    
+    locked = property(__getLocked,__setLocked)
 
     def __getUser_date(self):    return textToDateTime(self.__node.attrib["user_date"])
 

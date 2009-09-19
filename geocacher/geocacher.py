@@ -349,20 +349,27 @@ class CacheDataTable(Grid.PyGridTableBase):
         changed = False
         if self.dataTypes[id] == Grid.GRID_VALUE_BOOL:
             value = bool(value)
-        if id == 'user_data1':
-            cache.user_data1 = value
-            changed = True
-        elif id == 'user_data2':
-            cache.user_data1 = value
-            changed = True
-        elif id == 'user_data3':
-            cache.user_data1 = value
-            changed = True
-        elif id == 'user_data4':
-            cache.user_data1 = value
-            changed = True
-        elif id == 'user_flag':
-            cache.user_flag = value
+        if not cache.locked:
+            if id == 'ftf':
+                cache.ftf = value
+                changed = True
+            elif id == 'user_data1':
+                cache.user_data1 = value
+                changed = True
+            elif id == 'user_data2':
+                cache.user_data1 = value
+                changed = True
+            elif id == 'user_data3':
+                cache.user_data1 = value
+                changed = True
+            elif id == 'user_data4':
+                cache.user_data1 = value
+                changed = True
+            elif id == 'user_flag':
+                cache.user_flag = value
+                changed = True
+        if id == 'locked':
+            cache.locked = value
             changed = True
         if changed:
             now = datetime.now()
