@@ -409,7 +409,6 @@ class Cache(object):
 
     def __setType(self,t):
         assert type(t)==unicode or type(t)==str
-        print t
         assert t in ['Traditional Cache','Ape','CITO','Earthcache','Event Cache',
                      'Maze','Letterbox Hybrid','Mega','Multi-cache','Unknown Cache',
                      'Reverse','Virtual Cache','Webcam Cache','Wherigo Cache']

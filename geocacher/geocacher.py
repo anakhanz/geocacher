@@ -301,7 +301,7 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetNumberRows(self):
         '''
-        Returns the number of rows int eh table.  
+        Returns the number of rows in the table.  
         '''
         return len(self.data)
 
@@ -1227,6 +1227,7 @@ class MainWindow(wx.Frame):
 
         self.updateStatus()
 
+        self.displayedCache = None
         self.updateDetail(self.conf.common.dispCache or '')
 
     def buildMenu(self):
@@ -1462,6 +1463,12 @@ class MainWindow(wx.Frame):
         # TODO: put loading of cache detail int it's own thread
         # TODO: add further information to cache detail display
         # TODO: add option to view actual webpage
+        
+        if newCache == self.displayedCache:
+            return
+        
+        self.displayedCache = newCache
+        
         self.pushStatus(_('Loading cache: ') + newCache)
         newCacheObj = self.db.getCacheByCode(newCache)
         if newCacheObj != None:
@@ -1543,6 +1550,7 @@ class MainWindow(wx.Frame):
         self.cacheGrid.UpdateLocation()
         self.updateStatus()
         self.popStatus()
+        
 
     def GpsError(self, message):
         '''
