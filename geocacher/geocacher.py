@@ -29,7 +29,7 @@ except:
 import wx
 import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
-import wx.html as Html
+import wx.html             as Html
 
 from libs.i18n import createGetText
 
@@ -39,6 +39,7 @@ __builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dir
 #    return t
 
 from libs.common import nl2br, listFiles, dateCmp, wxDateTimeToPy
+from libs.cacheStats import cacheStats
 from libs.db import Geocacher
 from libs.gpsbabel import GpsCom
 from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
@@ -49,6 +50,7 @@ from dialogs.correctLatLon import CorrectLatLon
 from dialogs.export import ExportOptions
 from dialogs.foundCache import FoundCache
 from dialogs.preferences import Preferences
+from dialogs.viewHtml import ViewHtml
 from dialogs.viewLogs import ViewLogs
 from dialogs.viewTravelBugs import ViewTravelBugs
 
@@ -72,7 +74,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         Initialisation function for the cache grid.  
         
         Arguments
-        conf: configuration object fort he program
+        conf: configuration object for the program
         db:   database containing the cache information
         '''
         self.conf = conf
@@ -1342,6 +1344,9 @@ class MainWindow(wx.Frame):
                                             kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnShowFilter, self.miShowFilter)
         self.miShowFilter.Check(self.conf.common.showFilter or False)
+        item = ViewMenu.Append(wx.ID_ANY,
+                               text=_('Statistics'))
+        self.Bind(wx.EVT_MENU, self.OnViewStats, item)
 
         MenuBar.Append(ViewMenu, _("&View"))
 
@@ -1349,7 +1354,8 @@ class MainWindow(wx.Frame):
         FilterMenu = wx.Menu()
 
         self.miHideMine = FilterMenu.Append(wx.ID_ANY,
-                                            text=_('Hide &Mine'), kind=wx.ITEM_CHECK)
+                                            text=_('Hide &Mine'),
+                                            kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideMine, self.miHideMine)
         self.miHideMine.Check(self.conf.filter.mine or False)
 
@@ -1932,6 +1938,12 @@ class MainWindow(wx.Frame):
         dlg.Destroy()
 
     def ShowHideFilterBar(self, show):
+        '''
+        Shows (or hides) the filter control items on the toolbar
+        
+        Argument
+        show: Tells the function if the toolbar items are to be shown.
+        '''
         self.tbFilterName.Show(show)
         self.cbHideArchived.Show(show)
         self.cbHideDisabled.Show(show)
@@ -1941,6 +1953,12 @@ class MainWindow(wx.Frame):
         self.tbMaxDistance.Show(show)
 
     def OnShowFilter(self, event=None):
+        '''
+        Handles the event from the "Show Filter" menu item.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
         show = self.miShowFilter.IsChecked()
         self.conf.common.showFilter = show
         self.ShowHideFilterBar(show)
@@ -2241,11 +2259,25 @@ class MainWindow(wx.Frame):
             self.conf.filter.maxDistVal = dist
             self.tbMaxDistance.SetValue(str(dist))
             self.updateFilter()
+    def OnViewStats(self, event=None):
+        '''
+        Handles view statistics menu event.
+        exiting.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
+        stats = cacheStats(self.db, self.conf)
+        dlg = ViewHtml(self, wx.ID_ANY,stats.html(), 'Geocaching Stats')
+        dlg.ShowModal()
 
     def OnQuit(self, event=None):
         '''
         Handles the exit application event saving the necessary data before
         exiting.
+        
+        Keyword Argument
+        event: The event causing this function to be called.
         '''
         (self.conf.common.mainWidth,self.conf.common.mainHeight) = self.GetSizeTuple()
         self.conf.common.mainSplit = self.splitter.GetSashPosition()

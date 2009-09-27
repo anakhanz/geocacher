@@ -4,7 +4,7 @@ Module to implement the persistent data stores
 '''
 
 import datetime
-from lxml.etree import Element,ElementTree
+from lxml.etree import Element,ElementTree #@UnresolvedImport
 import os
 
 from libs import dict4ini #@UnresolvedImport
@@ -12,6 +12,29 @@ from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText #@Un
 
 VERSION = 1
 ROOT_ELEMENT = 'db'
+
+CACHE_CONTAINERS = ['Micro',
+                    'Small',
+                    'Regular',
+                    'Large',
+                    'Not chosen',
+                    'Virtual',
+                    'Other']
+
+CACHE_TYPES = ['Traditional Cache',
+               'Ape',
+               'CITO',
+               'Earthcache',
+               'Event Cache',
+               'Maze',
+               'Letterbox Hybrid',
+               'Mega',
+               'Multi-cache',
+               'Unknown Cache',
+               'Reverse',
+               'Virtual Cache',
+               'Webcam Cache',
+               'Wherigo Cache']
 
 class DB:
     '''
@@ -113,6 +136,15 @@ class DB:
             return Cache(caches[0])
         else:
             return None
+    
+    def getFoundCacheList(self):
+        '''
+        Returns a list of found caches.
+        '''
+        cacheList = []
+        for cacheNode in self.root.xpath(u"""cache[@found="True"]"""):
+            cacheList.append(Cache(cacheNode))
+        return cacheList
 
     def addCache(self,code,
                         id="aa",
@@ -387,7 +419,7 @@ class Cache(object):
 
     def __setContainer(self,t):
         assert type(t)==unicode or type(t)==str
-        assert t in ['Micro','Small','Regular','Large','Not chosen','Virtual','Other']
+        assert t in CACHE_CONTAINERS
         self.__node.attrib["container"] = t
 
     container = property(__getContainer, __setContainer)
@@ -414,9 +446,7 @@ class Cache(object):
 
     def __setType(self,t):
         assert type(t)==unicode or type(t)==str
-        assert t in ['Traditional Cache','Ape','CITO','Earthcache','Event Cache',
-                     'Maze','Letterbox Hybrid','Mega','Multi-cache','Unknown Cache',
-                     'Reverse','Virtual Cache','Webcam Cache','Wherigo Cache']
+        assert t in CACHE_TYPES
         self.__node.attrib["type"] = t
 
     type= property(__getType, __setType)
@@ -784,7 +814,7 @@ class Cache(object):
             return None
 
     def addTravelBug(self,ref,id=u"",name=u""):
-        '''Adds a travel bug tto the cache with the given information'''
+        '''Adds a travel bug to the cache with the given information'''
         travelbug = Element("travelbug",ref=ref,id=id)
         travelbug.text = name
         self.__node.append(travelbug)

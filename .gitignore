@@ -19,3 +19,4 @@ geocacher/data/version.txt
 # Eclipse
 .project
 .pydevproject
+.settings
