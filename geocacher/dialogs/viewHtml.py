@@ -71,7 +71,8 @@ class ViewHtml(wx.Dialog):
         '''
         self.Destroy()
         
-    def OnPrint(self, event=None):'''
+    def OnPrint(self, event=None):
+        '''
         Handles the event from the "Print" button, calling the html print
         dialog.
         
@@ -81,7 +82,8 @@ class ViewHtml(wx.Dialog):
         self.printer.GetPrintData().SetPaperId(wx.PAPER_LETTER)
         self.printer.PrintFile(self.html.GetOpenedPage())
     
-    def OnSaveFile(self, event):'''
+    def OnSaveFile(self, event):
+        '''
         Handles the event from the "Save" button, saving the html to a file.
         
         Keyword Argument
@@ -98,7 +100,8 @@ class ViewHtml(wx.Dialog):
 
         dlg.Destroy()
         
-    def OnViewSource(self, event=None):'''
+    def OnViewSource(self, event=None):
+        '''
         Handles the event from the "View Source" button,
         displaying the html source in a window.
         
