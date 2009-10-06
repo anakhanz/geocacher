@@ -688,12 +688,25 @@ class Cache(object):
 
     user_data4 = property(__getUser_data4, __setUser_data4)
 
-    def getLogs(self):
-        '''Returns the logs associated with the cache'''
+    def getLogs(self, sort=True, descending=True, maxLen=None):
+        '''
+        Returns the logs associated with the cache
+        
+        Keyword arguments
+        sort       Enable sorting of the log list by date
+        descending Sort with the most recent log first
+        maxLen     Truncate the list at this position
+        '''
         logNodes = self.__node.xpath("log")
         logs=[]
         for logNode in logNodes:
             logs.append(Log(logNode))
+        def getDate(log):
+            return log.date
+        if sort:
+            logs.sort(key=getDate, reverse=descending)
+        if maxLen is not None:
+            logs = logs[:maxLen]
         return logs
 
     def getLogIdList(self):
