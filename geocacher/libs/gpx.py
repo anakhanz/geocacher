@@ -201,7 +201,8 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                 cache.gpx_date = gpxDate
                 cache.source = os.path.abspath(filename)
 
-def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple=False,full=False):
+def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
+              simple=False,full=False,maxLogs=4,correct=True,corMark='-A'):
     assert os.path.isdir(os.path.split(filename)[0])
     gc = (gc and (not simple)) or full
     logs = (logs and (not simple)) or full
@@ -214,7 +215,10 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
     root = gpxInit(caches)
 
     for cache in caches:
-        wpt = Element('wpt', lat='%f' % cache.lat, lon='%f' % cache.lon)
+        if correct:
+            wpt = Element('wpt', lat='%f' % cache.currentLat, lon='%f' % cache.currentLon)
+        else:
+            wpt = Element('wpt', lat='%f' % cache.lat, lon='%f' % cache.lon)
         root.append(wpt)
         if cache.gpx_date == None and cache.user_date == None:
             cacheTime = datetime.now()
@@ -230,7 +234,10 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
         time.text = dateTimeToText(cacheTime)
         wpt.append(time)
         name = Element('name')
-        name.text = cache.code
+        if correct and cache.corrected:
+            name.text = cache.code+corMark
+        else:
+            name.text = cache.code
         wpt.append(name)
         desc = Element('desc')
         desc.text = '%s by %s, %s (%0.1f/%0.1f)' % (cache.name, cache.placed_by,
