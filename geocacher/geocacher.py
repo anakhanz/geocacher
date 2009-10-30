@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+import shutil
 
 # TODO: Add icon to main Window
 # TODO: Add view only mode
@@ -20,6 +21,7 @@ import optparse
 import os
 import sys
 import tempfile
+import zipfile
 
 try:
     os.chdir(os.path.split(sys.argv[0])[0])
@@ -630,10 +632,10 @@ class CacheDataTable(Grid.PyGridTableBase):
 
         self._rows = self.GetNumberRows()
         self._cols = self.GetNumberCols()
-        # update the column rendering plugins
+        # update the column rendering plug-ins
         self._updateColAttrs(grid)
 
-        # update the scrollbars and the displayed part of the grid
+        # update the scroll bars and the displayed part of the grid
         grid.AdjustScrollbars()
         grid.ForceRefresh()
 
@@ -1841,7 +1843,7 @@ class MainWindow(wx.Frame):
                                     logs       = opts.GetLogs(),
                                     tbs        = opts.GetTbs(),
                                     addWpts    = opts.GetAddWpts(),
-                                    epAddWpts = opts.GetSepAddWpts())
+                                    sepAddWpts = opts.GetSepAddWpts())
                 if not ret:
                     wx.MessageBox(parent = self,
                                   message = _('Error exporting to file: %s') % path,
@@ -1857,7 +1859,8 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_('Backing up the Database'))
-        wildcard = "XML (*.xml)|*.xml|"\
+        wildcard = "Zip (*.zip)|*.zip|"\
+                   "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
         dir = os.getcwd()
         dlg = wx.FileDialog(
@@ -1883,7 +1886,18 @@ class MainWindow(wx.Frame):
                     self.popStatus()
                     return
                 question.Destroy()
+                
+            zip = os.path.splitext(path)[1] == '.zip'
+            if zip:
+                realPath = path
+                tempDir = tempfile.mkdtemp()
+                path = os.path.join(tempDir,'backup.xml')
+                archive = zipfile.ZipFile(realPath, mode='w', compression=zipfile.ZIP_DEFLATED)
             self.db.backup(path)
+            if zip:
+                archive.write(path, os.path.basename(path).encode("utf_8"))
+                archive.close()
+                shutil.rmtree(tempDir)
         dlg.Destroy()
         self.popStatus()
 
@@ -1895,7 +1909,8 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_('Restoring database from file'))
-        wildcard = "XML (*.xml)|*.xml|"\
+        wildcard = "Zip (*.zip)|*.zip|"\
+                   "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
         dir = os.getcwd()
         dlg = wx.FileDialog(
@@ -1907,6 +1922,7 @@ class MainWindow(wx.Frame):
             )
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
+            error = False
             self.popStatus()
             self.pushStatus(_('Restoring database from file: %s') % path)
             question = wx.MessageDialog(None,
@@ -1915,10 +1931,33 @@ class MainWindow(wx.Frame):
                            style=wx.YES_NO|wx.ICON_WARNING
                            )
             if question.ShowModal() == wx.ID_YES:
-                self.db.restore(path)
-                self.cacheGrid.ReloadCaches()
+                zip = os.path.splitext(path)[1] == '.zip'
+                if zip:
+                    tempDir = tempfile.mkdtemp()
+                    try:
+                        archive = zipfile.ZipFile(path, mode='r')
+                        archive.extractall(tempDir)
+                        archive.close()
+                        path = os.path.join(tempDir,'backup.xml')
+                    except:
+                        error = True
+                    error = error or not os.path.isfile(path)
+                if not error:
+                    error = not self.db.restore(path)
+                if zip:
+                    shutil.rmtree(tempDir)
             question.Destroy()
         dlg.Destroy()
+        if error:
+            dlg = wx.MessageDialog(None,
+                           message=_("Problem restoring database from ") + path + '?',
+                           caption=_(" DB?"),
+                           style=wx.OK|wx.ICON_ERROR
+                           )
+            dlg.ShowModal()
+            dlg.Destroy()
+        else:
+            self.cacheGrid.ReloadCaches()
         self.popStatus()
 
 

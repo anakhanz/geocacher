@@ -78,7 +78,8 @@ class DB:
 
     def restore(self, file):
         '''
-        Restores the database from the given file
+        Restores the database from the given file and returns True on sucess
+        otherwise False.
         
         Argument
         file: file to restore the database form
@@ -92,6 +93,9 @@ class DB:
         if tag == ROOT_ELEMENT and version == VERSION:
             self.root = newRoot
             self.update()
+            return True
+        else:
+            return False
 
     def update(self):
         '''
