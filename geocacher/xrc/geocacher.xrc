@@ -275,7 +275,7 @@
 				<border>5</border>
 				<object class="wxStaticBoxSizer">
 					<orient>wxVERTICAL</orient>
-					<label>Destination File</label>
+					<label>Destination</label>
 					<object class="sizeritem">
 						<option>0</option>
 						<flag>wxALL|wxEXPAND</flag>
@@ -285,6 +285,14 @@
 							<message>Select file to save to</message>
 							<wildcard>GPX File (*.gpx)|*.gpx|LOC file (*.loc)|*.loc|Compressed GPX File (*.zip)|*.zip|</wildcard>
 							<style>wxFLP_SAVE|wxFLP_USE_TEXTCTRL</style>
+						</object>
+					</object>
+					<object class="sizeritem">
+						<option>0</option>
+						<flag>wxALL</flag>
+						<border>5</border>
+						<object class="wxStaticText" name="gpsLabel">
+							<label>GPS</label>
 						</object>
 					</object>
 				</object>

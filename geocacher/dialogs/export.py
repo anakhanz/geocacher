@@ -9,7 +9,7 @@ class ExportOptions(wx.Dialog):
     def __init__(self,parent,conf,gps=False):
         '''
         Initialises the dialog from the supplied information
-        
+
         Arguments:
         parent: The parent window
         conf:   The configuration object
@@ -20,9 +20,9 @@ class ExportOptions(wx.Dialog):
         self.gps = gps
         self.gpx = False
         self.zip = False
-        
+
         self.types = ['simple','full','custom']
-        
+
         pre = wx.PreDialog()
         self.res = Xrc.XmlResource('xrc\geocacher.xrc')
         self.res.LoadOnDialog(pre, parent, 'ExportWaypointDialog')
@@ -36,32 +36,36 @@ class ExportOptions(wx.Dialog):
         self.displayed = Xrc.XRCCTRL(self, 'displayedCheckBox')
         self.selected = Xrc.XRCCTRL(self, 'selectedCheckBox')
         self.userFlag = Xrc.XRCCTRL(self, 'userFlagCheckBox')
-        
+
         self.path = Xrc.XRCCTRL(self, 'pathPicker')
-        
+        self.gpsLabel = Xrc.XRCCTRL(self, 'gpsLabel')
+
         self.type = Xrc.XRCCTRL(self, 'typeRadioBox')
-        
+
         self.gc = Xrc.XRCCTRL(self, 'extensionsCheckBox')
-        
+
         self.logs = Xrc.XRCCTRL(self, 'logsCheckBox')
         self.tbs = Xrc.XRCCTRL(self, 'travelBugsCheckBox')
         self.addWpts = Xrc.XRCCTRL(self, 'addWptsCheckBox')
-        
+
         self.sepAddWpts = Xrc.XRCCTRL(self, 'sepAddWptsCheckBox')
-        
+
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.OnPathChanged, self.path)
         self.Bind(wx.EVT_RADIOBOX, self.OnChangeType, self.type)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleGc, self.gc)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleAddWpts, self.addWpts)
-        
+
         self.displayed.SetValue(self.conf.export.filterDisp or False)
         self.selected.SetValue(self.conf.export.filterSel or False)
         self.userFlag.SetValue(self.conf.export.filterUser or False)
-        
+
         if gps:
             self.path.Disable()
+            self.path.Hide()
+            self.sepAddWpts.Hide()
             self.gpx = True
         else:
+            self.gpsLabel.Hide()
             if os.path.isfile(self.conf.export.lastFile):
                 self.path.SetPath(self.conf.export.lastFile)
                 ext = os.path.splitext(self.conf.export.lastFile)[1]
@@ -70,7 +74,7 @@ class ExportOptions(wx.Dialog):
                     self.gpx = True
                 elif ext == '.gpx':
                     self.gpx = True
-        
+
         self.type.Disable()
         self.gc.Disable()
         self.logs.Disable()
@@ -107,14 +111,14 @@ class ExportOptions(wx.Dialog):
         various expot options as necessary
         '''
         ext = os.path.splitext(self.path.GetPath())[1]
-        
+
         self.zip = ext =='.zip'
         self.gpx = self.zip or ext =='.gpx'
-        
+
         if not self.zip:
             self.sepAddWpts.Disable()
             self.sepAddWpts.SetValue(False)
-        
+
         if self.gpx:
             self.type.Enable()
         else:
@@ -181,19 +185,19 @@ class ExportOptions(wx.Dialog):
         Returns True if the "Displayed" filter option is checked
         '''
         return self.displayed.GetValue()
-    
+
     def GetSelected(self):
         '''
         Returns True if the "Selected" filter option is checked
         '''
         return self.selected.GetValue()
-    
+
     def GetUserFlag(self):
         '''
         Returns True if the "User Flag" filter option is checked
         '''
         return self.userFlag.GetValue()
-    
+
     def GetPath(self):
         '''
         Returns the user selected path if not in GPS mode otherwise None
@@ -239,7 +243,7 @@ class ExportOptions(wx.Dialog):
         separate file
         '''
         return self.sepAddWpts.GetValue()
-    
+
     def SaveConf(self):
         '''
         Saves the values form the dialog to the configuration structure
@@ -247,14 +251,14 @@ class ExportOptions(wx.Dialog):
         self.conf.export.filterDisp = self.displayed.GetValue()
         self.conf.export.filterSel = self.selected.GetValue()
         self.conf.export.filterUser = self.userFlag.GetValue()
-        
+
         self.conf.export.lastFile = self.path.GetPath()
-        
+
         self.conf.export.type = self.types[self.type.GetSelection()]
-        
+
         self.conf.export.gc = self.gc.GetValue()
         self.conf.export.logs = self.logs.GetValue()
         self.conf.export.tbs = self.tbs.GetValue()
-        
+
         self.conf.export.addWpts = self.addWpts.GetValue()
         self.conf.export.sepAddWpts = self.sepAddWpts.GetValue()
