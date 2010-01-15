@@ -953,6 +953,12 @@ class CacheGrid(Grid.Grid):
         #---Row pop-up functions---#000000#FFFFAA------------------------------------------------------
         def cacheAdd(event, self=self, row=row):
             '''Add a new cache to the grid/database'''
+            dlg = wx.MessageDialog(None,
+                message=_('Manualy adding cache not yet implemented!'),
+                caption=_('Not Implemented'),
+                style=wx.CANCEL|wx.ICON_HAND)
+            dlg.ShowModal()
+            dlg.Destroy()
             #self._table.AddCache(cache)
             #self.Reset()
             print "adding cache not yet implemented"
