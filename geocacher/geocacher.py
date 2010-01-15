@@ -1561,7 +1561,7 @@ class MainWindow(wx.Frame):
                 else:
                     descText = descText + '<p>' + nl2br(self.displayCache.long_desc) + '</p>'
             if len(self.displayCache.encoded_hints) > 0:
-                descText = descText + '<h2>Encoded Hints</h2><p>' + nl2br(self.displayCache.encoded_hints.encode('rot13')) + '</p>'
+                descText = descText + '<h2>Encoded Hints</h2><p>' + nl2br(self.displayCache.encoded_hints.encode('rot13','ignore')) + '</p>'
         self.Description.SetPage(descText)
         self.popStatus()
 
