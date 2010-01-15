@@ -1,5 +1,7 @@
 # -*- coding: UTF-8 -*-
 
+import os
+
 import wx
 import wx.grid             as  Grid
 
@@ -100,38 +102,55 @@ class Preferences(wx.Dialog):
             style=wx.CB_READONLY,
             size = (self.entryWidth,-1))
         displayGrid.Add(self.dispCoordFmt, (1,1))
+        
+        label = wx.StaticText(panel,wx.ID_ANY,_('Icon Theme'))
+        displayGrid.Add(label, (2,0))
+        iconThemes=[]
+        for folder in os.listdir(os.path.join(os.path.curdir,'gfx')):
+            if os.path.isdir(os.path.join(os.path.curdir,'gfx',folder)):
+                iconThemes.append(folder)
+            iconThemes.sort()
+        iconTheme = self.conf.common.iconTheme or 'default'
+        if iconTheme not in iconThemes:
+            iconTheme = iconThemes[0]
+        self.iconThemeSel = wx.ComboBox(panel, wx.ID_ANY,
+            value=iconTheme,
+            choices=iconThemes,
+            style=wx.CB_READONLY,
+            size = (self.entryWidth,-1))
+        displayGrid.Add(self.iconThemeSel, (2,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,
             _('User Data Column Names'))
-        displayGrid.Add(label, (2,0), (1,2))
+        displayGrid.Add(label, (3,0), (1,2))
 
-        label = wx.StaticText(panel,wx.ID_ANY,_('User Datae 1'))
-        displayGrid.Add(label, (3,0))
+        label = wx.StaticText(panel,wx.ID_ANY,_('User Data 1'))
+        displayGrid.Add(label, (4,0))
         self.dispUserData1 = wx.TextCtrl(panel, wx.ID_ANY,
             self.conf.common.userData1 or label.GetLabel(),
             size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData1, (3,1))
+        displayGrid.Add(self.dispUserData1, (4,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,_('User Data 2'))
-        displayGrid.Add(label, (4,0))
+        displayGrid.Add(label, (5,0))
         self.dispUserData2 = wx.TextCtrl(panel, wx.ID_ANY,
             self.conf.common.userData2 or label.GetLabel(),
             size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData2, (4,1))
+        displayGrid.Add(self.dispUserData2, (5,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,_('User Data 3'))
-        displayGrid.Add(label, (5,0))
+        displayGrid.Add(label, (6,0))
         self.dispUserData3 = wx.TextCtrl(panel, wx.ID_ANY,
             self.conf.common.userData3 or label.GetLabel(),
             size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData3, (5,1))
+        displayGrid.Add(self.dispUserData3, (6,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,_('User Data 4'))
-        displayGrid.Add(label, (6,0))
+        displayGrid.Add(label, (7,0))
         self.dispUserData4 = wx.TextCtrl(panel, wx.ID_ANY,
             self.conf.common.userData4 or label.GetLabel(),
             size = (self.entryWidth,-1))
-        displayGrid.Add(self.dispUserData4, (6,1))
+        displayGrid.Add(self.dispUserData4, (7,1))
 
         panel.SetSizer(displayGrid)
         return panel
@@ -145,6 +164,7 @@ class Preferences(wx.Dialog):
         else:
             self.conf.common.miles = True
         self.conf.common.coordFmt = self.dispCoordFmt.GetValue()
+        self.conf.common.iconTheme = self.iconThemeSel.GetValue()
         self.conf.common.userData1 = self.dispUserData1.GetValue()
         self.conf.common.userData2 = self.dispUserData2.GetValue()
         self.conf.common.userData3 = self.dispUserData3.GetValue()
