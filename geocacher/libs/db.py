@@ -1165,6 +1165,7 @@ class Geocacher:
         d = {'common':{'mainWidth'  :700,
                        'mainHeight' :500,
                        'mainSplit'  :400,
+                       'iconTheme'  :'default',
                        'cacheCols'  :['code','id','lat','lon','name','found',
                                       'type','size','distance','bearing'],
                        'sortCol'    :'code',

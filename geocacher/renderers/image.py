@@ -9,12 +9,24 @@ import wx.grid             as  Grid
 class ImageRenderer(Grid.PyGridCellRenderer):
     def __init__(self, table, conf):
         Grid.PyGridCellRenderer.__init__(self)
+        self._dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),'gfx')
+        self._themeDir = conf.common.iconTheme or 'default'
         self.table = table
         self._images = {}
         self._default = None
 
         self.colSize = None
         self.rowSize = None
+    
+    def addImage(self, name, filename, imageType):
+        imagePath=os.path.join(self._dir,self._themeDir,self._subDir,filename)
+        if not os.path.isfile(imagePath):
+            imagePath=os.path.join(self._dir,'default',self._subDir,filename)
+        if os.path.isfile(imagePath):
+            self._images[name]=wx.Bitmap(imagePath, imageType)
+        else:
+            self._images[name]=wx.ArtProvider.GetBitmap(wx.ART_ERROR)
+        
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
@@ -52,31 +64,33 @@ class ImageRenderer(Grid.PyGridCellRenderer):
 class CacheSizeRenderer(ImageRenderer):
     def __init__(self, table, conf):
         ImageRenderer.__init__(self, table, conf)
-        self._images = {'Micro':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-micro.gif'), wx.BITMAP_TYPE_GIF),
-                        'Small':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-small.gif'), wx.BITMAP_TYPE_GIF),
-                        'Regular':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-regular.gif'), wx.BITMAP_TYPE_GIF),
-                        'Large':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-large.gif'), wx.BITMAP_TYPE_GIF),
-                        'Not chosen':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-not_chosen.gif'), wx.BITMAP_TYPE_GIF),
-                        'Virtual':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-virtual.gif'), wx.BITMAP_TYPE_GIF),
-                        'Other':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','sz-other.gif'), wx.BITMAP_TYPE_GIF)}
+        self._subDir='size'
+        self.addImage('Micro','micro.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Small','small.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Regular','regular.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Large','large.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Not chosen','not_chosen.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Virtual','virtual.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Other','other.gif', wx.BITMAP_TYPE_GIF)
+        
         self._default='Not chosen'
 
 class CacheTypeRenderer(ImageRenderer):
     def __init__(self, table, conf):
         ImageRenderer.__init__(self, table, conf)
-        self._images = {'Traditional Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-traditional.gif'), wx.BITMAP_TYPE_GIF),
-                        'Ape':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-ape.gif'), wx.BITMAP_TYPE_GIF),
-                        'CITO':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-cito.gif'), wx.BITMAP_TYPE_GIF),
-                        'Earthcache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-earthcache.gif'), wx.BITMAP_TYPE_GIF),
-                        'Event Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-event.gif'), wx.BITMAP_TYPE_GIF),
-                        'Maze':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-gps_maze.gif'), wx.BITMAP_TYPE_GIF),
-                        'Letterbox Hybrid':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-letterbox.gif'), wx.BITMAP_TYPE_GIF),
-                        'Mega':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-mega.gif'), wx.BITMAP_TYPE_GIF),
-                        'Multi-cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-multi-cache.gif'), wx.BITMAP_TYPE_GIF),
-                        'Unknown Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-mystery.gif'), wx.BITMAP_TYPE_GIF),
-                        'Reverse':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-reverse.gif'), wx.BITMAP_TYPE_GIF),
-                        'Virtual Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-virtual.gif'), wx.BITMAP_TYPE_GIF),
-                        'Webcam Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-webcam.gif'), wx.BITMAP_TYPE_GIF),
-                        'Wherigo Cache':wx.Bitmap(os.path.join(os.path.dirname(__file__),'gfx','type-whereigo.gif'), wx.BITMAP_TYPE_GIF)
-                        }
+        self._subDir='type'
+        self.addImage('Traditional Cache','traditional.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Ape','ape.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('CITO','cito.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Earthcache','earthcache.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Event Cache','event.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Maze','gps_maze.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Letterbox Hybrid','letterbox.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Mega','mega.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Multi-cache','multi-cache.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Unknown Cache','mystery.gif',wx.BITMAP_TYPE_GIF)
+        self.addImage('Reverse','reverse.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Virtual Cache','virtual.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Webcam Cache','webcam.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Wherigo Cache','whereigo.gif', wx.BITMAP_TYPE_GIF)
         self._default='Traditional Cache'
