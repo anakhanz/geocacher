@@ -9,7 +9,6 @@ from libs.common import getTextFromPath,getAttribFromPath #@UnresolvedImport
 
 def locLoad(filename,DB,mode="update"):
     # Load LOC file
-    # TODO: implement returning of changes from LOC file for reporting to user
     if os.path.isfile(filename):
         locDoc = ElementTree(file=filename).getroot()
     else:

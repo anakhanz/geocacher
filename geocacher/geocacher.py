@@ -2,14 +2,6 @@
 # -*- coding: UTF-8 -*-
 import shutil
 
-# TODO: Add icon to main Window
-# TODO: Add view only mode
-# TODO: Add view/edit additional way points
-# TODO: Add Sub-menu item for selecting the current location
-# TODO: Make hyper link in main window active and add option to display as cache code/name
-# TODO: Enable context menu key in main cache grid
-# TODO: Enable context menu key in locations grid
-
 STATUS_MAIN = 0
 STATUS_SHOWN = 1
 STATUS_TOTAL = 2
@@ -778,7 +770,6 @@ class CacheGrid(Grid.Grid):
     '''
     Grid to display the cache information.
     '''
-    # TODO: add icon to Sorted Column Name
     def __init__(self, parent, conf, db, mainWin):
         '''
         Initialisation function for the grid
@@ -962,7 +953,6 @@ class CacheGrid(Grid.Grid):
         #---Row pop-up functions---#000000#FFFFAA------------------------------------------------------
         def cacheAdd(event, self=self, row=row):
             '''Add a new cache to the grid/database'''
-            # TODO implement manually adding cache
             #self._table.AddCache(cache)
             #self.Reset()
             print "adding cache not yet implemented"
@@ -1532,15 +1522,12 @@ class MainWindow(wx.Frame):
         Keyword Argument
         newCache: code of the cache to display the details of.
         '''
-        # TODO: put loading of cache detail int it's own thread
-        # TODO: add further information to cache detail display
-        # TODO: add option to view actual webpage
-        
+
         if newCache == self.displayedCache:
             return
-        
+
         self.displayedCache = newCache
-        
+
         self.pushStatus(_('Loading cache: ') + newCache)
         newCacheObj = self.db.getCacheByCode(newCache)
         if newCacheObj != None:

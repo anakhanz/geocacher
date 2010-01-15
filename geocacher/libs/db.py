@@ -905,7 +905,6 @@ class Log(object):
 
     def __setType(self,t):
         assert type(t)==unicode or type(t)==str
-        # TODO add assertion that the type is valid
         self.__node.attrib["type"] = t
 
     type = property(__getType, __setType)

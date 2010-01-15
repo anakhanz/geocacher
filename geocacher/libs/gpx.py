@@ -16,7 +16,6 @@ NS = {'gpx': "http://www.topografix.com/GPX/1/0",
 
 def gpxLoad(filename,DB,mode="update",userName="",userId=""):
     # Load GPX file
-    # TODO: implement returning of changes from GPX file for reporting to user
     if os.path.isfile(filename):
         gpxDoc = ElementTree(file=filename).getroot()
     else:
@@ -417,7 +416,6 @@ def gpxSave(filename,root):
 
 def zipLoad(filename,DB,mode="update",userName="",userId=""):
     # Load zipped GPX file(s)
-    # TODO: implement returning of changes from zipped GPX file for reporting to user
     if os.path.isfile(filename):
         tempDir = tempfile.mkdtemp()
         try:

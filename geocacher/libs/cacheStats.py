@@ -25,13 +25,6 @@ MONTHS = [_('January'),
 
 POSSIBLE_STARS = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0]
 
-# TODO: Find rate
-# TODO: Longest Streak
-# TODO: Longest Slump
-# TODO: Biggest frenzy (most in a day)
-# TODO: Yearly summary including rate per year
-# TODO: MileStones
-
 from libs.db import CACHE_CONTAINERS,CACHE_TYPES #@UnresolvedImport
 
 
