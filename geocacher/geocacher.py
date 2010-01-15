@@ -58,7 +58,9 @@ from dialogs.viewTravelBugs import ViewTravelBugs
 
 from renderers.deg import LatRenderer, LonRenderer
 from renderers.dist import DistRenderer
-from renderers.image import CacheSizeRenderer, CacheTypeRenderer
+from renderers.image import CacheBearingRenderer
+from renderers.image import CacheSizeRenderer
+from renderers.image import CacheTypeRenderer
 
 try:
     __version__ = open(os.path.join(os.path.dirname(__file__),
@@ -185,7 +187,8 @@ class CacheDataTable(Grid.PyGridTableBase):
             'oLon'        :LonRenderer,
             'size'        :CacheSizeRenderer,
             'type'        :CacheTypeRenderer,
-            'distance'    :DistRenderer}
+            'distance'    :DistRenderer,
+            'bearing'     :CacheBearingRenderer}
 
         self._sortCol = self.conf.common.sortCol or 'code'
         self._sortDescend = self.conf.common.sortDescend or False

@@ -60,7 +60,21 @@ class ImageRenderer(Grid.PyGridCellRenderer):
         dc.Blit(rect.x+1, rect.y+1, width, height,
                 image,
                 0, 0, wx.COPY, True)
-        
+
+class CacheBearingRenderer(ImageRenderer):
+    def __init__(self, table, conf):
+        ImageRenderer.__init__(self, table, conf)
+        self._subDir='compass'
+        self.addImage('N','N.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('NE','NE.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('E','E.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('SE','SE.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('S','S.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('SW','SW.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('W','W.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('NW','NW.gif', wx.BITMAP_TYPE_GIF)
+        self._default='N'
+
 class CacheSizeRenderer(ImageRenderer):
     def __init__(self, table, conf):
         ImageRenderer.__init__(self, table, conf)
@@ -72,7 +86,6 @@ class CacheSizeRenderer(ImageRenderer):
         self.addImage('Not chosen','not_chosen.gif', wx.BITMAP_TYPE_GIF)
         self.addImage('Virtual','virtual.gif', wx.BITMAP_TYPE_GIF)
         self.addImage('Other','other.gif', wx.BITMAP_TYPE_GIF)
-        
         self._default='Not chosen'
 
 class CacheTypeRenderer(ImageRenderer):
