@@ -1886,11 +1886,16 @@ class MainWindow(wx.Frame):
         wildcard = "Zip (*.zip)|*.zip|"\
                    "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
-        dir = os.getcwd()
+        lastFile = self.conf.backupPath or ''
+        lastDir = os.path.dirname(lastFile)
+        if not os.path.isfile(lastFile):
+            lastFile = ''
+            if not os.path.isdir(lastDir):
+                lastDir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
         dlg = wx.FileDialog(
             self, message=_("Select file to backup the DB to"),
-            defaultDir=dir,
-            defaultFile="",
+            defaultDir=lastDir,
+            defaultFile=lastFile,
             wildcard=wildcard,
             style=wx.SAVE
             )
@@ -1911,6 +1916,7 @@ class MainWindow(wx.Frame):
                     return
                 question.Destroy()
 
+            self.conf.backupPath = path
             zip = os.path.splitext(path)[1] == '.zip'
             if zip:
                 realPath = path
@@ -1922,6 +1928,7 @@ class MainWindow(wx.Frame):
                 archive.write(path, os.path.basename(path).encode("utf_8"))
                 archive.close()
                 shutil.rmtree(tempDir)
+
         dlg.Destroy()
         self.popStatus()
 
@@ -1936,11 +1943,16 @@ class MainWindow(wx.Frame):
         wildcard = "Zip (*.zip)|*.zip|"\
                    "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
-        dir = os.getcwd()
+        lastFile = self.conf.backupPath or ''
+        lastDir = os.path.dirname(lastFile)
+        if not os.path.isfile(lastFile):
+            lastFile = ''
+            if not os.path.isdir(lastDir):
+                lastDir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
         dlg = wx.FileDialog(
             self, message=_("Select file to restore the DB from"),
-            defaultDir=dir,
-            defaultFile="",
+            defaultDir=lastDir,
+            defaultFile=lastFile,
             wildcard=wildcard,
             style=wx.OPEN
             )
@@ -1955,6 +1967,7 @@ class MainWindow(wx.Frame):
                            style=wx.YES_NO|wx.ICON_WARNING
                            )
             if question.ShowModal() == wx.ID_YES:
+                self.conf.backupPath = path
                 zip = os.path.splitext(path)[1] == '.zip'
                 if zip:
                     tempDir = tempfile.mkdtemp()

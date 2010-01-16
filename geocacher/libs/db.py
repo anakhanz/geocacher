@@ -44,7 +44,7 @@ class DB:
     def __init__(self,file):
         '''
         Load the database from the given file or initialise if missing
-        
+
         Argument
         file: The file to load the database from
         '''
@@ -67,7 +67,7 @@ class DB:
     def backup(self, file):
         '''
         Save the DB to the given file
-        
+
         Argument
         file: file to save the database to
         '''
@@ -80,7 +80,7 @@ class DB:
         '''
         Restores the database from the given file and returns True on sucess
         otherwise False.
-        
+
         Argument
         file: file to restore the database form
         '''
@@ -131,7 +131,7 @@ class DB:
     def getCacheByCode(self,code):
         '''
         Returns the cache with the given code if found, otherwise "None"
-        
+
         Argument
         code: code of the cache to be returned
         '''
@@ -140,7 +140,7 @@ class DB:
             return Cache(caches[0])
         else:
             return None
-    
+
     def getFoundCacheList(self):
         '''
         Returns a list of found caches.
@@ -275,7 +275,7 @@ class DB:
     def getLocationByName(self,name):
         '''
         Returns the location with the given name if found, otherwise "None
-        
+
         Argument
         name: Name of the location to return
         "'''
@@ -355,11 +355,11 @@ class Cache(object):
     url = property(__getUrl,__setUrl)
 
     def __getLocked(self):    return textToBool(self.__node.attrib["locked"])
-    
+
     def __setLocked(self,b):
         assert type(b) == bool
         self.__node.attrib["locked"] = boolToText(b)
-    
+
     locked = property(__getLocked,__setLocked)
 
     def __getUser_date(self):    return textToDateTime(self.__node.attrib["user_date"])
@@ -695,7 +695,7 @@ class Cache(object):
     def getLogs(self, sort=True, descending=True, maxLen=None):
         '''
         Returns the logs associated with the cache
-        
+
         Keyword arguments
         sort       Enable sorting of the log list by date
         descending Sort with the most recent log first
@@ -1177,7 +1177,8 @@ class Geocacher:
                        'coordFmt'   :'hdd mm.mmm',
                        'CurrentLoc' :'Default',
                        'dispCache'  :'',
-                       'showFilter' :True},
+                       'showFilter' :True,
+                       'backupPath' :''},
              'export':{'lastFile'   :'',
                        'filterDisp' :True,
                        'filterSel'  :False,
