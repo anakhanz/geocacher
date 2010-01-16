@@ -2388,6 +2388,14 @@ class GeocacherApp (wx.App):
             dlg.ShowModal()
             return False
         else:
+            dirName = os.path.dirname(os.path.abspath(__file__))
+            imageName = os.path.join(dirName, 'gfx', 'splash.png')
+            image = wx.Image(imageName, wx.BITMAP_TYPE_PNG)
+            bmp = image.ConvertToBitmap()
+            wx.SplashScreen(bmp, wx.SPLASH_CENTER_ON_SCREEN |
+                            wx.SPLASH_TIMEOUT, 5000, None,
+                            wx.ID_ANY)
+            wx.Yield()
             geocacher = Geocacher(True)
             conf = geocacher.conf
             db = geocacher.db
