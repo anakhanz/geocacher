@@ -67,8 +67,8 @@ class CacheDataTable(Grid.PyGridTableBase):
     '''
     def __init__(self, conf, db):
         '''
-        Initialisation function for the cache grid.  
-        
+        Initialisation function for the cache grid.
+
         Arguments
         conf: configuration object for the program
         db:   database containing the cache information
@@ -201,8 +201,8 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def ReloadRow(self, row):
         '''
-        Reloads the given row in the table from the database.  
-        
+        Reloads the given row in the table from the database.
+
         Argument
         row: The row number to reload.
         '''
@@ -213,7 +213,7 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def __addRow(self, cache):
         '''
-        Adds the given cache to the table.  
+        Adds the given cache to the table.
         cache: Cache to add to the table
         '''
         if not self.__cacheFilter(cache):
@@ -223,9 +223,9 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         Builds a set of row data form the given cache ready for adding to the
         table.
-          
+
         Argument
-        cache: Cache to build row data from.  
+        cache: Cache to build row data from.
         '''
         dist, cBear = self.__calcDistBearing(cache)
 
@@ -279,9 +279,9 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         Calculates the distance and cardinal Bearing of the given cache and
         returns it as a tuple
-        
+
         Argument
-        cache: Cache to perform calculations on.  
+        cache: Cache to perform calculations on.
         '''
         location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
         hLat = location.lat
@@ -293,10 +293,10 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def __cacheFilter(self, cache):
         '''
-        Returns true if the given cache should be filtered out of the list.  
-        
+        Returns true if the given cache should be filtered out of the list.
+
         Argument
-        cache: cache to evaluate filter for.  
+        cache: cache to evaluate filter for.
         '''
         mine = cache.owner == self.conf.gc.userName or\
                cache.owner_id == self.conf.gc.userId
@@ -309,16 +309,19 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def UpdateLocation(self):
         '''
-        Updates the location based information in all cache rows.  
+        Updates the location based information in all cache rows.
         '''
-        for row in self.data:
-            row['distance'], row['bearing'] = self.__calcDistBearing(self.db.getCacheByCode(row['code']))
-        if self._sortCol in ['distance','bearing']:
-            self.DoSort()
+        if self.conf.filter.overDist:
+            self.ReloadCaches()
+        else:
+            for row in self.data:
+                row['distance'], row['bearing'] = self.__calcDistBearing(self.db.getCacheByCode(row['code']))
+            if self._sortCol in ['distance','bearing']:
+                self.DoSort()
 
     def UpdateUserDataLabels(self):
         '''
-        Updates the user data column labels from the program configuration.  
+        Updates the user data column labels from the program configuration.
         '''
         self.colLabels['user_data1'] = \
             self.conf.common.userData1 or _('User Data 1')
@@ -331,23 +334,23 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetNumberRows(self):
         '''
-        Returns the number of rows in the table.  
+        Returns the number of rows in the table.
         '''
         return len(self.data)
 
     def GetNumberCols(self):
         '''
-        Returns the number of columns in the table.  
+        Returns the number of columns in the table.
         '''
         return len(self.colNames)
 
     def IsEmptyCell(self, row, col):
         '''
-        Returns True if the cell at the given coordinates is empty.  
-        otherwise False.  
-        
+        Returns True if the cell at the given coordinates is empty.
+        otherwise False.
+
         Arguments
-        row: Row coordinate the cell to check.  
+        row: Row coordinate the cell to check.
         col: Column coordinate the cell to check
         '''
         id = self.colNames[col]
@@ -355,12 +358,12 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetValue(self, row, col):
         '''
-        Returns the value in the cell at the given coordinates.  
-        otherwise False.  
-        
+        Returns the value in the cell at the given coordinates.
+        otherwise False.
+
         Arguments
-        row: Row coordinate of the cell to return the value for.  
-        col: Column coordinate of the cell to return the value for.  
+        row: Row coordinate of the cell to return the value for.
+        col: Column coordinate of the cell to return the value for.
         '''
         id = self.colNames[col]
         return self.data[row][id]
@@ -368,11 +371,11 @@ class CacheDataTable(Grid.PyGridTableBase):
     def SetValue(self, row, col, value):
         '''
         Sets the cell at the given coordinates to the given value.
-        
+
         Arguments:
-        row:   Row coordinate of the cell to change the value for.  
-        col:   Column coordinate of the cell to change the value for.  
-        value: Value to set the cell to.  
+        row:   Row coordinate of the cell to change the value for.
+        col:   Column coordinate of the cell to change the value for.
+        value: Value to set the cell to.
         '''
         id = self.colNames[col]
         cache = self.GetRowCache(row)
@@ -410,19 +413,19 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetRowCode(self, row):
         '''
-        Returns the code of the cache on the given row.  
-        
+        Returns the code of the cache on the given row.
+
         Argument
-        row: Row to get the cache code for.  
+        row: Row to get the cache code for.
         '''
         return self.data[row]['code']
 
     def GetRowCache(self, row):
         '''
-        Returns the cache object associated with the given row.  
-        
+        Returns the cache object associated with the given row.
+
         Argument
-        row: Row to get the cache object for.  
+        row: Row to get the cache object for.
         '''
         return self.db.getCacheByCode(self.GetRowCode(row))
 
@@ -430,7 +433,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         Returns a list of the cache objects associated with the given list of
         rows.
-        
+
         Argument
         rows: List of rows to return the cache objects for.
         '''
@@ -438,7 +441,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         for row in rows:
             caches.append(self.GetRowCache(row))
         return caches
-    
+
     def GetDisplayedCaches(self):
         '''
         Returns a list containing the cache objects for the selected rows in
@@ -451,8 +454,8 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetRowLabelValue(self, row):
         '''
-        Returns the label for the given row.  
-        
+        Returns the label for the given row.
+
         Argument
         row: Row number to return the label for.
         '''
@@ -460,8 +463,8 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetColLabelValue(self, col):
         '''
-        Returns the label for the given column.  
-        
+        Returns the label for the given column.
+
         Argument
         row: Column number to return the label for.
         '''
@@ -470,8 +473,8 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetColLabelValueByName(self, name):
         '''
-        Returns the label for the given column name.  
-        
+        Returns the label for the given column name.
+
         Argument
         name: Column name to return the label for.
         '''
@@ -480,7 +483,7 @@ class CacheDataTable(Grid.PyGridTableBase):
     def GetTypeName(self, row, col):
         '''
         Returns the type of the data in the cell at the given coordinates.
-        
+
         Arguments
         row:    Row coordinate of the cell to return the data type of.
         column: Column coordinate of the cell to return the data type of.
@@ -492,10 +495,10 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         Returns True if the data in the cell at the given coordinates can be
         fetched as the given type.
-        
+
         Arguments
-        row:      Roe coordinate of the cell to be checked.  
-        col:      Column coordinate of the cell to be checked.  
+        row:      Roe coordinate of the cell to be checked.
+        col:      Column coordinate of the cell to be checked.
         typeName: Name of the type the compare the cell data to.
         '''
         id = self.colNames[col]
@@ -509,10 +512,10 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         Returns True if the data in the cell at the given coordinates can be
         set using the given type.
-        
+
         Arguments
-        row:      Roe coordinate of the cell to be checked.  
-        col:      Column coordinate of the cell to be checked.  
+        row:      Roe coordinate of the cell to be checked.
+        col:      Column coordinate of the cell to be checked.
         typeName: Name of the type the compare the cell data to.
         '''
         id = self.cols[col]
@@ -521,7 +524,7 @@ class CacheDataTable(Grid.PyGridTableBase):
     def AppendColumn(self,col):
         '''
         Appends the given column to the table.
-        
+
         Argument
         col: The name of the column to append to the table.
         '''
@@ -532,9 +535,9 @@ class CacheDataTable(Grid.PyGridTableBase):
     def InsertColumn(self,pos,col):
         '''
         Inserts a column into the table at the given position.
-        
+
         Arguments:
-        pos: Position at which to insert the column.  
+        pos: Position at which to insert the column.
         col: The name of the column to insert into the table.
         '''
         self.colNames.insert(pos,col)
@@ -542,10 +545,10 @@ class CacheDataTable(Grid.PyGridTableBase):
     def MoveColumn(self,frm,to):
         '''
         Moves a column from one given location to another.
-        
+
         Arguments
         frm: Location to move the column from.
-        to:  Location to move the column. 
+        to:  Location to move the column.
         '''
         grid = self.GetView()
 
@@ -576,8 +579,8 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def DeleteCols(self, cols):
         """
-        Delete the given list of columns form the table.  
-        
+        Delete the given list of columns form the table.
+
         Argument
         cols: List containing the positions of the columns to delete.
         """
@@ -601,9 +604,9 @@ class CacheDataTable(Grid.PyGridTableBase):
         """
         Resets (Updates) the GridView associated with the data table when rows
         or columns are added or deleted.
-        
+
         Argument
-        grid: The GirdView to be updated.  
+        grid: The GirdView to be updated.
         """
         grid.BeginBatch()
 
@@ -636,8 +639,8 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def DeleteRows(self, rows):
         """
-        Delete the given list of rows form the table.  
-        
+        Delete the given list of rows form the table.
+
         Argument
         rows: List containing the positions of the columns to delete.
         """
@@ -667,7 +670,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         """
         Sorts the data in the table based on the given column and in the given
         direction
-        
+
         Arguments
         col:       Position of the column to sort by.
         decending: Controls the direction of the sort as follows:
@@ -681,7 +684,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         """
         Sorts the data in the table based on the given column and in the given
         direction
-        
+
         Arguments
         name:      Name of the column to sort by.
         decending: Controls the direction of the sort as follows:
@@ -699,8 +702,8 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def SortDataItem(self, rowData):
         '''
-        Returns the data item to be sorted by for a given table row.  
-        
+        Returns the data item to be sorted by for a given table row.
+
         Argument
         rowData: The row data set to return the data item to sort by.
         '''
@@ -724,9 +727,9 @@ class CacheDataTable(Grid.PyGridTableBase):
         """
         Update the column attributes for the given Grid and add the
         appropriate renderer.
-        
+
         Argument
-        grid: The grid view to update.  
+        grid: The grid view to update.
         """
         colNum = 0
 
@@ -749,13 +752,13 @@ class CacheDataTable(Grid.PyGridTableBase):
 
     def GetCols(self):
         '''
-        Returns a dictionary of the names of the visible columns.  
+        Returns a dictionary of the names of the visible columns.
         '''
         return self.colNames
 
     def GetAllCols(self):
         '''
-        Returns a list of all of the column identifiers.  
+        Returns a list of all of the column identifiers.
         '''
         return self.colLabels.keys()
 
@@ -773,11 +776,11 @@ class CacheGrid(Grid.Grid):
     def __init__(self, parent, conf, db, mainWin):
         '''
         Initialisation function for the grid
-        
+
         Argumnets
         parent:  Parent window for the grid.
         conf:    Program configuration object
-        db:      Database to build table data form.  
+        db:      Database to build table data form.
         mainWin: Reference to the main application window for call back
                  functions.
         '''
@@ -811,7 +814,7 @@ class CacheGrid(Grid.Grid):
     def OnColMove(self,evt):
         '''
         Event handler for grid column moves.
-        
+
         Argumnet
         evt: Event object.
         '''
@@ -824,7 +827,7 @@ class CacheGrid(Grid.Grid):
     def OnRowMove(self,evt):
         '''
         Event handler for grid row moves.
-        
+
         Argumnet
         evt: Event object.
         '''
@@ -835,7 +838,7 @@ class CacheGrid(Grid.Grid):
     def OnLabelLeftClicked(self, evt):
         '''
         Event handler for left click events on grid labels.
-        
+
         Argumnet
         evt: Event object.
         '''
@@ -847,7 +850,7 @@ class CacheGrid(Grid.Grid):
     def OnCellLeftClicked(self, evt):
         '''
         Event handler for left click events on grid cells.
-        
+
         Argumnet
         evt: Event object.
         '''
@@ -857,7 +860,7 @@ class CacheGrid(Grid.Grid):
     def OnLabelRightClicked(self, evt):
         '''
         Event handler for right click events on grid labels.
-        
+
         Argumnet
         evt: Event object.
         '''
@@ -866,7 +869,7 @@ class CacheGrid(Grid.Grid):
     def OnCellRightClicked(self, evt):
         '''
         Event handler for right click events on grid cells.
-        
+
         Argumnet
         evt: Event object.
         '''
@@ -876,7 +879,7 @@ class CacheGrid(Grid.Grid):
         '''
         Handler caled form all gid right click handlers to perform the actual
         event handling and generate the the context sensitive menu.
-        
+
         Argumnet
         evt: Event object.
         '''
@@ -1166,7 +1169,7 @@ class CacheGrid(Grid.Grid):
         displayed in the entire grid
         '''
         return self._table.GetDisplayedCaches()
-    
+
     def GetSelectedCaches(self):
         '''
         Returns a list of the cache objects associated with the selected rows
@@ -1240,12 +1243,12 @@ class MainSplitter(wx.SplitterWindow):
     def __init__(self,parent,id):
         '''
         Initialises the splitter for the main window.
-        
+
         Arguments
         parent: parent window for the splitter.
         id:     ID to give the splitter.
         '''
-        
+
         wx.SplitterWindow.__init__(self, parent, id,
             style=wx.SP_LIVE_UPDATE | wx.SP_BORDER)
 
@@ -1257,7 +1260,7 @@ class MainWindow(wx.Frame):
     def __init__(self,parent,id, conf, db):
         '''
         Initialisation for the main frame.
-        
+
         Arguments
         parent: The parent window of the frame.
         id:     The ID to give the frame.
@@ -1487,7 +1490,7 @@ class MainWindow(wx.Frame):
         '''
         Pushes the given text onto the stack for the current activity part of
         the ststus bar.
-        
+
         Argument
         test: Text to push onto the stack.
         '''
@@ -1504,12 +1507,12 @@ class MainWindow(wx.Frame):
         '''
         Updates the total number of caches and the number of caches after the
          filter the status bar.
-         
+
          Keyword Arguments
          rows: the number of rows to use as the number of records after
                filtering.
         '''
-        self.statusbar.SetStatusText(_('Total: %i') % 
+        self.statusbar.SetStatusText(_('Total: %i') %
                                      self.db.getNumberCaches(),
                                      STATUS_TOTAL)
         if rows==None:
@@ -1524,7 +1527,7 @@ class MainWindow(wx.Frame):
     def updateDetail(self, newCache=''):
         '''
         Updates the cache detail panel with the details of the selected cache.
-        
+
         Keyword Argument
         newCache: code of the cache to display the details of.
         '''
@@ -1605,7 +1608,7 @@ class MainWindow(wx.Frame):
         '''
         Updates the cache data in the table/grid when a new location is
         selected.
-        
+
         Argument
         name: name of the new home loaction to be used.
         '''
@@ -1615,12 +1618,12 @@ class MainWindow(wx.Frame):
         self.cacheGrid.UpdateLocation()
         self.updateStatus()
         self.popStatus()
-        
+
 
     def GpsError(self, message):
         '''
         Displays the given GPS error message to the user.
-        
+
         Argument
         message: The GPS error message to be displayed.
         '''
@@ -1632,7 +1635,7 @@ class MainWindow(wx.Frame):
     def OnHelpAbout(self, event=None):
         '''
         Handles the event from the "Help About" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -1649,7 +1652,7 @@ class MainWindow(wx.Frame):
     def OnLoadWpt(self, event=None):
         '''
         Handles the event from the "Load Waypoint" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -1712,7 +1715,7 @@ class MainWindow(wx.Frame):
     def OnLoadWptDir(self, event=None):
         '''
         Handles the event from the "Load Waypoints from file" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -1766,7 +1769,7 @@ class MainWindow(wx.Frame):
     def LoadFile(self, path, mode):
         '''
         Handles the loading/importing of a waypoint file.
-        
+
         Arguments
         path: Path to the file to be loaded/imported.
         mode" Mode to addthe file in (merge or Replace).
@@ -1791,7 +1794,7 @@ class MainWindow(wx.Frame):
     def OnExportWpt(self, event=None):
         '''
         Handles the event from the "Export Waypoints to file" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -1850,7 +1853,7 @@ class MainWindow(wx.Frame):
     def OnBackupDb(self, event=None):
         '''
         Handles the event from the "Backup Database" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -1882,7 +1885,7 @@ class MainWindow(wx.Frame):
                     self.popStatus()
                     return
                 question.Destroy()
-                
+
             zip = os.path.splitext(path)[1] == '.zip'
             if zip:
                 realPath = path
@@ -1900,7 +1903,7 @@ class MainWindow(wx.Frame):
     def OnRestoreDb(self, event=None):
         '''
         Handles the event from the "Restore Database" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -1960,7 +1963,7 @@ class MainWindow(wx.Frame):
     def OnPrefs(self, event=None):
         '''
         Handles the event from the "Preferences" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -1975,7 +1978,7 @@ class MainWindow(wx.Frame):
     def ShowHideFilterBar(self, show):
         '''
         Shows (or hides) the filter control items on the toolbar
-        
+
         Argument
         show: Tells the function if the toolbar items are to be shown.
         '''
@@ -1990,7 +1993,7 @@ class MainWindow(wx.Frame):
     def OnShowFilter(self, event=None):
         '''
         Handles the event from the "Show Filter" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2032,7 +2035,7 @@ class MainWindow(wx.Frame):
     def OnGpsLocation(self, event=None):
         '''
         Handles the event from the "Location from GPS" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2049,13 +2052,13 @@ class MainWindow(wx.Frame):
     def NewLocation(self, lat, lon, source, name=''):
         '''
         Handles the creation of a new home loaction.
-        
+
         Arguments
         lat:    Lattitude of the new location.
         lon:    Longitude of the new location.
         source: Text describing the source that the new location has come
                 from.
-        
+
         Keyword Argument
         name:   Default name for the new location.
         '''
@@ -2089,7 +2092,7 @@ class MainWindow(wx.Frame):
     def OnSelLocation(self, event=None):
         '''
         Handles the event from the select location toolbar item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2099,7 +2102,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Archived"
         toolbar or menu item.
-        
+
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
@@ -2112,7 +2115,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Archived"
         toolbar item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2122,7 +2125,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Archived"
         menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2132,7 +2135,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Disabled"
         toolbar or menu item.
-        
+
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
@@ -2145,7 +2148,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Disabled"
         toolbar item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2155,7 +2158,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Disabled"
         menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2165,7 +2168,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Found"
         toolbar or menu item.
-        
+
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
@@ -2178,7 +2181,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Found"
         toolbar item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2188,7 +2191,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Found"
         menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2198,7 +2201,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Mine"
         toolbar or menu item.
-        
+
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
@@ -2211,7 +2214,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Mine
         toolbar item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2221,7 +2224,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Mine"
         menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2231,7 +2234,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Over Distance"
         toolbar or menu item.
-        
+
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
@@ -2244,7 +2247,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Over Distance"
         toolbar item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2254,7 +2257,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from the toggling of the "Hide Over Distance"
         menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2264,7 +2267,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the event from double clicking on the maximum distance box or
         selecting the "Set Maximum Distance" menu item.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2298,7 +2301,7 @@ class MainWindow(wx.Frame):
         '''
         Handles view statistics menu event.
         exiting.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
@@ -2310,7 +2313,7 @@ class MainWindow(wx.Frame):
         '''
         Handles the exit application event saving the necessary data before
         exiting.
-        
+
         Keyword Argument
         event: The event causing this function to be called.
         '''
