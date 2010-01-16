@@ -23,6 +23,7 @@ except:
 import wx
 import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
+from wx.lib.pubsub import Publisher as Publisher
 import wx.html             as Html
 
 from libs.i18n import createGetText
@@ -773,7 +774,7 @@ class CacheGrid(Grid.Grid):
     '''
     Grid to display the cache information.
     '''
-    def __init__(self, parent, conf, db, mainWin):
+    def __init__(self, parent, conf, db):
         '''
         Initialisation function for the grid
 
@@ -781,11 +782,8 @@ class CacheGrid(Grid.Grid):
         parent:  Parent window for the grid.
         conf:    Program configuration object
         db:      Database to build table data form.
-        mainWin: Reference to the main application window for call back
-                 functions.
         '''
         self.conf = conf
-        self.mainWin = mainWin
         Grid.Grid.__init__(self, parent, -1)
 
         self._table = CacheDataTable(conf, db)
@@ -844,7 +842,8 @@ class CacheGrid(Grid.Grid):
         '''
         # Did we click on a row or a column?
         if evt.GetRow() != -1:
-            self.mainWin.updateDetail(self._table.GetRowCode(evt.GetRow()))
+            Publisher.sendMessage('cache.selected',
+                                  self._table.GetRowCode(evt.GetRow()))
         evt.Skip()
 
     def OnCellLeftClicked(self, evt):
@@ -854,7 +853,8 @@ class CacheGrid(Grid.Grid):
         Argumnet
         evt: Event object.
         '''
-        self.mainWin.updateDetail(self._table.GetRowCode(evt.GetRow()))
+        Publisher.sendMessage('cache.selected',
+                              self._table.GetRowCode(evt.GetRow()))
         evt.Skip()
 
     def OnLabelRightClicked(self, evt):
@@ -928,17 +928,17 @@ class CacheGrid(Grid.Grid):
 
         def colSortAscending(event, self=self, col=col):
             '''Perform an ascending sort on the selected column'''
-            self.mainWin.pushStatus(_('Sorting caches'))
+            Publisher.sendMessage('status.push',_('Sorting caches'))
             self._table.SortColumn(col, False)
             self.Reset()
-            self.mainWin.popStatus()
+            Publisher.sendMessage('status.pop')
 
         def colSortDescending(event, self=self, col=col):
             '''Perform an descending sort on the selected column'''
-            self.mainWin.pushStatus(_('Sorting caches'))
+            Publisher.sendMessage('push.status',_('Sorting caches'))
             self._table.SortColumn(col, True)
             self.Reset()
-            self.mainWin.popStatus()
+            Publisher.sendMessage('status.pop')
 
         def colInsert(event, self=self, colIds=insColIds, col=col):
             '''Insert the given column before the currently selected column'''
@@ -968,13 +968,13 @@ class CacheGrid(Grid.Grid):
 
         def cacheDelete(event, self=self, row=row):
             '''Delete the selected cache(s) (row(s))'''
-            self.mainWin.pushStatus(_('Deleting caches'))
+            Publisher.sendMessage('status.push',_('Deleting caches'))
             rows = self.GetSelectedRows()
             if len(rows) == 0:
                 rows = [row]
             self._table.DeleteRows(rows)
             self.Reset()
-            self.mainWin.popStatus()
+            Publisher.sendMessage('status.pop')
 
         def cacheCorrect(event, self=self, row=row, cache=cache):
             '''Add/Edit Correction of the Lat/Lon for the selected cache (row)'''
@@ -991,7 +991,7 @@ class CacheGrid(Grid.Grid):
             if dlg.ShowModal() == wx.ID_OK and (data['clat'] != cache.clat or
                                                 data['clon'] != cache.clon or
                                                 data['cnote'] != cache.cnote):
-                self.mainWin.pushStatus(_('Correcting cache: %s') % cache.code)
+                Publisher.sendMessage('status.push',_('Correcting cache: %s') % cache.code)
                 cache.clat = data['clat']
                 cache.clon = data['clon']
                 cache.cnote = data['cnote']
@@ -999,7 +999,7 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
-                self.mainWin.popStatus()
+                Publisher.sendMessage('status.pop')
             dlg.Destroy()
 
         def cacheRemCorrection(event, self=self, row=row, cache=cache):
@@ -1010,7 +1010,8 @@ class CacheGrid(Grid.Grid):
                 caption=_('Remove Cordinate Correction'),
                 style=wx.YES_NO|wx.ICON_QUESTION)
             if dlg.ShowModal() == wx.ID_YES:
-                self.mainWin.pushStatus(_('Removing correction from cache: %s') % cache.code)
+                Publisher.sendMessage('status.push',
+                                      _('Removing correction from cache: %s') % cache.code)
                 cache.clat = 0.0
                 cache.clon = 0.0
                 cache.corrected = False
@@ -1018,34 +1019,36 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
-                self.mainWin.popStatus()
+                Publisher.sendMessage('status.pop')
             dlg.Destroy()
 
         def cacheViewLogs(event, self=self, cache=cache):
             '''View the logs for the selected cache (row).'''
             self.SelectRow(row)
-            dlg = ViewLogs(self.mainWin, cache)
+            dlg = ViewLogs(self, cache)
             dlg.ShowModal()
             dlg.Destroy()
 
         def cacheViewBugs(event, self=self, cache=cache):
             '''View the travel bugs for the selected cache (row).'''
             self.SelectRow(row)
-            dlg = ViewTravelBugs(self.mainWin, cache)
+            dlg = ViewTravelBugs(self, cache)
             dlg.ShowModal()
             dlg.Destroy()
 
         def cacheAsHome(event, self=self, cache=cache):
-            self.mainWin.NewLocation(cache.lat, cache.lon,
-                                     'cache ' + cache.code,
-                                     'cache ' + cache.code)
+            Publisher.sendMessage('location.new', (cache.lat,
+                                                   cache.lon,
+                                                   'cache ' + cache.code,
+                                                   'cache ' + cache.code))
 
         def cacheSetFound(event, self=self, cache=cache):
-            dlg = FoundCache(self.mainWin,cache.code,_('found'),
+            dlg = FoundCache(self,cache.code,_('found'),
                              cache.found_date,cache.own_log,
                              cache.own_log_encoded)
             if dlg.ShowModal() == wx.ID_OK:
-                self.mainWin.pushStatus(_('Marking cache %s as found') % cache.code)
+                Publisher.sendMessage('status.push',
+                                      _('Marking cache %s as found') % cache.code)
                 cache.found_date = wxDateTimeToPy(dlg.date.GetValue())
                 cache.own_log = dlg.logText.GetValue()
                 cache.own_log_encoded = dlg.encodeLog.GetValue()
@@ -1053,15 +1056,16 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
-                self.mainWin.popStatus()
+                Publisher.sendMessage('status.pop')
             dlg.Destroy()
 
         def cacheSetDnf(event, self=self, cache=cache):
-            dlg = FoundCache(self.mainWin,cache.code,_('found'),
+            dlg = FoundCache(self,cache.code,_('found'),
                              cache.dnf_date,cache.own_log,
                              cache.own_log_encoded)
             if dlg.ShowModal() == wx.ID_OK:
-                self.mainWin.pushStatus(_('Marking cache %s as did not find') % cache.code)
+                Publisher.sendMessage('status.push',
+                                      _('Marking cache %s as did not find') % cache.code)
                 cache.dnf_date = wxDateTimeToPy(dlg.date.GetValue())
                 cache.own_log = dlg.logText.GetValue()
                 cache.own_log_encoded = dlg.encodeLog.GetValue()
@@ -1069,23 +1073,23 @@ class CacheGrid(Grid.Grid):
                 cache.user_date = datetime.now()
                 self._table.ReloadRow(row)
                 self.Reset()
-                self.mainWin.popStatus()
+                Publisher.sendMessage('status.pop')
             dlg.Destroy()
 
         #---Non row/col pop-up functions---#000000#FFFFAA-------------------------------
         def sortByCodeAscending(event, self=self):
             '''Perform an ascending sort based on the cache code'''
-            self.mainWin.pushStatus(_('Sorting caches'))
+            Publisher.sendMessage('status.push', _('Sorting caches'))
             self._table.SortColumnName('code', False)
             self.Reset()
-            self.mainWin.popStatus()
+            Publisher.sendMessage('status.pop')
 
         def sortByCodeDescending(event, self=self):
             '''Perform an descending sort based on the cache code'''
-            self.mainWin.pushStatus(_('Sorting caches'))
+            Publisher.sendMessage('status.push', _('Sorting caches'))
             self._table.SortColumnName('code', True)
             self.Reset()
-            self.mainWin.popStatus()
+            Publisher.sendMessage('status.pop')
 
         #---Menu ID's---#000000#FFFFAA------------------------------------------------------
         cacheAddID      = wx.NewId()
@@ -1188,7 +1192,7 @@ class CacheGrid(Grid.Grid):
         # disapear
         self.AutoSizeColumns()
         self.AutoSizeRows()
-        self.mainWin.updateStatus(self.GetNumberRows())
+        Publisher.sendMessage('status.update', self.GetNumberRows())
 
     def ReloadCaches(self):
         '''
@@ -1286,7 +1290,7 @@ class MainWindow(wx.Frame):
         self.buildToolBar()
 
         self.splitter = MainSplitter(self, wx.ID_ANY)
-        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db, self)
+        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db)
         self.Description = Html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
         #panel2 = wx.Window(self.splitter, wx.ID_ANY, style=wx.BORDER_SUNKEN)
         self.splitter.SetMinimumPaneSize(20)
@@ -1296,6 +1300,15 @@ class MainWindow(wx.Frame):
 
         self.displayedCache = None
         self.updateDetail(self.conf.common.dispCache or '')
+
+        Publisher.subscribe(self.updateDetailMsg, 'cache.selected')
+        Publisher.subscribe(self.NewLocationMsg, 'location.new')
+        Publisher.subscribe(self.popStatusMsg, 'status.pop')
+        Publisher.subscribe(self.pushStatusMsg, 'status.push')
+        Publisher.subscribe(self.updateStatusMsg, 'status.update')
+
+    def test(self,message):
+        print message
 
     def buildMenu(self):
         '''
@@ -1486,6 +1499,9 @@ class MainWindow(wx.Frame):
         self.statusbar.SetStatusWidths([-1,180,80,120])
         self.statusbar.SetStatusText(_('Geocacher - idle'),STATUS_MAIN)
 
+    def pushStatusMsg(self,message):
+        self.pushStatus(message.data)
+
     def pushStatus(self, text):
         '''
         Pushes the given text onto the stack for the current activity part of
@@ -1496,12 +1512,18 @@ class MainWindow(wx.Frame):
         '''
         self.statusbar.PushStatusText(text, STATUS_MAIN)
 
+    def popStatusMsg(self,message):
+        self.popStatus()
+
     def popStatus(self):
         '''
         Removes the top item form the stack for the current activity part of
         the status bar.
         '''
         self.statusbar.PopStatusText(STATUS_MAIN)
+
+    def updateStatusMsg(self, message):
+        self.updateStatus(message.data)
 
     def updateStatus(self, rows=None):
         '''
@@ -1523,6 +1545,9 @@ class MainWindow(wx.Frame):
             self.statusbar.SetStatusText(_('After Filter: %i') %
                                          rows,
                                          STATUS_FILTERED)
+
+    def updateDetailMsg(self, message):
+        self.updateDetail(message.data)
 
     def updateDetail(self, newCache=''):
         '''
@@ -2048,6 +2073,10 @@ class MainWindow(wx.Frame):
         else:
             self.GpsError(message)
         self.popStatus()
+
+    def NewLocationMsg(self,message):
+        lat, lon, source, name = message.data
+        self.NewLocation(lat, lon, source, name)
 
     def NewLocation(self, lat, lon, source, name=''):
         '''
