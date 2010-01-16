@@ -229,156 +229,278 @@
 	</object>
 	<object class="wxDialog" name="ExportWaypointDialog">
 		<style>wxDEFAULT_DIALOG_STYLE</style>
-		<size>300,552</size>
 		<title>Export Options</title>
 		<object class="wxBoxSizer">
 			<orient>wxVERTICAL</orient>
 			<object class="sizeritem">
-				<option>0</option>
-				<flag>wxEXPAND</flag>
-				<border>5</border>
-				<object class="wxStaticBoxSizer">
-					<orient>wxVERTICAL</orient>
-					<label>Filter By</label>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL</flag>
-						<border>5</border>
-						<object class="wxCheckBox" name="displayedCheckBox">
-							<label>Displayed</label>
-							<checked>0</checked>
-						</object>
-					</object>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL</flag>
-						<border>5</border>
-						<object class="wxCheckBox" name="selectedCheckBox">
-							<label>Selected</label>
-							<checked>0</checked>
-						</object>
-					</object>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL</flag>
-						<border>5</border>
-						<object class="wxCheckBox" name="userFlagCheckBox">
-							<label>User Flag</label>
-							<checked>0</checked>
-						</object>
-					</object>
-				</object>
-			</object>
-			<object class="sizeritem">
 				<option>1</option>
-				<flag>wxEXPAND</flag>
+				<flag>wxEXPAND | wxALL</flag>
 				<border>5</border>
-				<object class="wxStaticBoxSizer">
-					<orient>wxVERTICAL</orient>
-					<label>Destination</label>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL|wxEXPAND</flag>
-						<border>5</border>
-						<object class="wxFilePickerCtrl" name="pathPicker">
-							<value></value>
-							<message>Select file to save to</message>
-							<wildcard>GPX File (*.gpx)|*.gpx|LOC file (*.loc)|*.loc|Compressed GPX File (*.zip)|*.zip|</wildcard>
-							<style>wxFLP_SAVE|wxFLP_USE_TEXTCTRL</style>
-						</object>
-					</object>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL</flag>
-						<border>5</border>
-						<object class="wxStaticText" name="gpsLabel">
-							<label>GPS</label>
-						</object>
-					</object>
-				</object>
-			</object>
-			<object class="sizeritem">
-				<option>0</option>
-				<flag>wxEXPAND</flag>
-				<border>5</border>
-				<object class="wxStaticBoxSizer">
-					<orient>wxVERTICAL</orient>
-					<label>Information to include</label>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL|wxEXPAND</flag>
-						<border>5</border>
-						<object class="wxRadioBox" name="typeRadioBox">
-							<style>wxRA_SPECIFY_COLS</style>
-							<label>Type</label>
-							<selection>0</selection>
-							<content>
-								<item>Simple</item>
-								<item>Full</item>
-								<item>Custom</item>
-							</content>
-							<dimension>1</dimension>
-						</object>
-					</object>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL</flag>
-						<border>5</border>
-						<object class="wxCheckBox" name="extensionsCheckBox">
-							<label>Geocaching.com Extensions</label>
-							<checked>0</checked>
-						</object>
-					</object>
-					<object class="sizeritem">
-						<option>1</option>
-						<flag>wxEXPAND</flag>
-						<border>5</border>
-						<object class="wxStaticBoxSizer">
-							<orient>wxVERTICAL</orient>
-							<label>Extensions</label>
-							<object class="sizeritem">
-								<option>0</option>
-								<flag>wxALL</flag>
-								<border>5</border>
-								<object class="wxCheckBox" name="logsCheckBox">
-									<label>Logs</label>
-									<checked>0</checked>
+				<object class="wxNotebook" name="exportNotebook">
+					<style>wxNB_MULTILINE</style>
+					<object class="notebookpage">
+						<label>Main</label>
+						<selected>1</selected>
+						<object class="wxPanel" name="exportMainPanel">
+							<style>wxTAB_TRAVERSAL</style>
+							<object class="wxBoxSizer">
+								<orient>wxVERTICAL</orient>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxEXPAND</flag>
+									<border>5</border>
+									<object class="wxStaticBoxSizer">
+										<orient>wxVERTICAL</orient>
+										<label>Filter By</label>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxCheckBox" name="displayedCheckBox">
+												<label>Displayed</label>
+												<checked>0</checked>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxCheckBox" name="selectedCheckBox">
+												<label>Selected</label>
+												<checked>0</checked>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxCheckBox" name="userFlagCheckBox">
+												<label>User Flag</label>
+												<checked>0</checked>
+											</object>
+										</object>
+									</object>
 								</object>
-							</object>
-							<object class="sizeritem">
-								<option>0</option>
-								<flag>wxALL</flag>
-								<border>5</border>
-								<object class="wxCheckBox" name="travelBugsCheckBox">
-									<label>Travel Bugs</label>
-									<checked>0</checked>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxEXPAND</flag>
+									<border>5</border>
+									<object class="wxStaticBoxSizer">
+										<orient>wxVERTICAL</orient>
+										<label>Destination</label>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL|wxEXPAND</flag>
+											<border>5</border>
+											<object class="wxFilePickerCtrl" name="pathPicker">
+												<value></value>
+												<message>Select file to save to</message>
+												<wildcard>GPX File (*.gpx)|*.gpx|LOC file (*.loc)|*.loc|Compressed GPX File (*.zip)|*.zip|</wildcard>
+												<style>wxFLP_SAVE|wxFLP_USE_TEXTCTRL</style>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxStaticText" name="gpsLabel">
+												<label>GPS</label>
+											</object>
+										</object>
+									</object>
 								</object>
 							</object>
 						</object>
 					</object>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL</flag>
-						<border>5</border>
-						<object class="wxCheckBox" name="addWptsCheckBox">
-							<label>Additional Waypoints</label>
-							<checked>0</checked>
+					<object class="notebookpage">
+						<label>Information</label>
+						<selected>0</selected>
+						<object class="wxPanel" name="exportInfoPanel">
+							<style>wxTAB_TRAVERSAL</style>
+							<object class="wxBoxSizer">
+								<orient>wxVERTICAL</orient>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxALL|wxEXPAND</flag>
+									<border>5</border>
+									<object class="wxRadioBox" name="typeRadioBox">
+										<label>Type</label>
+										<selection>0</selection>
+										<content>
+											<item>Simple</item>
+											<item>Full</item>
+											<item>Custom</item>
+										</content>
+										<dimension>1</dimension>
+									</object>
+								</object>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxALL</flag>
+									<border>5</border>
+									<object class="wxCheckBox" name="extensionsCheckBox">
+										<label>Geocaching.com Extensions</label>
+										<checked>0</checked>
+									</object>
+								</object>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxEXPAND</flag>
+									<border>5</border>
+									<object class="wxStaticBoxSizer">
+										<orient>wxVERTICAL</orient>
+										<label>Extensions</label>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxCheckBox" name="logsCheckBox">
+												<label>Logs</label>
+												<checked>0</checked>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxCheckBox" name="travelBugsCheckBox">
+												<label>Travel Bugs</label>
+												<checked>0</checked>
+											</object>
+										</object>
+									</object>
+								</object>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxALL</flag>
+									<border>5</border>
+									<object class="wxCheckBox" name="addWptsCheckBox">
+										<label>Additional Waypoints</label>
+										<checked>0</checked>
+									</object>
+								</object>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxALL</flag>
+									<border>5</border>
+									<object class="wxCheckBox" name="sepAddWptsCheckBox">
+										<label>Aditional Waypoints in separate file</label>
+										<checked>0</checked>
+									</object>
+								</object>
+							</object>
 						</object>
 					</object>
-					<object class="sizeritem">
-						<option>0</option>
-						<flag>wxALL</flag>
-						<border>5</border>
-						<object class="wxCheckBox" name="sepAddWptsCheckBox">
-							<label>Aditional Waypoints in separate file</label>
-							<checked>0</checked>
+					<object class="notebookpage">
+						<label>Advanced</label>
+						<selected>0</selected>
+						<object class="wxPanel" name="exportAdvancedPanel">
+							<style>wxTAB_TRAVERSAL</style>
+							<object class="wxBoxSizer">
+								<orient>wxVERTICAL</orient>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxEXPAND</flag>
+									<border>5</border>
+									<object class="wxStaticBoxSizer">
+										<orient>wxVERTICAL</orient>
+										<label>Adjusted Waypoints</label>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxCheckBox" name="adjustedCheckBox">
+												<label>Use adjusted Waypoints</label>
+												<checked>0</checked>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxStaticText" name="adjWptSufixLabel">
+												<label>Adjusted Waypoint Sufix</label>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL|wxEXPAND</flag>
+											<border>5</border>
+											<object class="wxTextCtrl" name="adjWptSufixText">
+												<value></value>
+												<maxlength>0</maxlength>
+											</object>
+										</object>
+									</object>
+								</object>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxEXPAND</flag>
+									<border>5</border>
+									<object class="wxStaticBoxSizer">
+										<orient>wxVERTICAL</orient>
+										<label>Logs</label>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL</flag>
+											<border>5</border>
+											<object class="wxCheckBox" name="limitLogsCheckBox">
+												<label>Limit number of Logs exported</label>
+												<checked>0</checked>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>1</option>
+											<flag>wxEXPAND</flag>
+											<border>5</border>
+											<object class="wxBoxSizer">
+												<orient>wxHORIZONTAL</orient>
+												<object class="sizeritem">
+													<option>0</option>
+													<flag>wxALL</flag>
+													<border>5</border>
+													<object class="wxSpinCtrl" name="limitLogsSpin">
+														<style>wxSP_ARROW_KEYS</style>
+														<value>1</value>
+														<min>1</min>
+														<max>10000</max>
+													</object>
+												</object>
+												<object class="sizeritem">
+													<option>0</option>
+													<flag>wxALL</flag>
+													<border>5</border>
+													<object class="wxStaticText" name="limitLogsLabel">
+														<label>Maximum Logs</label>
+													</object>
+												</object>
+											</object>
+										</object>
+										<object class="sizeritem">
+											<option>0</option>
+											<flag>wxALL|wxEXPAND</flag>
+											<border>5</border>
+											<object class="wxRadioBox" name="logSortRadioBox">
+												<style>wxRA_SPECIFY_ROWS</style>
+												<label>Log sort order</label>
+												<selection>1</selection>
+												<content>
+													<item>Newest first</item>
+													<item>Oldest first</item>
+												</content>
+												<dimension>1</dimension>
+											</object>
+										</object>
+									</object>
+								</object>
+							</object>
 						</object>
 					</object>
 				</object>
 			</object>
 			<object class="sizeritem">
-				<option>1</option>
-				<flag>wxALIGN_BOTTOM|wxEXPAND</flag>
+				<option>0</option>
+				<flag>wxBOTTOM</flag>
 				<border>5</border>
 				<object class="wxStdDialogButtonSizer">
 					<object class="button">

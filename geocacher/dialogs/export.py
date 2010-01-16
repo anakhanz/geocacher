@@ -50,10 +50,20 @@ class ExportOptions(wx.Dialog):
 
         self.sepAddWpts = Xrc.XRCCTRL(self, 'sepAddWptsCheckBox')
 
+        self.adjWpts = Xrc.XRCCTRL(self, 'adjustedCheckBox')
+        self.adjWptSufix = Xrc.XRCCTRL(self, 'adjWptSufixText')
+
+        self.limitLogs = Xrc.XRCCTRL(self, 'limitLogsCheckBox')
+        self.maxLogs = Xrc.XRCCTRL(self, 'limitLogsSpin')
+        self.logOrder = Xrc.XRCCTRL(self, 'logSortRadioBox')
+
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.OnPathChanged, self.path)
         self.Bind(wx.EVT_RADIOBOX, self.OnChangeType, self.type)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleGc, self.gc)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleAddWpts, self.addWpts)
+
+        self.Bind(wx.EVT_CHECKBOX, self.OnToggleAdjWpts, self.adjWpts)
+        self.Bind(wx.EVT_CHECKBOX, self.OnToggleLimitLogs, self.limitLogs)
 
         self.displayed.SetValue(self.conf.export.filterDisp or False)
         self.selected.SetValue(self.conf.export.filterSel or False)
@@ -105,6 +115,17 @@ class ExportOptions(wx.Dialog):
                     self.sepAddWpts.Enable()
                     self.sepAddWpts.SetValue(conf.export.sepAddWpts or False)
 
+        self.adjWpts.SetValue(conf.export.adjWpts or False)
+        self.adjWptSufix.SetValue(conf.export.adjWptSufix or '')
+        if not self.adjWpts.GetValue():
+            self.adjWptSufix.Disable()
+
+        self.limitLogs.SetValue(conf.export.limitLogs or False)
+        self.maxLogs.SetValue(conf.export.maxLogs or 4)
+        if not self.limitLogs.GetValue():
+            self.maxLogs.Disable()
+        self.logOrder.SetSelection(conf.export.logOrder or 0)
+
     def OnPathChanged(self, event=None):
         '''
         Handles the changing of the export path and enables/disables the
@@ -131,14 +152,25 @@ class ExportOptions(wx.Dialog):
             self.tbs.SetValue(False)
             self.tbs.Disable()
 
+        if self.zip and (self.type.GetSelection()==1 or
+                         (self.type.GetSelection()==2 and
+                          self.addWpts.GetValue())):
+            self.sepAddWpts.Enable()
+
     def OnChangeType(self, event=None):
         '''
         Handles changing of the export type enables/disables the geocahhing.com
         extensions and the separation of additional way points as necessary
         '''
         if self.type.GetSelection() == 2:
+            print 'ccc'
             self.gc.Enable()
             self.addWpts.Enable()
+            if self.zip and self.addWpts.GetValue():
+                self.sepAddWpts.Enable()
+            else:
+                self.sepAddWpts.SetValue(False)
+                self.sepAddWpts.Disable()
         else:
             self.gc.SetValue(False)
             self.gc.Disable()
@@ -148,7 +180,7 @@ class ExportOptions(wx.Dialog):
             self.tbs.Disable()
             self.addWpts.SetValue(False)
             self.addWpts.Disable()
-            if self.type.GetSelection() == 1 and self.zip:
+            if self.zip and self.type.GetSelection() == 1:
                 self.sepAddWpts.Enable()
             else:
                 self.sepAddWpts.SetValue(False)
@@ -179,6 +211,26 @@ class ExportOptions(wx.Dialog):
             self.sepAddWpts.Enable()
         else:
             self.sepAddWpts.Disable()
+
+    def OnToggleAdjWpts(self, event=None):
+        '''
+        Handles toggling of the adjust way points option and enables/disables
+        the adjusted waypoints sufixin option as necessary
+        '''
+        if self.adjWpts.GetValue():
+            self.adjWptSufix.Enable()
+        else:
+            self.adjWptSufix.Disable()
+
+    def OnToggleLimitLogs(self, event=None):
+        '''
+        Handles toggling of the limit logs option and enables/disables the max
+        logs option as necessary
+        '''
+        if self.limitLogs.GetValue():
+            self.maxLogs.Enable()
+        else:
+            self.maxLogs.Disable()
 
     def GetDisplayed(self):
         '''
@@ -244,6 +296,39 @@ class ExportOptions(wx.Dialog):
         '''
         return self.sepAddWpts.GetValue()
 
+    def GetAdjWpts(self):
+        '''
+        Returns True if using adjusted way points is enabled
+        '''
+        return self.adjWpts.GetValue()
+
+    def GetAdjWptSufix(self):
+        '''
+        Returns True if exporting of additional way points is enabled
+        '''
+        return self.adjWptSufix.GetValue()
+
+    def GetAdjWpts(self):
+        '''
+        Returns True if exporting of additional way points is enabled
+        '''
+        return self.addWpts.GetValue()
+
+    def GetMaxLogs(self):
+        '''
+        Returns True if exporting of additional way points is enabled
+        '''
+        if self.maxLogs.GetValue():
+            return self.maxLogs.GetValue()
+        else:
+            return None
+
+    def GetLogsDecendingSort(self):
+        '''
+        Returns True if the logs are sorteed in a desending order
+        '''
+        return self.logOrder.GetSelection() == 0
+
     def SaveConf(self):
         '''
         Saves the values form the dialog to the configuration structure
@@ -262,3 +347,9 @@ class ExportOptions(wx.Dialog):
 
         self.conf.export.addWpts = self.addWpts.GetValue()
         self.conf.export.sepAddWpts = self.sepAddWpts.GetValue()
+
+        self.conf.export.adjWpts = self.adjWpts.GetValue()
+        self.conf.export.adjWptSufix = self.adjWptSufix.GetValue()
+        self.conf.export.limitLogs = self.limitLogs.GetValue()
+        self.conf.export.maxLogs = self.maxLogs.GetValue()
+        self.conf.export.logOrder = self.logOrder.GetSelection()

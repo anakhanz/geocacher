@@ -48,16 +48,28 @@ def locLoad(filename,DB,mode="update"):
             cache.gpx_date = locDate
             cache.source = os.path.abspath(filename)
 
-def locExport(filename,caches):
+def locExport(filename,caches,correct=True,corMark='-A'):
     if len(caches) == 0:
         return True
     root = Element("loc",version="1.0", src="Geocacher")
     for cache in caches:
         waypoint = Element("waypoint")
         root.append(waypoint)
-        name = Element("name", id=cache.code)
-        name.text = cache.name + " by " +cache.placed_by
+        if correct and cache.corrected:
+            name = Element("name", id=cache.code + corMark)
+        else:
+            name = Element("name", id=cache.code)
+        name.text = cache.name + " by " + cache.placed_by
         waypoint.append(name)
+        if correct:
+            coord = Element("coord",
+                            lat='%f' % cache.currentLat,
+                            lon='%f' % cache.currentLon)
+        else:
+            coord = Element("coord",
+                            lat='%f' % cache.lat,
+                            lon='%f' % cache.lon)
+        waypoint.append(coord)
         type = Element("type")
         type.text = cache.symbol.lower()
         waypoint.append(type)
@@ -66,6 +78,7 @@ def locExport(filename,caches):
         waypoint.append(link)
     try:
         fid = open(filename,"w")
+        fid.write("""<?xml version="1.0" encoding="UTF-8"?>""")
         ElementTree(root).write(fid,encoding="utf-8")
         fid.close()
         return True

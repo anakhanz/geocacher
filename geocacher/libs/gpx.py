@@ -201,7 +201,9 @@ def gpxLoad(filename,DB,mode="update",userName="",userId=""):
                 cache.source = os.path.abspath(filename)
 
 def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
-              simple=False,full=False,maxLogs=4,correct=True,corMark='-A'):
+              simple=False,full=False,
+              correct=True,corMark='-A',
+              maxLogs=4,logOrderDesc=True):
     assert os.path.isdir(os.path.split(filename)[0])
     gc = (gc and (not simple)) or full
     logs = (logs and (not simple)) or full
@@ -305,7 +307,9 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
             if logs:
                 gsLogs = Element(GS + 'logs')
                 gsCache.append(gsLogs)
-                for log in cache.getLogs():
+                for log in cache.getLogs(sort=True,
+                                         descending=logOrderDesc,
+                                         maxLen=maxLogs):
                     gsLog = Element(GS + 'log', id=log.id)
                     gsLogs.append(gsLog)
                     gsLogDate = Element(GS + 'date')
@@ -437,7 +441,11 @@ def zipLoad(filename,DB,mode="update",userName="",userId=""):
     else:
         return False
 
-def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple=False,full=False, sepAddWpts=False):
+def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
+              simple=False,full=False,
+              sepAddWpts=False,
+              correct=True,corMark='-A',
+              maxLogs=4,logOrderDesc=True):
     assert os.path.isdir(os.path.split(filename)[0])
 
     if len(caches) == 0:
@@ -462,7 +470,10 @@ def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
         return False
 
     gpxFileName = os.path.join(tempDir, baseName+'.gpx')
-    ret1 = gpxExport(gpxFileName,caches,gc=gc,logs=logs,tbs=tbs,addWpts=addWpts and not sepAddWpts)
+    ret1 = gpxExport(gpxFileName,caches,gc=gc,logs=logs,tbs=tbs,
+                     addWpts=addWpts and not sepAddWpts,
+                     correct=correct,corMark=corMark,
+                     maxLogs=maxLogs,logOrderDesc=logOrderDesc)
     archive.write(gpxFileName, os.path.basename(gpxFileName).encode("utf_8"))
 
     if addWpts and sepAddWpts:
@@ -471,6 +482,8 @@ def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,simple
         ret2, count = gpxExportAddWpt(gpxAddFileName,caches)
         if count != 0:
             archive.write(gpxAddFileName, os.path.basename(gpxAddFileName).encode("utf_8"))
+    else:
+        ret2 = True
 
     archive.close()
 

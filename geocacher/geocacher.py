@@ -1837,7 +1837,7 @@ class MainWindow(wx.Frame):
                                style=wx.YES_NO|wx.ICON_WARNING
                                )
                 if question.ShowModal() == wx.ID_NO:
-                    question.destroy()
+                    question.Destroy()
                     self.popStatus()
                     return
             ext = os.path.splitext(path)[1]
@@ -1849,7 +1849,9 @@ class MainWindow(wx.Frame):
                                   style = wx.OK | wx.ICON_ERROR)
             else:
                 if ext == '.loc':
-                    ret = locExport(path, caches)
+                    ret = locExport(path, caches,
+                                    correct    = opts.GetAdjWpts(),
+                                    corMark    = opts.GetAdjWptSufix())
                 elif ext == '.gpx':
                     ret = gpxExport(path, caches,
                                     full       = opts.GetType() == 'full',
@@ -1857,7 +1859,11 @@ class MainWindow(wx.Frame):
                                     gc         = opts.GetGc(),
                                     logs       = opts.GetLogs(),
                                     tbs        = opts.GetTbs(),
-                                    addWpts    = opts.GetAddWpts())
+                                    addWpts    = opts.GetAddWpts(),
+                                    correct    = opts.GetAdjWpts(),
+                                    corMark    = opts.GetAdjWptSufix(),
+                                    maxLogs    = opts.GetMaxLogs(),
+                                    logOrderDesc = opts.GetLogsDecendingSort())
                 elif ext == '.zip':
                     self.conf.export.sepAddWpts = opts.GetSepAddWpts()
                     ret = zipExport(path, caches,
@@ -1867,7 +1873,11 @@ class MainWindow(wx.Frame):
                                     logs       = opts.GetLogs(),
                                     tbs        = opts.GetTbs(),
                                     addWpts    = opts.GetAddWpts(),
-                                    sepAddWpts = opts.GetSepAddWpts())
+                                    sepAddWpts = opts.GetSepAddWpts(),
+                                    correct    = opts.GetAdjWpts(),
+                                    corMark    = opts.GetAdjWptSufix(),
+                                    maxLogs    = opts.GetMaxLogs(),
+                                    logOrderDesc = opts.GetLogsDecendingSort())
                 if not ret:
                     wx.MessageBox(parent = self,
                                   message = _('Error exporting to file: %s') % path,
@@ -2061,7 +2071,11 @@ class MainWindow(wx.Frame):
                             gc         = opts.GetGc(),
                             logs       = opts.GetLogs(),
                             tbs        = opts.GetTbs(),
-                            addWpts    = opts.GetAddWpts()):
+                            addWpts    = opts.GetAddWpts(),
+                            correct    = opts.GetAdjWpts(),
+                            corMark    = opts.GetAdjWptSufix(),
+                            maxLogs    = opts.GetMaxLogs(),
+                            logOrderDesc = opts.GetLogsDecendingSort()):
                     gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
                                     port=self.conf.gps.connection or 'usb:')
                     ok, message = gpsCom.gpxToGps(tmpFile)
