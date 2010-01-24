@@ -16,7 +16,10 @@ class ExportOptions(wx.Dialog):
         Keyword Argument
         gps:    True if the dialog is for exporting to GPS rather than file
         '''
-        self.conf = conf
+        if gps:
+            self.conf = conf.exGps
+        else:
+            self.conf = conf.exFile
         self.gps = gps
         self.gpx = False
         self.zip = False
@@ -65,9 +68,9 @@ class ExportOptions(wx.Dialog):
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleAdjWpts, self.adjWpts)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleLimitLogs, self.limitLogs)
 
-        self.displayed.SetValue(self.conf.export.filterDisp or False)
-        self.selected.SetValue(self.conf.export.filterSel or False)
-        self.userFlag.SetValue(self.conf.export.filterUser or False)
+        self.displayed.SetValue(self.conf.filterDisp or False)
+        self.selected.SetValue(self.conf.filterSel or False)
+        self.userFlag.SetValue(self.conf.filterUser or False)
 
         if gps:
             self.path.Disable()
@@ -76,9 +79,9 @@ class ExportOptions(wx.Dialog):
             self.gpx = True
         else:
             self.gpsLabel.Hide()
-            if os.path.isfile(self.conf.export.lastFile):
-                self.path.SetPath(self.conf.export.lastFile)
-                ext = os.path.splitext(self.conf.export.lastFile)[1]
+            if os.path.isfile(self.conf.lastFile):
+                self.path.SetPath(self.conf.lastFile)
+                ext = os.path.splitext(self.conf.lastFile)[1]
                 if ext == '.zip':
                     self.zip = True
                     self.gpx = True
@@ -93,9 +96,9 @@ class ExportOptions(wx.Dialog):
         self.sepAddWpts.Disable()
         if self.gpx:
             self.exType.Enable()
-            if (self.conf.export.exType or 'simple') == self.types[0]:
+            if (self.conf.exType or 'simple') == self.types[0]:
                 self.exType.SetSelection(0)
-            elif (self.conf.export.exType or 'simple') == self.types[1]:
+            elif (self.conf.exType or 'simple') == self.types[1]:
                 self.exType.SetSelection(1)
                 if self.zip:
                     self.sepAddWpts.Enable()
@@ -103,28 +106,28 @@ class ExportOptions(wx.Dialog):
             else:
                 self.exType.SetSelection(2)
                 self.gc.Enable()
-                self.gc.SetValue(conf.export.gc or False)
+                self.gc.SetValue(self.conf.gc or False)
                 if self.gc.GetValue():
                     self.logs.Enable()
-                    self.logs.SetValue(conf.export.logs or False)
+                    self.logs.SetValue(self.conf.logs or False)
                     self.tbs.Enable()
-                    self.tbs.SetValue(conf.export.tbs or False)
+                    self.tbs.SetValue(self.conf.tbs or False)
                 self.addWpts.Enable()
-                self.addWpts.SetValue(conf.export.addWpts or False)
+                self.addWpts.SetValue(self.conf.addWpts or False)
                 if self.zip and self.addWpts.GetValue():
                     self.sepAddWpts.Enable()
-                    self.sepAddWpts.SetValue(conf.export.sepAddWpts or False)
+                    self.sepAddWpts.SetValue(self.conf.sepAddWpts or False)
 
-        self.adjWpts.SetValue(conf.export.adjWpts or False)
-        self.adjWptSufix.SetValue(conf.export.adjWptSufix or '')
+        self.adjWpts.SetValue(self.conf.adjWpts or False)
+        self.adjWptSufix.SetValue(self.conf.adjWptSufix or '')
         if not self.adjWpts.GetValue():
             self.adjWptSufix.Disable()
 
-        self.limitLogs.SetValue(conf.export.limitLogs or False)
-        self.maxLogs.SetValue(conf.export.maxLogs or 4)
+        self.limitLogs.SetValue(self.conf.limitLogs or False)
+        self.maxLogs.SetValue(self.conf.maxLogs or 4)
         if not self.limitLogs.GetValue():
             self.maxLogs.Disable()
-        self.logOrder.SetSelection(conf.export.logOrder or 0)
+        self.logOrder.SetSelection(self.conf.logOrder or 0)
 
     def OnPathChanged(self, event=None):
         '''
@@ -326,23 +329,24 @@ class ExportOptions(wx.Dialog):
         '''
         Saves the values form the dialog to the configuration structure
         '''
-        self.conf.export.filterDisp = self.displayed.GetValue()
-        self.conf.export.filterSel = self.selected.GetValue()
-        self.conf.export.filterUser = self.userFlag.GetValue()
+        self.conf.filterDisp = self.displayed.GetValue()
+        self.conf.filterSel = self.selected.GetValue()
+        self.conf.filterUser = self.userFlag.GetValue()
 
-        self.conf.export.lastFile = self.path.GetPath()
+        if not self.gps:
+            self.conf.lastFile = self.path.GetPath()
 
-        self.conf.export.exType = self.types[self.exType.GetSelection()]
+        self.conf.exType = self.types[self.exType.GetSelection()]
 
-        self.conf.export.gc = self.gc.GetValue()
-        self.conf.export.logs = self.logs.GetValue()
-        self.conf.export.tbs = self.tbs.GetValue()
+        self.conf.gc = self.gc.GetValue()
+        self.conf.logs = self.logs.GetValue()
+        self.conf.tbs = self.tbs.GetValue()
 
-        self.conf.export.addWpts = self.addWpts.GetValue()
-        self.conf.export.sepAddWpts = self.sepAddWpts.GetValue()
+        self.conf.addWpts = self.addWpts.GetValue()
+        self.conf.sepAddWpts = self.sepAddWpts.GetValue()
 
-        self.conf.export.adjWpts = self.adjWpts.GetValue()
-        self.conf.export.adjWptSufix = self.adjWptSufix.GetValue()
-        self.conf.export.limitLogs = self.limitLogs.GetValue()
-        self.conf.export.maxLogs = self.maxLogs.GetValue()
-        self.conf.export.logOrder = self.logOrder.GetSelection()
+        self.conf.adjWpts = self.adjWpts.GetValue()
+        self.conf.adjWptSufix = self.adjWptSufix.GetValue()
+        self.conf.limitLogs = self.limitLogs.GetValue()
+        self.conf.maxLogs = self.maxLogs.GetValue()
+        self.conf.logOrder = self.logOrder.GetSelection()
