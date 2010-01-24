@@ -1183,7 +1183,7 @@ class Geocacher:
                        'filterDisp' :True,
                        'filterSel'  :False,
                        'filterUser' :False,
-                       'type'       :'simple',
+                       'exType'     :'simple',
                        'gc'         :False,
                        'logs'       :False,
                        'tbs'        :False,

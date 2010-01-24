@@ -40,7 +40,7 @@ class ExportOptions(wx.Dialog):
         self.path = Xrc.XRCCTRL(self, 'pathPicker')
         self.gpsLabel = Xrc.XRCCTRL(self, 'gpsLabel')
 
-        self.type = Xrc.XRCCTRL(self, 'typeRadioBox')
+        self.exType = Xrc.XRCCTRL(self, 'typeRadioBox')
 
         self.gc = Xrc.XRCCTRL(self, 'extensionsCheckBox')
 
@@ -58,7 +58,7 @@ class ExportOptions(wx.Dialog):
         self.logOrder = Xrc.XRCCTRL(self, 'logSortRadioBox')
 
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.OnPathChanged, self.path)
-        self.Bind(wx.EVT_RADIOBOX, self.OnChangeType, self.type)
+        self.Bind(wx.EVT_RADIOBOX, self.OnChangeType, self.exType)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleGc, self.gc)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleAddWpts, self.addWpts)
 
@@ -85,23 +85,23 @@ class ExportOptions(wx.Dialog):
                 elif ext == '.gpx':
                     self.gpx = True
 
-        self.type.Disable()
+        self.exType.Disable()
         self.gc.Disable()
         self.logs.Disable()
         self.tbs.Disable()
         self.addWpts.Disable()
         self.sepAddWpts.Disable()
         if self.gpx:
-            self.type.Enable()
-            if type == self.types[0]:
-                self.type.SetSelection(0)
-            elif type == self.types[1]:
-                self.type.SetSelection(1)
+            self.exType.Enable()
+            if (self.conf.export.exType or 'simple') == self.types[0]:
+                self.exType.SetSelection(0)
+            elif (self.conf.export.exType or 'simple') == self.types[1]:
+                self.exType.SetSelection(1)
                 if self.zip:
                     self.sepAddWpts.Enable()
                     self.sepAddWpts.SetValue(self.conf.sepAddWpts or False)
             else:
-                self.type.SetSelection(2)
+                self.exType.SetSelection(2)
                 self.gc.Enable()
                 self.gc.SetValue(conf.export.gc or False)
                 if self.gc.GetValue():
@@ -141,10 +141,10 @@ class ExportOptions(wx.Dialog):
             self.sepAddWpts.SetValue(False)
 
         if self.gpx:
-            self.type.Enable()
+            self.exType.Enable()
         else:
-            self.type.SetSelection(0)
-            self.type.Disable()
+            self.exType.SetSelection(0)
+            self.exType.Disable()
             self.gc.SetValue(False)
             self.gc.Disable()
             self.logs.SetValue(False)
@@ -152,8 +152,8 @@ class ExportOptions(wx.Dialog):
             self.tbs.SetValue(False)
             self.tbs.Disable()
 
-        if self.zip and (self.type.GetSelection()==1 or
-                         (self.type.GetSelection()==2 and
+        if self.zip and (self.exType.GetSelection()==1 or
+                         (self.exType.GetSelection()==2 and
                           self.addWpts.GetValue())):
             self.sepAddWpts.Enable()
 
@@ -162,8 +162,7 @@ class ExportOptions(wx.Dialog):
         Handles changing of the export type enables/disables the geocahhing.com
         extensions and the separation of additional way points as necessary
         '''
-        if self.type.GetSelection() == 2:
-            print 'ccc'
+        if self.exType.GetSelection() == 2:
             self.gc.Enable()
             self.addWpts.Enable()
             if self.zip and self.addWpts.GetValue():
@@ -180,7 +179,7 @@ class ExportOptions(wx.Dialog):
             self.tbs.Disable()
             self.addWpts.SetValue(False)
             self.addWpts.Disable()
-            if self.zip and self.type.GetSelection() == 1:
+            if self.zip and self.exType.GetSelection() == 1:
                 self.sepAddWpts.Enable()
             else:
                 self.sepAddWpts.SetValue(False)
@@ -263,7 +262,7 @@ class ExportOptions(wx.Dialog):
         '''
         Returns the selected export type
         '''
-        return self.types[self.type.GetSelection()]
+        return self.types[self.exType.GetSelection()]
 
     def GetGc(self):
         '''
@@ -308,12 +307,6 @@ class ExportOptions(wx.Dialog):
         '''
         return self.adjWptSufix.GetValue()
 
-    def GetAdjWpts(self):
-        '''
-        Returns True if exporting of additional way points is enabled
-        '''
-        return self.addWpts.GetValue()
-
     def GetMaxLogs(self):
         '''
         Returns True if exporting of additional way points is enabled
@@ -339,7 +332,7 @@ class ExportOptions(wx.Dialog):
 
         self.conf.export.lastFile = self.path.GetPath()
 
-        self.conf.export.type = self.types[self.type.GetSelection()]
+        self.conf.export.exType = self.types[self.exType.GetSelection()]
 
         self.conf.export.gc = self.gc.GetValue()
         self.conf.export.logs = self.logs.GetValue()
