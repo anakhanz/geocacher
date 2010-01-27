@@ -1966,9 +1966,9 @@ class MainWindow(wx.Frame):
             wildcard=wildcard,
             style=wx.OPEN
             )
+        error = False
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
-            error = False
             self.popStatus()
             self.pushStatus(_('Restoring database from file: %s') % path)
             question = wx.MessageDialog(None,
