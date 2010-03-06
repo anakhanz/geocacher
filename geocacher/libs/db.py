@@ -524,7 +524,10 @@ class Cache(object):
     long_desc_html = property(__getLong_desc_html, __setLong_desc_html)
 
     def __getEncoded_hints(self):
-        return self.__node.xpath("encoded_hints")[0].text
+        hints = self.__node.xpath("encoded_hints")[0].text
+        if hints == None:
+            hints = ''
+        return hints
 
     def __setEncoded_hints(self,t):
         assert type(t)==unicode or type(t)==str
