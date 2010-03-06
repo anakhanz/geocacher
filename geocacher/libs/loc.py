@@ -7,48 +7,114 @@ import string
 
 from geocacher.libs.common import getTextFromPath,getAttribFromPath
 
-def locLoad(filename,DB,mode="update"):
+def locLoad(filename,DB,mode='update',userName=''):
+    '''
+    Imports the given .loc file into the database.
+
+    Arguments
+    filename: path to the file from which to import the cache information
+    DB:       Database object to import the caches into
+
+    Keyword Arguments
+    mode:     mode to run the import in (update or replace)
+    userName: geocaching.com user name for matching cache owner
+    '''
     # Load LOC file
     if os.path.isfile(filename):
         locDoc = ElementTree(file=filename).getroot()
     else:
-        return
+        return (False,{})
     locDate = datetime.utcfromtimestamp(os.path.getmtime(filename))
+    sourceFile = os.path.abspath(filename)
+
+    fileUpdates = {}
 
     # Find the way points and process them
-    for wpt in locDoc.xpath("//loc//waypoint"):
-        code = getAttribFromPath(wpt,"name","id")
+    for wpt in locDoc.xpath('//loc//waypoint'):
+        code = getAttribFromPath(wpt,'name',"id")
         if code[:2] !="GC":
             continue
         updated = False
-        lon = float(getAttribFromPath(wpt,"coord",'lon'))
-        lat = float(getAttribFromPath(wpt,"coord",'lat'))
-        info = string.split(getTextFromPath(wpt,"name"), " by ")
+        lon = float(getAttribFromPath(wpt,'coord','lon'))
+        lat = float(getAttribFromPath(wpt,'coord','lat'))
+        info = string.split(getTextFromPath(wpt,'name'), ' by ')
         name= info[0]
         placed_by = info[1]
         for part in info[2:]:
             placed_by +=" by "+part
-        url = getTextFromPath(wpt,"link")
-        symbol = getTextFromPath(wpt,"type")
+        url = getTextFromPath(wpt,'link')
+        symbol = getTextFromPath(wpt,'type')
+
+        if code in fileUpdates.keys():
+            ccacheUpdates = fileUpdates[code]
+        else:
+            cacheUpdates = {}
 
         cache = DB.getCacheByCode(code)
         if cache==None:
+            cacheUpdates['change type'] = 'new'
+            cacheUpdates['lat'] = [lat,'']
+            cacheUpdates['lon'] = [lon,'']
+            cacheUpdates['name'] = [name,'']
+            cacheUpdates['url'] = [url,'']
+            cacheUpdates['symbol'] = [symbol,'']
+            cacheUpdates['placed_by'] = [placed_by,'']
+            cacheUpdates['gpx_date'] = [locDate,'']
             cache = DB.addCache(code,lat=lat,lon=lon,name=name,url=url,
             symbol=symbol,placed_by=placed_by,gpx_date=locDate)
             updated = True
 
         if ((cache.gpx_date<=locDate and mode=="update") or mode=="replace"):
-            cache.lon = lon
-            cache.lat = lat
-            cache.name = name
-            cache.url = url
-            cache.symbol = symbol
-            cache.placed_by = placed_by
+            if 'change type' not in cacheUpdates.keys():
+                cacheUpdates['change type'] = 'update'
+            if cache.lon != lon:
+                cacheUpdates['lon'] = [lon,cache.lon]
+                updated = True
+                cache.lon = lon
+            if cache.lat != lat:
+                cacheUpdates['lat'] = [lat,cache.lat]
+                updated = True
+                cache.lat = lat
+            if cache.name != name:
+                cacheUpdates['name'] = [name,cache.name]
+                cache.name = name
+                updated = True
+            if cache.url != url:
+                cacheUpdates['url'] = [url,cache.url]
+                updated = True
+                cache.url = url
+            if cache.symbol != symbol:
+                cacheUpdates['symbol'] = [symbol,cache.symbol]
+                updated = True
+                cache.symbol = symbol
+            if cache.placed_by != placed_by:
+                cacheUpdates['placed_by'] = [placed_by,cache.placed_by]
+                updated = True
+                cache.placed_by = placed_by
         if updated:
-            cache.gpx_date = locDate
-            cache.source = os.path.abspath(filename)
+            if cache.gpx_date != locDate:
+                cache.gpx_date = locDate
+                if cacheUpdates['change type'] == 'update':
+                    cacheUpdates['gpx_date'] = [locDate,cache.gpx_date]
+            if cache.source != sourceFile:
+                cache.source = sourceFile
+                cacheUpdates['source'] = [sourceFile,cache.source]
+            fileUpdates[code] = cacheUpdates
+    return (True,fileUpdates)
+
 
 def locExport(filename,caches,correct=True,corMark='-A'):
+    '''
+    Exports the given caches to the given file in the .loc format.
+
+    Arguments
+    filename: Path to the file to export the cache information to
+    caches:   List of cache objects to be exported
+
+    Keyword Arguments
+    correct: If true use the corrected cordinates for exporting
+    corMark: String to append to the cache code if the cordinates are corrected
+    '''
     if len(caches) == 0:
         return True
     root = Element("loc",version="1.0", src="Geocacher")

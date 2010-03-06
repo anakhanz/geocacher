@@ -1766,10 +1766,12 @@ class MainWindow(wx.Frame):
                 else:
                     self.conf.load.mode = 'replace'
 
+                changes = {}
                 for path in paths:
                     self.pushStatus(_('Loading caches from file: %s')% path)
-                    self.LoadFile(path, self.conf.load.mode)
+                    changes[path] = self.LoadFile(path, self.conf.load.mode)
                     self.popStatus()
+                self.displayImportedChanges(changes)
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
             self.popStatus()
@@ -1812,18 +1814,20 @@ class MainWindow(wx.Frame):
                 else:
                     self.conf.load.mode = 'replace'
 
+                changes = {}
                 addWptFiles = []
                 for file in listFiles(dir):
                     if file.rfind('-wpts') >= 0:
                         addWptFiles.append(file)
                     else:
                         self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
-                        self.LoadFile(file, self.conf.load.mode)
+                        changes[file] = self.LoadFile(file, self.conf.load.mode)
                         self.popStatus()
                 for file in addWptFiles:
                     self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
-                    self.LoadFile(file, self.conf.load.mode)
+                    changes[file] = self.LoadFile(file, self.conf.load.mode)
                     self.popStatus()
+                    self.displayImportedChanges(changes)
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
             self.popStatus()
@@ -1838,20 +1842,48 @@ class MainWindow(wx.Frame):
         '''
         ext = os.path.splitext(path)[1]
         if ext == '.gpx':
-            ret = gpxLoad(path,self.db,mode=mode,
-                          userId=self.conf.gc.userId,
-                          userName=self.conf.gc.userName)
+            sucess= gpxLoad(path,self.db,mode=mode,
+                            userId=self.conf.gc.userId,
+                            userName=self.conf.gc.userName)
+            changes = {} # Temp until returning of changes implemented
         elif ext == '.loc':
-            ret = locLoad(path,self.db,mode=mode)
+            sucess,changes = locLoad(path,self.db,mode=mode)
         elif ext == '.zip':
-            ret = zipLoad(path,self.db,mode=mode,
-                          userId=self.conf.gc.userId,
-                          userName=self.conf.gc.userName)
-        if ret == False:
+            sucess = zipLoad(path,self.db,mode=mode,
+                             userId=self.conf.gc.userId,
+                             userName=self.conf.gc.userName)
+            changes = {} # Temp until returning of changes implemented
+        if sucess == False:
             wx.MessageDialog(self,
                              _('Could not import "%s" due to an error accessing the file') % path,
                              caption=_("File import error"),
                              style=wx.OK|wx.ICON_WARNING)
+        return changes
+
+    def displayImportedChanges(self,changes):
+        '''
+        Displays the changes in the DBfrom importing files to the user
+
+        Argument
+        changes: the changes that have been made to the DB
+        '''
+        # Quick hack to test change returning code
+        filenames = changes.keys()
+        filenames.sort()
+        for filename in filenames:
+            print filename
+            cacheNames = changes[filename].keys()
+            cacheNames.sort()
+            caches = changes[filename]
+            for cacheName in cacheNames:
+                cache = caches[cacheName]
+                print '  ', cacheName, cache['change type']
+                indChanges = cache.keys()
+                indChanges.sort()
+                for change in indChanges:
+                    if change not in ['change type']:
+                        print '  ', '  ', change, cache[change][0], cache[change][1]
+
 
     def OnExportWpt(self, event=None):
         '''
