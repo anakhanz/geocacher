@@ -5,12 +5,12 @@ import os
 import wx
 import wx.grid             as  Grid
 
-from editors.deg import LatEditor, LonEditor
+from geocacher.editors.deg import LatEditor, LonEditor
 
-from renderers.deg import LatRenderer, LonRenderer #@UnresolvedImport
+from geocacher.renderers.deg import LatRenderer, LonRenderer
 
-from validators.deg import LatValidator, LonValidator #@UnresolvedImport
-from validators.locName import LocNameValidator #@UnresolvedImport
+from geocacher.validators.deg import LatValidator, LonValidator
+from geocacher.validators.locName import LocNameValidator
 
 
 class Preferences(wx.Dialog):
@@ -20,7 +20,7 @@ class Preferences(wx.Dialog):
     def __init__(self,parent,id,conf, db):
         '''
         Creates the Preferences Frame.
-        
+
         Arguments
         parent: The parent window.
         id:     ID to give this dialog.
@@ -71,7 +71,7 @@ class Preferences(wx.Dialog):
     def __buildDisplayPanel(self, parent):
         '''
         Builds the display preferences panel.
-        
+
         Argument
         parent: the parent window for this panel.
         '''
@@ -102,7 +102,7 @@ class Preferences(wx.Dialog):
             style=wx.CB_READONLY,
             size = (self.entryWidth,-1))
         displayGrid.Add(self.dispCoordFmt, (1,1))
-        
+
         label = wx.StaticText(panel,wx.ID_ANY,_('Icon Theme'))
         displayGrid.Add(label, (2,0))
         iconThemes=[]
@@ -173,7 +173,7 @@ class Preferences(wx.Dialog):
     def __buildGCPanel(self, parent):
         '''
         Builds the geocaching.com preferences panel.
-        
+
         Argument
         parent: the parent window for this panel.
         '''
@@ -208,7 +208,7 @@ class Preferences(wx.Dialog):
     def __buildGPSPanel(self,parent):
         '''
         Builds the GPS preferences panel.
-        
+
         Argument
         parent: the parent window for this panel.
         '''
@@ -238,7 +238,7 @@ class Preferences(wx.Dialog):
         return panel
 
     def __saveGPSConf(self):
-        
+
         '''
         Saves the preferences from the GPS preferences panel.
         '''
@@ -248,7 +248,7 @@ class Preferences(wx.Dialog):
     def __buildLocationsPanel(self, parent):
         '''
         Builds the locations preferences panel.
-        
+
         Argument
         parent: The parent window for this panel.
         '''
@@ -410,7 +410,7 @@ class LocationsDataTable(Grid.PyGridTableBase):
 
         for current, new, delmsg, addmsg in [
             (self._rows, self.GetNumberRows(),
-             Grid.GRIDTABLE_NOTIFY_ROWS_DELETED, 
+             Grid.GRIDTABLE_NOTIFY_ROWS_DELETED,
              Grid.GRIDTABLE_NOTIFY_ROWS_APPENDED),
             (self._cols, self.GetNumberCols(),
              Grid.GRIDTABLE_NOTIFY_COLS_DELETED,
@@ -537,7 +537,7 @@ class LocationsGrid(Grid.Grid):
         # disapear
         self.AutoSizeColumns()
         self.AutoSizeRows()
-        
+
 
 
 class EditLocation(wx.Dialog):

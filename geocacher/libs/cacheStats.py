@@ -25,7 +25,7 @@ MONTHS = [_('January'),
 
 POSSIBLE_STARS = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0]
 
-from libs.db import CACHE_CONTAINERS,CACHE_TYPES #@UnresolvedImport
+from geocacher.libs.db import CACHE_CONTAINERS,CACHE_TYPES
 
 
 class cacheStats(object):
@@ -37,17 +37,17 @@ class cacheStats(object):
     def __init__(self, db, conf):
         '''
         Initialises the cacheStats object based on the given database and
-        configuration objects.  
-        
+        configuration objects.
+
         Arguments
         conf: configuration object for the program
         db:   database containing the cache information
         '''
-        
+
         self.conf = conf
-        
+
         foundCaches = db.getFoundCacheList()
-        
+
         # initialise data tables
         self.difficultyTerrain = {}
         for difficulty in POSSIBLE_STARS:
@@ -68,7 +68,7 @@ class cacheStats(object):
         self.months = [0,0,0,0,0,0,0,0,0,0,0,0]
         self.yearMonth = {}
         self.ftf = 0
-        
+
         # Process individual caches
         for cache in foundCaches:
             if cache.ftf:
@@ -93,7 +93,7 @@ class cacheStats(object):
                 self.yearMonth[found_date.year][found_date.month-1] = 1
             else:
                 self.yearMonth[found_date.year][found_date.month-1] += 1
-                
+
         # Summary information
         self.distinct = len(foundCaches)
         self.total = self.distinct
@@ -114,7 +114,7 @@ class cacheStats(object):
                 self.difficultyTerrain['Total'][terrain] += \
                     self.difficultyTerrain[difficulty][terrain]
             self.terrainSum += terrain * self.difficultyTerrain['Total'][terrain]
-        
+
     def html(self):
         '''
         Returns the stats as a string of html.
@@ -132,7 +132,7 @@ class cacheStats(object):
         # Add biggest frenzy
         # Add Finds per month graph
         # Add cumulative finds per month
-        
+
         html += '<h3>Days</h3>\n'
         html += '<table border=1>\n'
         for i in range(7):
@@ -140,7 +140,7 @@ class cacheStats(object):
                         self.days[i],
                         float(self.days[i])/float(self.total)*100.0)
         html += '</table>\n'
-        
+
         html += '<h3>Months</h3>\n'
         html += '<table border=1>\n'
         for i in range(12):
@@ -149,7 +149,7 @@ class cacheStats(object):
                         float(self.months[i])/float(self.total)*100.0)
         html += '</table>\n'
         # Yearly Breakdown
-        
+
         html += '<h2>Cache types</h2>\n'
         html += '<table border=1>\n'
         for type in CACHE_TYPES:
@@ -157,7 +157,7 @@ class cacheStats(object):
                         self.types[type],
                         float(self.types[type])/float(self.total)*100.0)
         html += '</table>\n'
-        
+
         html += '<h2>Container types</h2>\n'
         html += '<table border=1>\n'
         for container in CACHE_CONTAINERS:
@@ -165,11 +165,11 @@ class cacheStats(object):
                         self.containers[container],
                         float(self.containers[container])/float(self.total)*100.0)
         html += '</table>\n'
-        
+
         html += '<h2>Difficulty and Terrain</h2>\n'
         html += '<p>Average difficulty %0.2f</p>\n' % (float(self.difficultySum) / float(self.distinct))
         html += '<p>Average terrain %0.2f</p>\n' % (float(self.terrainSum) / float(self.distinct))
-        
+
         rc = POSSIBLE_STARS + ['Total']
         html += '<p><table border=1>\n'
         html += '<tr><td></td>'
@@ -178,20 +178,20 @@ class cacheStats(object):
                 html += '<td>Total</td>'
             else:
                 html += '<td>%0.1f</td>' % c
-                
+
         html += '</tr>\n'
         for r in rc:
             if r == 'Total':
                 html += '<tr><td>Total</td>'
             else:
                 html += '<tr><td>%0.1f</td>' % r
-                
+
             for c in rc:
                 html += '<td>%i</td>' % self.difficultyTerrain[r][c]
             html += '</tr>\n'
         html += '</table></p>\n'
-        
+
         html += '</body>'
         html += '</html>'
-        
+
         return html

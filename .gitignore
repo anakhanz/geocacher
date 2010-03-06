@@ -3,7 +3,6 @@
 *~
 *.bak
 *.orij
-*.py~
 *.pyc
 *.rej
 *.swp
@@ -14,7 +13,7 @@
 # Actual files to ignore
 MANIFEST
 build/*
-geocacher/data/version.txt
+dist/*
 
 # Eclipse
 .project

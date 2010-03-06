@@ -4,11 +4,11 @@ Module to implement the persistent data stores
 '''
 
 import datetime
-from lxml.etree import Element,ElementTree #@UnresolvedImport
+from lxml.etree import Element,ElementTree
 import os
 
-from libs import dict4ini #@UnresolvedImport
-from libs.common import textToBool,boolToText,textToDateTime,dateTimeToText #@UnresolvedImport
+from geocacher.libs import dict4ini #@UnresolvedImport
+from geocacher.libs.common import textToBool,boolToText,textToDateTime,dateTimeToText
 
 VERSION = 1
 ROOT_ELEMENT = 'db'

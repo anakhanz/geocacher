@@ -3,7 +3,7 @@
 import wx
 import wx.grid             as  Grid
 
-from libs.latlon import degToStr, strToDeg
+from geocacher.libs.latlon import degToStr, strToDeg
 
 class DegEditor(Grid.PyGridCellEditor):
     def __init__(self, conf, mode = 'pure'):

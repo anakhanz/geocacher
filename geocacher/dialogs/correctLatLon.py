@@ -2,8 +2,8 @@
 
 import wx
 
-from validators.deg import LatValidator, LonValidator #@UnresolvedImport
-from validators.notEmpty import NotEmptyValidator #@UnresolvedImport
+from geocacher.validators.deg import LatValidator, LonValidator
+from geocacher.validators.notEmpty import NotEmptyValidator
 
 class CorrectLatLon(wx.Dialog):
     '''Get the import options from the user'''

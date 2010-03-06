@@ -1,6 +1,57 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-import shutil
+
+# Three files have very similar code pieces. They are:
+#   * gcer
+#   * gcer.py
+#   * geocacher/app.py
+# The reason for this is different environments with different needs.
+# gcer is the main shell script to run for UNIX-type settings
+# gcer.py is required for py2app (OSX Bundle Maker) to work
+# geocacher/app.py is the main debug file in Wingware IDE, so that
+#    breakpoints work properly (psyco stops the breakpoints from
+#    working in Wingware IDE)
+# As such, all three of these need to be kept in sync. Fortunately,
+# there is extremely little logic in here. It's mostly a startup
+# shell, so this bit of code can be mostly ignored. This note is
+# just to explain why these pieces are here, and why all of them must
+# be updated if one of them is.
+
+import gettext
+import os
+import sys
+import wx
+if __name__ == "__main__":
+    sys.path.append('..')
+
+def we_are_frozen():
+    """Returns whether we are frozen via py2exe.
+    This will affect how we find out where we are located."""
+
+    return hasattr(sys, "frozen")
+
+def module_path():
+    """ This will get us the program's directory,
+    even if we are frozen using py2exe"""
+
+    if we_are_frozen():
+        return os.path.dirname(unicode(sys.executable, sys.getfilesystemencoding( )))
+
+    return os.path.dirname(unicode(__file__, sys.getfilesystemencoding( )))
+
+basepath = module_path()
+localedir = os.path.join(basepath, 'locale')
+langid = wx.LANGUAGE_DEFAULT    # use OS default; or use LANGUAGE_JAPANESE, etc.
+domain = "messages"             # the translation file is messages.mo
+# Set locale for wxWidgets
+mylocale = wx.Locale(langid)
+mylocale.AddCatalogLookupPathPrefix(localedir)
+mylocale.AddCatalog(domain)
+
+# Set up Python's gettext
+mytranslation = gettext.translation(domain, localedir,
+    [mylocale.GetCanonicalName()], fallback = True)
+mytranslation.install()
 
 STATUS_MAIN = 0
 STATUS_SHOWN = 1
@@ -8,17 +59,12 @@ STATUS_TOTAL = 2
 STATUS_FILTERED = 3
 
 from datetime import datetime
-import logging #@UnusedImport
+import logging
 import optparse
 import os
-import sys
+import shutil
 import tempfile
 import zipfile
-
-try:
-    os.chdir(os.path.split(sys.argv[0])[0])
-except:
-    pass
 
 import wx
 import wx.grid             as  Grid
@@ -26,40 +72,31 @@ import wx.lib.gridmovers   as  Gridmovers
 from wx.lib.pubsub import Publisher as Publisher
 import wx.html             as Html
 
-from libs.i18n import createGetText
+from geocacher.libs.common import nl2br, listFiles, dateCmp, wxDateTimeToPy
+from geocacher.libs.cacheStats import cacheStats
+from geocacher.libs.db import Geocacher
+from geocacher.libs.gpsbabel import GpsCom
+from geocacher.libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
+from geocacher.libs.loc import locLoad, locExport
+from geocacher.libs.latlon import distance, cardinalBearing
 
-# make translation available in the code
-__builtins__.__dict__["_"] = createGetText("geocaching",os.path.join(os.path.dirname(__file__), 'po'))
-#def _ (t):
-#    return t
+from geocacher.dialogs.correctLatLon import CorrectLatLon
+from geocacher.dialogs.export import ExportOptions
+from geocacher.dialogs.foundCache import FoundCache
+from geocacher.dialogs.preferences import Preferences
+from geocacher.dialogs.viewHtml import ViewHtml
+from geocacher.dialogs.viewLogs import ViewLogs
+from geocacher.dialogs.viewTravelBugs import ViewTravelBugs
 
-from libs.common import nl2br, listFiles, dateCmp, wxDateTimeToPy
-from libs.cacheStats import cacheStats
-from libs.db import Geocacher
-from libs.gpsbabel import GpsCom
-from libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
-from libs.loc import locLoad, locExport
-from libs.latlon import distance, cardinalBearing
+from geocacher.renderers.deg import LatRenderer, LonRenderer
+from geocacher.renderers.dist import DistRenderer
+from geocacher.renderers.image import CacheBearingRenderer
+from geocacher.renderers.image import CacheSizeRenderer
+from geocacher.renderers.image import CacheTypeRenderer
 
-from dialogs.correctLatLon import CorrectLatLon
-from dialogs.export import ExportOptions
-from dialogs.foundCache import FoundCache
-from dialogs.preferences import Preferences
-from dialogs.viewHtml import ViewHtml
-from dialogs.viewLogs import ViewLogs
-from dialogs.viewTravelBugs import ViewTravelBugs
+import geocacher.__version__
 
-from renderers.deg import LatRenderer, LonRenderer
-from renderers.dist import DistRenderer
-from renderers.image import CacheBearingRenderer
-from renderers.image import CacheSizeRenderer
-from renderers.image import CacheTypeRenderer
-
-try:
-    __version__ = open(os.path.join(os.path.dirname(__file__),
-        "data","version.txt")).read().strip()
-except:
-    __version__ = "src"
+__version__ = geocacher.__version__.gcVERSION_NUMBER
 
 
 class CacheDataTable(Grid.PyGridTableBase):
@@ -1878,6 +1915,12 @@ class MainWindow(wx.Frame):
                                     corMark    = opts.GetAdjWptSufix(),
                                     maxLogs    = opts.GetMaxLogs(),
                                     logOrderDesc = opts.GetLogsDecendingSort())
+                else:
+                    ret = True
+                    wx.MessageBox(parent = self,
+                                  message = _('Error exporting to file: %s\n file type not supported') % path,
+                                  caption = _('Way point export Error'),
+                                  style = wx.OK | wx.ICON_ERROR)
                 if not ret:
                     wx.MessageBox(parent = self,
                                   message = _('Error exporting to file: %s') % path,
@@ -2421,17 +2464,14 @@ class GeocacherApp (wx.App):
     def OnExit(self):
         pass
 
-USAGE = """%s [options]
-Geocacher %s by Rob Wallace (c)2009, Licence GPL2
-http://www.example.com""" % ("%prog",__version__)
+def main():
+    app = GeocacherApp(redirect=False, useBestVisual=True)
+    app.MainLoop()
 
 if __name__ == "__main__":
-    parser = optparse.OptionParser(usage=USAGE, version=("Geocaching "+__version__))
-    parser.add_option("-v","--view",action="store_true",dest="view",
-                        help="run in only view mode")
-    parser.set_defaults(viewOnly=False)
+    if not hasattr(sys, "frozen") and 'wx' not in sys.modules and 'wxPython' not in sys.modules:
+        import wxversion
+        wxversion.ensureMinimal("2.8")
+    main()
 
-    (options, args) = parser.parse_args()
 
-    app = GeocacherApp(False)
-    app.MainLoop()

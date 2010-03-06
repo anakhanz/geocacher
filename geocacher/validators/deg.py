@@ -2,7 +2,7 @@
 
 import wx
 
-from libs.latlon import degToStr, strToDeg
+from geocacher.libs.latlon import degToStr, strToDeg
 
 class DegValidator(wx.PyValidator):
     def __init__(self, mode, conf, data, key, new=False):

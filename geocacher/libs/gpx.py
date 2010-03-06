@@ -7,8 +7,8 @@ import shutil
 import tempfile
 import zipfile
 
-from libs.common import textToBool,textToDateTime,dateTimeToText #@UnresolvedImport
-from libs.common import getTextFromPath,getAttribFromPath #@UnresolvedImport
+from geocacher.libs.common import textToBool,textToDateTime,dateTimeToText
+from geocacher.libs.common import getTextFromPath,getAttribFromPath
 
 NS = {'gpx': "http://www.topografix.com/GPX/1/0",
       'gs': "http://www.groundspeak.com/cache/1/0"}

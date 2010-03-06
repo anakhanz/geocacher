@@ -3,7 +3,7 @@
 import wx
 import wx.grid             as  Grid
 
-from libs.latlon import degToStr
+from geocacher.libs.latlon import degToStr
 
 class DegRenderer(Grid.PyGridCellRenderer):
     '''Renderer for cells containing measurements in degrees'''

@@ -5,7 +5,7 @@ from lxml.etree import Element,ElementTree
 import os
 import string
 
-from libs.common import getTextFromPath,getAttribFromPath #@UnresolvedImport
+from geocacher.libs.common import getTextFromPath,getAttribFromPath
 
 def locLoad(filename,DB,mode="update"):
     # Load LOC file
