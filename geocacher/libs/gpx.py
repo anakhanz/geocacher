@@ -420,7 +420,7 @@ def gpxInit(caches):
 def gpxSave(filename,root):
     fid = open(filename,"w")
     fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
-    ElementTree(root).write(fid,encoding="utf-8")
+    ElementTree(root).write(fid,encoding="utf-8", pretty_print=True)
     fid.close()
 
 def zipLoad(filename,DB,mode="update",userName="",userId=""):

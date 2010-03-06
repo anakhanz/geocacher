@@ -79,7 +79,7 @@ def locExport(filename,caches,correct=True,corMark='-A'):
     try:
         fid = open(filename,"w")
         fid.write("""<?xml version="1.0" encoding="UTF-8"?>""")
-        ElementTree(root).write(fid,encoding="utf-8")
+        ElementTree(root).write(fid,encoding="utf-8", pretty_print=True)
         fid.close()
         return True
     except:
