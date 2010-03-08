@@ -80,6 +80,7 @@ from geocacher.libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
 from geocacher.libs.loc import locLoad, locExport
 from geocacher.libs.latlon import distance, cardinalBearing
 
+from geocacher.dialogs.cacheChanges import CacheChanges
 from geocacher.dialogs.correctLatLon import CorrectLatLon
 from geocacher.dialogs.export import ExportOptions
 from geocacher.dialogs.foundCache import FoundCache
@@ -1827,7 +1828,7 @@ class MainWindow(wx.Frame):
                     self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
                     changes[file] = self.LoadFile(file, self.conf.load.mode)
                     self.popStatus()
-                    self.displayImportedChanges(changes)
+                self.displayImportedChanges(changes)
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
             self.popStatus()
@@ -1842,17 +1843,15 @@ class MainWindow(wx.Frame):
         '''
         ext = os.path.splitext(path)[1]
         if ext == '.gpx':
-            sucess= gpxLoad(path,self.db,mode=mode,
-                            userId=self.conf.gc.userId,
-                            userName=self.conf.gc.userName)
-            changes = {} # Temp until returning of changes implemented
+            sucess,changes= gpxLoad(path,self.db,mode=mode,
+                                    userId=self.conf.gc.userId,
+                                    userName=self.conf.gc.userName)
         elif ext == '.loc':
             sucess,changes = locLoad(path,self.db,mode=mode)
         elif ext == '.zip':
-            sucess = zipLoad(path,self.db,mode=mode,
-                             userId=self.conf.gc.userId,
-                             userName=self.conf.gc.userName)
-            changes = {} # Temp until returning of changes implemented
+            sucess,changes = zipLoad(path,self.db,mode=mode,
+                                     userId=self.conf.gc.userId,
+                                     userName=self.conf.gc.userName)
         if sucess == False:
             wx.MessageDialog(self,
                              _('Could not import "%s" due to an error accessing the file') % path,
@@ -1883,6 +1882,9 @@ class MainWindow(wx.Frame):
                 for change in indChanges:
                     if change not in ['change type']:
                         print '  ', '  ', change, cache[change][0], cache[change][1]
+        dlg = CacheChanges(self, wx.ID_ANY, changes)
+        dlg.ShowModal()
+        dlg.Destroy()
 
 
     def OnExportWpt(self, event=None):
