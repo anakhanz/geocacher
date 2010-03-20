@@ -1693,22 +1693,25 @@ class MainWindow(wx.Frame):
         self.Description.SetPage(descText)
         self.popStatus()
 
-    def selectCaches(self):
+    def selectCaches(self, gps):
         '''
         Returns a list of cache objets for export based on the stored export
-        preferences
+        preferences.
         '''
-        if self.conf.export.filterSel or False:
+        if gps:
+            conf = self.conf.exGps
+        else:
+            conf = self.conf.exFile
+        if conf.filterSel or False:
             caches = self.cacheGrid.GetSelectedCaches()
-        elif self.conf.export.filterDisp or False:
+        elif conf.filterDisp or False:
             caches = self.cacheGrid.GetDisplayedCaches()
         else:
             caches = self.db.getCacheList()
-        if self.conf.export.filterUser or False:
+        if conf.filterUser or False:
             filteredCaches = []
             for cache in caches:
                 if cache.user_flag:
-                    print cache.code
                     filteredCaches.append(cache)
             return filteredCaches
         else:
@@ -1962,7 +1965,7 @@ class MainWindow(wx.Frame):
                     self.popStatus()
                     return
             ext = os.path.splitext(path)[1]
-            caches = self.selectCaches()
+            caches = self.selectCaches(False)
             if len(caches) == 0:
                 wx.MessageBox(parent = self,
                                   message = _('With the current settings there is nothing to export!'),
@@ -2184,14 +2187,14 @@ class MainWindow(wx.Frame):
         opts = ExportOptions(self, self.conf, True)
         if opts.ShowModal() == wx.ID_OK:
             opts.SaveConf()
-            caches = self.selectCaches()
+            caches = self.selectCaches(True)
             if len(caches) == 0:
                 wx.MessageBox(parent = self,
                                   message = _('With the current settings there is nothing to export!'),
                                   caption = _('Nothing to export'),
                                   style = wx.OK | wx.ICON_ERROR)
             else:
-                fd,tmpFile = tempfile.mkstemp() #@UnusedVariable
+                fd,tmpFile = tempfile.mkstemp()
                 if gpxExport(tmpFile, caches,
                             full       = opts.GetType() == 'full',
                             simple     = opts.GetType() == 'simple',
