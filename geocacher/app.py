@@ -339,7 +339,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         mine = cache.owner == self.conf.gc.userName or\
                cache.owner_id == self.conf.gc.userId
-        dist, cBear = self.__calcDistBearing(cache) #@UnusedVariable
+        dist, cBear = self.__calcDistBearing(cache)
         return (bool(self.conf.filter.archived) and cache.archived) or\
                (bool(self.conf.filter.disabled) and (not cache.available)) or\
                (bool(self.conf.filter.found) and cache.found) or\
@@ -1866,23 +1866,7 @@ class MainWindow(wx.Frame):
         Argument
         changes: the changes that have been made to the DB
         '''
-        # Quick hack to test change returning code
-        filenames = changes.keys()
-        filenames.sort()
-        for filename in filenames:
-            print filename
-            cacheNames = changes[filename].keys()
-            cacheNames.sort()
-            caches = changes[filename]
-            for cacheName in cacheNames:
-                cache = caches[cacheName]
-                print '  ', cacheName, cache['change type']
-                indChanges = cache.keys()
-                indChanges.sort()
-                for change in indChanges:
-                    if change not in ['change type']:
-                        print '  ', '  ', change, cache[change][0], cache[change][1]
-        dlg = CacheChanges(self, wx.ID_ANY, changes)
+        dlg = CacheChanges(self, wx.ID_ANY, changes, self.db)
         dlg.ShowModal()
         dlg.Destroy()
 
