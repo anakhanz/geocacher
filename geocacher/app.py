@@ -21,8 +21,6 @@ import gettext
 import os
 import sys
 import wx
-if __name__ == "__main__":
-    sys.path.append('..')
 
 def we_are_frozen():
     """Returns whether we are frozen via py2exe.
