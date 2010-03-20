@@ -913,7 +913,7 @@ class CacheGrid(Grid.Grid):
 
     def Popup (self, evt):
         '''
-        Handler caled form all gid right click handlers to perform the actual
+        Handler caled form all grid right click handlers to perform the actual
         event handling and generate the the context sensitive menu.
 
         Argumnet
@@ -925,7 +925,7 @@ class CacheGrid(Grid.Grid):
         else:
             cache = None
 
-        #---Build Append/Insert Column sub-menus---#000000#FFFFAA------------------------------------------------------
+        # Build Append/Insert Column
         activeColNames = self._table.GetCols()
 
         # Build a list mapping column display names to table cloum names
@@ -953,7 +953,7 @@ class CacheGrid(Grid.Grid):
             insColIds[colId]=colName
             insMenu.Append(colId, colDisp)
 
-        #---Column pop-up functions---#000000#FFFFAA------------------------------------------------------
+        # Column pop-up
         def colDelete(event, self=self, col=col):
             '''Delete (Hide) the selected columns'''
             cols = self.GetSelectedCols()
@@ -989,7 +989,7 @@ class CacheGrid(Grid.Grid):
             self._table.AppendColumn(colIds[event.Id])
             self.Reset()
 
-        #---Row pop-up functions---#000000#FFFFAA------------------------------------------------------
+        # Row pop-up
         def cacheAdd(event, self=self, row=row):
             '''Add a new cache to the grid/database'''
             dlg = wx.MessageDialog(None,
@@ -1012,10 +1012,62 @@ class CacheGrid(Grid.Grid):
             self.Reset()
             Publisher.sendMessage('status.pop')
 
+        def cacheAvail(event, self=self, row=row, cache=cache):
+            '''Mark the selected cache (row) as available'''
+            if cache.archived:
+                dlg = wx.MessageDialog(None,
+                message=_('Are you sure you want un-archive %s and mark it as available ') % cache.code,
+                caption=_('Un-archive cache'),
+                style=wx.YES_NO|wx.ICON_QUESTION)
+                if dlg.ShowModal() == wx.ID_YES:
+                    dlg.Destroy()
+                    cache.archived = False
+                else:
+                    dlg.Destroy()
+                    return
+            Publisher.sendMessage('status.push',
+                                  _('Marking cache %s as available') % cache.code)
+            cache.available = True
+            cache.user_date = datetime.now()
+            self._table.ReloadRow(row)
+            self.Reset()
+            Publisher.sendMessage('status.pop')
+
+        def cacheUnAvail(event, self=self, row=row, cache=cache):
+            '''Mark the selected cache (row) as un-available'''
+            Publisher.sendMessage('status.push',
+                                  _('Marking cache %s as un-available') % cache.code)
+            cache.available = False
+            cache.user_date = datetime.now()
+            self._table.ReloadRow(row)
+            self.Reset()
+            Publisher.sendMessage('status.pop')
+
+        def cacheArc(event, self=self, row=row, cache=cache):
+            '''Mark the selected cache (row) as archived'''
+            Publisher.sendMessage('status.push',
+                                  _('Archiving cache: %s') % cache.code)
+            cache.available = False
+            cache.archived = True
+            cache.user_date = datetime.now()
+            self._table.ReloadRow(row)
+            self.Reset()
+            Publisher.sendMessage('status.pop')
+
+        def cacheUnArc(event, self=self, row=row, cache=cache):
+            '''Mark the selected cache (row) as un-archived'''
+            Publisher.sendMessage('status.push',
+                                  _('Un-archiving cache: %s') % cache.code)
+            cache.archived = False
+            cache.user_date = datetime.now()
+            self._table.ReloadRow(row)
+            self.Reset()
+            Publisher.sendMessage('status.pop')
+
         def cacheCorrect(event, self=self, row=row, cache=cache):
             '''Add/Edit Correction of the Lat/Lon for the selected cache (row)'''
             self.SelectRow(row)
-            cache = self._table.GetRowCache(row)
+            #cache = self._table.GetRowCache(row)
             # create data dictionary for the dialog and it's validators
             data = {'lat': cache.lat, 'lon': cache.lon,
                     'clat': cache.clat, 'clon': cache.clon,
@@ -1112,7 +1164,7 @@ class CacheGrid(Grid.Grid):
                 Publisher.sendMessage('status.pop')
             dlg.Destroy()
 
-        #---Non row/col pop-up functions---#000000#FFFFAA-------------------------------
+        # Non row/col pop-up functions
         def sortByCodeAscending(event, self=self):
             '''Perform an ascending sort based on the cache code'''
             Publisher.sendMessage('status.push', _('Sorting caches'))
@@ -1127,9 +1179,13 @@ class CacheGrid(Grid.Grid):
             self.Reset()
             Publisher.sendMessage('status.pop')
 
-        #---Menu ID's---#000000#FFFFAA------------------------------------------------------
+        # Menu
         cacheAddID      = wx.NewId()
         cacheDeleteID   = wx.NewId()
+        cacheArcID      = wx.NewId()
+        cacheUnArcID    = wx.NewId()
+        cacheAvailID    = wx.NewId()
+        cacheUnAvailID  = wx.NewId()
         cacheCorrectID  = wx.NewId()
         cacheRmCorrID   = wx.NewId()
         cacheViewLogsID = wx.NewId()
@@ -1143,7 +1199,7 @@ class CacheGrid(Grid.Grid):
         sortByCodeAsID  = wx.NewId()
         sortByCodeDsID  = wx.NewId()
 
-        #---Build the pop-up menu---#000000#FFFFAA--------------------------------------
+        # Build the pop-up menu
         menu = wx.Menu()
         if col == -1:
             menu.Append(sortByCodeAsID, _('Ascending Sort By Cache Code'))
@@ -1159,6 +1215,14 @@ class CacheGrid(Grid.Grid):
         menu.Append(cacheAddID, _('Add Cache'))
         if row >= 0:
             menu.Append(cacheDeleteID, _('Delete Cache(s)'))
+            if cache.archived:
+                menu.Append(cacheUnArcID,_('Un-archive Cache'))
+            else:
+                menu.Append(cacheArcID,_('Archive Cache'))
+            if cache.available:
+                menu.Append(cacheUnAvailID,_('Mark Cache Un-available'))
+            else:
+                menu.Append(cacheAvailID,_('Mark Cache Available'))
             menu.AppendSeparator()
             if cache.corrected:
                 menu.Append(cacheCorrectID, _('Edit Cordinate Correction'))
@@ -1171,9 +1235,13 @@ class CacheGrid(Grid.Grid):
             menu.Append(cacheSetFoundID, _('Set cache as Found'))
             menu.Append(cacheSetDnfID, _('Set cache as Did Not Find'))
 
-        #---Bind functions---#000000#FFFFAA---------------------------------------------
+        # Bind functions
         self.Bind(wx.EVT_MENU, cacheAdd, id=cacheAddID)
         self.Bind(wx.EVT_MENU, cacheDelete, id=cacheDeleteID)
+        self.Bind(wx.EVT_MENU, cacheArc, id=cacheArcID)
+        self.Bind(wx.EVT_MENU, cacheUnArc, id=cacheUnArcID)
+        self.Bind(wx.EVT_MENU, cacheAvail, id=cacheAvailID)
+        self.Bind(wx.EVT_MENU, cacheUnAvail, id=cacheUnAvailID)
         self.Bind(wx.EVT_MENU, cacheCorrect, id=cacheCorrectID)
         self.Bind(wx.EVT_MENU, cacheRemCorrection, id=cacheRmCorrID)
         self.Bind(wx.EVT_MENU, cacheViewLogs, id=cacheViewLogsID)
