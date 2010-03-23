@@ -220,7 +220,7 @@ class CacheDataTable(Grid.PyGridTableBase):
             'bearing'     :CacheBearingRenderer}
 
         self._sortCol = self.conf.common.sortCol or 'code'
-        self._sortDescend = self.conf.common.sortDescend or False
+        self._sortDescend = self.conf.common.sortDescending or False
 
         self.ReloadCaches()
 
@@ -2506,7 +2506,7 @@ class MainWindow(wx.Frame):
         (self.conf.common.mainWidth,self.conf.common.mainHeight) = self.GetSizeTuple()
         self.conf.common.mainSplit = self.splitter.GetSashPosition()
         self.conf.common.cacheCols = self.cacheGrid.GetCols()
-        (self.conf.common.sortCol,self.conf.common.sortDecending) = self.cacheGrid.GetSort()
+        (self.conf.common.sortCol,self.conf.common.sortDescending) = self.cacheGrid.GetSort()
         if self.displayCache != None:
             self.conf.common.dispCache = self.displayCache.code
         else:
