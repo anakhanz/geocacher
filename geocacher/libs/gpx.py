@@ -276,7 +276,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             # in it that is of the "Found it" type and the finderId or
             # finderName matches the users values
             if ((not foundUpdated) and changed and(logFinderId == userId or logFinderName == userName)):
-                if logType =='Found it':
+                if logType in ['Found it', 'Attended']:
                     if not cache.found:
                         cacheUpdates['found'] = [True,False]
                         updated = True
