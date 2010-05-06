@@ -17,7 +17,7 @@ class ImageRenderer(Grid.PyGridCellRenderer):
 
         self.colSize = None
         self.rowSize = None
-    
+
     def addImage(self, name, filename, imageType):
         imagePath=os.path.join(self._dir,self._themeDir,self._subDir,filename)
         if not os.path.isfile(imagePath):
@@ -26,7 +26,7 @@ class ImageRenderer(Grid.PyGridCellRenderer):
             self._images[name]=wx.Bitmap(imagePath, imageType)
         else:
             self._images[name]=wx.ArtProvider.GetBitmap(wx.ART_ERROR)
-        
+
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
@@ -106,4 +106,5 @@ class CacheTypeRenderer(ImageRenderer):
         self.addImage('Virtual Cache','virtual.gif', wx.BITMAP_TYPE_GIF)
         self.addImage('Webcam Cache','webcam.gif', wx.BITMAP_TYPE_GIF)
         self.addImage('Wherigo Cache','whereigo.gif', wx.BITMAP_TYPE_GIF)
+        self.addImage('Lost and Found Event Cache','10Years_32.gif', wx.BITMAP_TYPE_GIF)
         self._default='Traditional Cache'

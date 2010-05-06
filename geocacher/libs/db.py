@@ -34,7 +34,8 @@ CACHE_TYPES = ['Traditional Cache',
                'Reverse',
                'Virtual Cache',
                'Webcam Cache',
-               'Wherigo Cache']
+               'Wherigo Cache',
+               'Lost and Found Event Cache']
 
 class DB:
     '''
