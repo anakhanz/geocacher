@@ -12,7 +12,11 @@ import zipfile
 
 import wx
 from wx.lib.pubsub import Publisher as Publisher
-import wx.html             as Html
+import wx.html as Html
+
+import geocacher.__version__
+
+__version__ = geocacher.__version__.gcVERSION_NUMBER
 
 from geocacher.widgets.cacheGrid import CacheGrid
 
