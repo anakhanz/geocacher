@@ -1028,7 +1028,11 @@ class AddWaypoint(object):
 
     time = property(__getTime, __setTime)
 
-    def __getCmt(self):    return self.__node.text
+    def __getCmt(self):
+        cmt =  self.__node.text
+        if cmt == None:
+            cmt = ''
+        return cmt
 
     def __setCmt(self,t):
         assert type(t) == unicode or type(t)==str
