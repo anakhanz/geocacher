@@ -34,7 +34,6 @@ def locLoad(filename,DB,mode='update',userName=''):
         code = getAttribFromPath(wpt,'name',"id")
         if code[:2] !="GC":
             continue
-        updated = False
         lon = float(getAttribFromPath(wpt,'coord','lon'))
         lat = float(getAttribFromPath(wpt,'coord','lat'))
         info = string.split(getTextFromPath(wpt,'name'), ' by ')
@@ -62,36 +61,30 @@ def locLoad(filename,DB,mode='update',userName=''):
             cacheUpdates['gpx_date'] = [locDate,'']
             cache = DB.addCache(code,lat=lat,lon=lon,name=name,url=url,
             symbol=symbol,placed_by=placed_by,gpx_date=locDate)
-            updated = True
+        elif 'change type' not in cacheUpdates.keys():
+                cacheUpdates['change type'] = 'update'
 
         if ((cache.gpx_date<=locDate and mode=="update") or mode=="replace"):
-            if 'change type' not in cacheUpdates.keys():
-                cacheUpdates['change type'] = 'update'
+
             if cache.lon != lon:
                 cacheUpdates['lon'] = [lon,cache.lon]
-                updated = True
                 cache.lon = lon
             if cache.lat != lat:
                 cacheUpdates['lat'] = [lat,cache.lat]
-                updated = True
                 cache.lat = lat
             if cache.name != name:
                 cacheUpdates['name'] = [name,cache.name]
                 cache.name = name
-                updated = True
             if cache.url != url:
                 cacheUpdates['url'] = [url,cache.url]
-                updated = True
                 cache.url = url
             if cache.symbol != symbol:
                 cacheUpdates['symbol'] = [symbol,cache.symbol]
-                updated = True
                 cache.symbol = symbol
             if cache.placed_by != placed_by:
                 cacheUpdates['placed_by'] = [placed_by,cache.placed_by]
-                updated = True
                 cache.placed_by = placed_by
-        if updated:
+        if len(cacheUpdates) > 1:
             if cache.gpx_date != locDate:
                 cache.gpx_date = locDate
                 if cacheUpdates['change type'] == 'update':
