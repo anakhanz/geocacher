@@ -11,6 +11,7 @@ import tempfile
 import zipfile
 
 import wx
+import wx.lib.inspection
 from wx.lib.pubsub import Publisher as Publisher
 import wx.html as Html
 
@@ -200,6 +201,9 @@ class MainWindow(wx.Frame):
 
         item = HelpMenu.Append(wx.ID_ABOUT, text=_("&About"))
         self.Bind(wx.EVT_MENU, self.OnHelpAbout, item)
+
+        item = HelpMenu.Append(wx.ID_ANY, text=_("&Inspector"))
+        self.Bind(wx.EVT_MENU, self.OnInspector, item)
 
         MenuBar.Append(HelpMenu, _("&Help"))
 
@@ -455,6 +459,15 @@ class MainWindow(wx.Frame):
         HelpAbout.SetWebSite('http://example.com')
         HelpAbout.SetDescription(_("Application for Geocaching waypoint management"))
         wx.AboutBox(HelpAbout)
+
+    def OnInspector(self, event=None):
+        '''
+        Handles the event from the "Inspector" menu item.
+
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
+        wx.lib.inspection.InspectionTool().Show()
 
     def OnLoadWpt(self, event=None):
         '''
