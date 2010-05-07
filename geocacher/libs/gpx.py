@@ -54,7 +54,6 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
         if code[:2] !="GC":
             extraWpts.append(wpt)
             continue
-        updated = False
         lon = float(wpt.attrib['lon'])
         lat = float(wpt.attrib['lat'])
         id = getAttribFromPath(wpt,"gs:cache","id",NS)
@@ -124,96 +123,74 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                                 long_desc_html=long_desc_html,
                                 encoded_hints=hints,gpx_date=gpxDate)
 
-            updated = True
 
         elif 'change type' not in cacheUpdates.keys():
             cacheUpdates['change type'] = 'update'
-        if ((cache.gpx_date<=gpxDate and mode=="update") or mode=="replace"): 
+        if ((cache.gpx_date<=gpxDate and mode=="update") or mode=="replace"):
             if cache.lon != lon:
                 cacheUpdates['lon'] = [lon,cache.lon]
-                updated = True
                 cache.lon = lon
             if cache.lat != lat:
                 cacheUpdates['lat'] = [lat,cache.lat]
-                updated = True
                 cache.lat = lat
             if cache.id != id:
                 cacheUpdates['available'] = [cache.available,available]
-                updated = True
                 cache.id = id
             if cache.archived != archived:
                 cacheUpdates['archived'] = [archived,cache.archived]
-                updated = True
                 cache.archived = archived
             if cache.name != name:
                 cacheUpdates['name'] = [name,cache.name]
-                updated = True
                 cache.name = name
             if cache.url != url:
                 cacheUpdates['url'] = [url,cache.url]
-                updated = True
                 cache.url = url
             if cache.symbol != symbol:
                 cacheUpdates['symbol'] = [symbol,cache.symbol]
-                updated = True
                 cache.symbol = symbol
             if cache.placed_by != placed_by:
                 cacheUpdates['placed_by'] = [placed_by,cache.placed_by]
-                updated = True
                 cache.placed_by = placed_by
             if cache.owner != owner:
                 cacheUpdates['owner'] = [owner,cache.owner]
-                updated = True
                 cache.owner = owner
             if cache.owner_id != owner_id:
                 cacheUpdates['owner_id'] = [owner_id,cache.owner_id]
-                updated = True
                 cache.owner_id = owner_id
             if cache.type != cachetype:
                 cacheUpdates['type'] = [owner_id,cache.owner_id]
-                updated = True
                 cache.type = cachetype
             if cache.container != container:
                 cacheUpdates['container'] = [container,cache.container]
-                updated = True
                 cache.container = container
             if cache.difficulty != difficulty:
                 cacheUpdates['difficulty'] = [difficulty,cache.difficulty]
-                updated = True
                 cache.difficulty = difficulty
             if cache.terrain != terrain:
                 cacheUpdates['terrain'] = [terrain,cache.terrain]
-                updated = True
                 cache.terrain = terrain
             if cache.state != state:
                 cacheUpdates['state'] = [state,cache.state]
-                updated = True
                 cache.state = state
             if cache.country != country:
                 cacheUpdates['country'] = [country,cache.country]
-                updated = True
                 cache.country = country
             if cache.short_desc != short_desc:
                 cacheUpdates['short_desc'] = [short_desc,cache.short_desc]
-                updated = True
                 cache.short_desc = short_desc
             if cache.short_desc_html != short_desc_html:
                 cacheUpdates['short_desc_html'] = [short_desc_html,
                                                    cache.short_desc_html]
-                updated = True
                 cache.short_desc_html = short_desc_html
             if cache.long_desc != long_desc:
                 cacheUpdates['long_desc'] = [long_desc,cache.long_desc]
-                updated = True
                 cache.long_desc = long_desc
             if cache.long_desc_html != long_desc_html:
                 cacheUpdates['long_desc_html'] = [long_desc_html,
                                                   cache.long_desc_html]
-                updated = True
                 cache.long_desc_html != long_desc_html
             if cache.encoded_hints != hints:
                 cacheUpdates['encoded_hints'] = [hints,cache.encoded_hints]
-                updated = True
                 cache.encoded_hints = hints
         # Always update Logs and travel bugs
         foundUpdated=False
@@ -227,7 +204,6 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             logEncoded = textToBool(getAttribFromPath(wptLog, "gs:text", "encoded", NS, "False"))
             logText = getTextFromPath(wptLog, "gs:text",NS)
 
-            changed = False
             logUpdates = {}
 
             log = cache.getLogById(logId)
@@ -240,72 +216,65 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                 logUpdates['encoded'] = [logEncoded,'']
                 logUpdates['text'] = [logText,'']
 
-                changed = True
                 log = cache.addLog(logId,date=logDate,type=logType,
                 finder_id=logFinderId,finder_name=logFinderName,
                 encoded=logEncoded,text=logText)
             else:
                 if logDate != log.date:
                     logUpdates['id'] = [logId,log.date]
-                    changed = True
                     log.date = logDate
                 if logType != log.type:
                     logUpdates['type'] = [logType,log.type]
-                    changed = True
                     log.type = logType
                 if logFinderId != log.finder_id:
                     logUpdates['finder_id'] = [logFinderId,log.finder_id]
-                    changed = True
                     log.finder_id = logFinderId
                 if logFinderName != log.finder_name:
                     logUpdates['finder_name'] = [logFinderName,log.finder_name]
-                    changed = True
                     log.finder_name = logFinderName
                 if logEncoded != log.encoded:
                     logUpdates['encoded'] = [logEncoded,log.encoded]
-                    changed = True
                     log.encoded = logEncoded
                 if logText != log.text:
                     logUpdates['text'] = [logText,log.text]
-                    changed = True
                     log.text = logText
-            if changed:
+            if len(logUpdates) > 0:
                 logsUpdates[logId] = logUpdates
-                updated = True
-            # Update Own find details if this is the first log with changes
-            # in it that is of the "Found it" type and the finderId or
-            # finderName matches the users values
-            if ((not foundUpdated) and changed and(logFinderId == userId or logFinderName == userName)):
-                if logType in ['Found it', 'Attended']:
-                    if not cache.found:
-                        cacheUpdates['found'] = [True,False]
-                        updated = True
-                        cache.found = True
-                    if cache.found_date != logDate:
-                        cacheUpdates['found_date'] = [logDate,cache.found_date]
-                        updated = True
-                        cache.found_date = logDate
-                    foundUpdated = True
-                elif logType == "Didn't find it":
-                    if not cache.dnf:
-                        cacheUpdates['dnf'] = [True,False]
-                        cache.dnf = True
-                        updated = True
-                    if cache.dnf_date != logDate:
-                        cacheUpdates['dnf_date'] = [logDate,cache.dnf_date]
-                        updated = True
-                        cache.found_date = logDate
-                    foundUpdated = True
-                if foundUpdated:
-                    if cache.own_log != logText:
-                        cacheUpdates['own_log'] = [logText,cache.own_log]
-                        updated = True
-                        cache.own_log = logText
-                    if cache.own_log_encoded != logEncoded:
-                        cacheUpdates['own_log_encoded'] = [logEncoded,
-                                                           cache.own_log_encoded]
-                        updated = True
-                        cache.own_log_encoded = logEncoded
+                # Update Own find details if this is the first log with changes
+                # in it that is of the "Found it" type and the finderId or
+                # finderName matches the users values
+                if ((not foundUpdated) and(logFinderId == userId or
+                                           logFinderName == userName)):
+                    if logType in ['Found it', 'Attended']:
+                        if not cache.found:
+                            cacheUpdates['found'] = [True,False]
+                            updated = True
+                            cache.found = True
+                        if cache.found_date != logDate:
+                            cacheUpdates['found_date'] = [logDate,cache.found_date]
+                            updated = True
+                            cache.found_date = logDate
+                        foundUpdated = True
+                    elif logType == "Didn't find it":
+                        if not cache.dnf:
+                            cacheUpdates['dnf'] = [True,False]
+                            cache.dnf = True
+                            updated = True
+                        if cache.dnf_date != logDate:
+                            cacheUpdates['dnf_date'] = [logDate,cache.dnf_date]
+                            updated = True
+                            cache.found_date = logDate
+                        foundUpdated = True
+                    if foundUpdated:
+                        if cache.own_log != logText:
+                            cacheUpdates['own_log'] = [logText,cache.own_log]
+                            updated = True
+                            cache.own_log = logText
+                        if cache.own_log_encoded != logEncoded:
+                            cacheUpdates['own_log_encoded'] = [logEncoded,
+                                                               cache.own_log_encoded]
+                            updated = True
+                            cache.own_log_encoded = logEncoded
         if len(logsUpdates) > 0:
             cacheUpdates['Logs'] = logsUpdates
         tbUpdates = {}
@@ -335,7 +304,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
         if len(tbUpdates) > 0:
             cacheUpdates['Travel Bugs'] = tbUpdates
 
-        if updated:
+        if len(cacheUpdates) > 1:
             if cache.gpx_date != gpxDate:
                 cache.gpx_date = gpxDate
                 if cacheUpdates['change type'] == 'update':
@@ -346,7 +315,6 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             fileUpdates[code] = cacheUpdates
 
     for wpt in extraWpts:
-        updated = False
         lon = float(wpt.attrib['lon'])
         lat = float(wpt.attrib['lat'])
         id = getTextFromPath(wpt,'gpx:name',NS)
@@ -362,7 +330,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                 cacheUpdates = fileUpdates[cacheCode]
             else:
                 cacheUpdates = {}
-                cacheUpdates['change type'] = 'update'
+                cacheUpdates['change type'] = _('update')
             addWaypoint = cache.getAddWaypointByCode(id)
             addWptUpdates = {}
             if 'Add Wpts' in cacheUpdates.keys():
@@ -379,37 +347,29 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                 addWptUpdates['time'] = [time,'']
                 addWptUpdates['cmt'] = [cmt,'']
                 addWptUpdates['sym'] = [sym,'']
-                updated = True
             else:
                 if addWaypoint.lat != lat:
                     addWptUpdates['lat'] = [lat,addWaypoint.lat]
-                    updated = True
                     addWaypoint.lat = lat
                 if addWaypoint.lon != lon:
                     addWptUpdates['lon'] = [lon,addWaypoint.lon]
-                    updated = True
                     addWaypoint.lon = lon
                 if addWaypoint.name != name:
                     addWptUpdates['name'] = [name,addWaypoint.name]
-                    updated = True
                     addWaypoint.name = name
                 if addWaypoint.url != url:
                     addWptUpdates['url'] = [url,addWaypoint.url]
-                    updated = True
                     addWaypoint.url = url
                 if addWaypoint.time != time:
                     addWptUpdates['time'] = [time,addWaypoint.time]
-                    updated = True
                     addWaypoint.time = time
                 if addWaypoint.cmt != cmt:
                     addWptUpdates['cmt'] = [cmt,addWaypoint.cmt]
-                    updated = True
                     addWaypoint.cmt = cmt
                 if addWaypoint.sym != sym:
                     addWptUpdates['sym'] = [sym,addWaypoint.sym]
-                    updated = True
                     addWaypoint.sym = sym
-            if updated:
+            if len(addWptUpdates) > 0:
                 cache.gpx_date = gpxDate
                 cache.source = os.path.abspath(filename)
                 if 'Add Wpts' in cacheUpdates.keys():
