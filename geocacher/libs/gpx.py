@@ -126,9 +126,9 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
 
             updated = True
 
-        if ((cache.gpx_date<=gpxDate and mode=="update") or mode=="replace"):
-            if 'change type' not in cacheUpdates.keys():
-                cacheUpdates['change type'] = 'update'
+        elif 'change type' not in cacheUpdates.keys():
+            cacheUpdates['change type'] = 'update'
+        if ((cache.gpx_date<=gpxDate and mode=="update") or mode=="replace"): 
             if cache.lon != lon:
                 cacheUpdates['lon'] = [lon,cache.lon]
                 updated = True
