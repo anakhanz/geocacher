@@ -19,6 +19,8 @@ import geocacher.__version__
 
 __version__ = geocacher.__version__.gcVERSION_NUMBER
 
+import geocacher
+
 from geocacher.widgets.cacheGrid import CacheGrid
 
 from geocacher.libs.common import nl2br, listFiles
@@ -41,25 +43,22 @@ class MainWindow(wx.Frame):
     '''
     The main frome for the application.
     '''
-    def __init__(self,parent,id, conf, db):
+    def __init__(self,parent,id, xmldb):
         '''
         Initialisation for the main frame.
 
         Arguments
         parent: The parent window of the frame.
         id:     The ID to give the frame.
-        conf:   The configuration object for the program.
-        db:     The application database.
+        xmldb:  The xml Database for caches (transitional)
         '''
-        self.conf = conf
-        self.db = db
+        self.xmldb = xmldb
         self.displayCache = None
-        w = self.conf.common.mainWidth or 700
-        h = self.conf.common.mainHeight or 500
+        size = geocacher.config().mainWinSize
         # check that the Current location is in the db
-        if (self.conf.common.currentLoc or 'Default') not in self.db.getLocationNameList():
-            self.conf.common.currentLoc = self.db.getLocationNameList()[0]
-        wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (w,h),
+        if geocacher.config().currentLocation not in self.xmldb.getLocationNameList():
+            geocacher.config().currentLocation = self.xmldb.getLocationNameList()[0]
+        wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (size),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
 
@@ -71,15 +70,17 @@ class MainWindow(wx.Frame):
 
         self.splitter = wx.SplitterWindow(self, wx.ID_ANY,
                                           style=wx.SP_LIVE_UPDATE | wx.SP_BORDER)
-        self.cacheGrid = CacheGrid(self.splitter, self.conf, self.db)
+        self.cacheGrid = CacheGrid(self.splitter, self.xmldb)
         self.Description = Html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
         self.splitter.SetMinimumPaneSize(20)
-        self.splitter.SplitHorizontally(self.cacheGrid, self.Description, conf.common.mainSplit or 400)
+        self.splitter.SplitHorizontally(self.cacheGrid,
+                                        self.Description,
+                                        geocacher.config().detailSplit)
 
         self.updateStatus()
 
         self.displayedCache = None
-        self.updateDetail(self.conf.common.dispCache or '')
+        self.updateDetail(geocacher.config().displayedCache)
 
         Publisher.subscribe(self.updateDetailMsg, 'cache.selected')
         Publisher.subscribe(self.NewLocationMsg, 'location.new')
@@ -140,7 +141,7 @@ class MainWindow(wx.Frame):
                                             text=_('Show Filter Bar'),
                                             kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnShowFilter, self.miShowFilter)
-        self.miShowFilter.Check(self.conf.common.showFilter or False)
+        self.miShowFilter.Check(geocacher.config().showFilter)
         item = ViewMenu.Append(wx.ID_ANY,
                                text=_('Statistics'))
         self.Bind(wx.EVT_MENU, self.OnViewStats, item)
@@ -154,31 +155,31 @@ class MainWindow(wx.Frame):
                                             text=_('Hide &Mine'),
                                             kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideMine, self.miHideMine)
-        self.miHideMine.Check(self.conf.filter.mine or False)
+        self.miHideMine.Check(geocacher.config().filterMine)
 
         self.miHideFound = FilterMenu.Append(wx.ID_ANY,
                                              text=_('Hide &Found'),
                                              kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideFound, self.miHideFound)
-        self.miHideFound.Check(self.conf.filter.found or False)
+        self.miHideFound.Check(geocacher.config().filterFound)
 
         self.miHideDisabled = FilterMenu.Append(wx.ID_ANY,
                                                 text=_('Hide &Disabled'),
                                                 kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideDisabled, self.miHideDisabled)
-        self.miHideDisabled.Check(self.conf.filter.disabled or False)
+        self.miHideDisabled.Check(geocacher.config().filterDisabled)
 
         self.miHideArchived = FilterMenu.Append(wx.ID_ANY,
                                                 text=_('Hide &Archived'),
                                                 kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideArchived, self.miHideArchived)
-        self.miHideArchived.Check(self.conf.filter.archived or False)
+        self.miHideArchived.Check(geocacher.config().filterArchived)
 
         self.miHideOverDist = FilterMenu.Append(wx.ID_ANY,
                                                 text=_('Hide &Over Max Dist'),
                                                 kind=wx.ITEM_CHECK)
         self.Bind(wx.EVT_MENU, self.OnMiHideOverDist, self.miHideOverDist)
-        self.miHideOverDist.Check(self.conf.filter.overDist or False)
+        self.miHideOverDist.Check(geocacher.config().filterOverDist)
 
         item = FilterMenu.Append(wx.ID_ANY, text=_('Set Max Distance'))
         self.Bind(wx.EVT_MENU, self.OnMaxDistVal, item)
@@ -225,30 +226,30 @@ class MainWindow(wx.Frame):
         self.cbHideMine = wx.CheckBox(tb, wx.ID_ANY, _('Hide Mine'))
         tb.AddControl(self.cbHideMine)
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideMine, self.cbHideMine)
-        self.cbHideMine.SetValue(self.conf.filter.mine or False)
+        self.cbHideMine.SetValue(geocacher.config().filterMine)
 
         self.cbHideFound = wx.CheckBox(tb, wx.ID_ANY, _('Hide Found'))
         tb.AddControl(self.cbHideFound)
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideFound, self.cbHideFound)
-        self.cbHideFound.SetValue(self.conf.filter.found or False)
+        self.cbHideFound.SetValue(geocacher.config().filterFound)
 
         self.cbHideDisabled = wx.CheckBox(tb, wx.ID_ANY, _('Hide Disabled'))
         tb.AddControl(self.cbHideDisabled)
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideDisabled, self.cbHideDisabled)
-        self.cbHideDisabled.SetValue(self.conf.filter.disabled or False)
+        self.cbHideDisabled.SetValue(geocacher.config().filterDisabled)
 
         self.cbHideArchived = wx.CheckBox(tb, wx.ID_ANY, _('Hide Archived'))
         tb.AddControl(self.cbHideArchived)
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideArchived, self.cbHideArchived)
-        self.cbHideArchived.SetValue(self.conf.filter.archived or False)
+        self.cbHideArchived.SetValue(geocacher.config().filterArchived)
 
         self.cbHideOverDist = wx.CheckBox(tb, wx.ID_ANY, _('Hide Over'))
         tb.AddControl(self.cbHideOverDist)
         self.Bind(wx.EVT_CHECKBOX, self.OnCbHideOverDist, self.cbHideOverDist)
-        self.cbHideOverDist.SetValue(self.conf.filter.overDist or False)
+        self.cbHideOverDist.SetValue(geocacher.config().filterOverDist)
 
         self.tbMaxDistance = wx.TextCtrl(tb, wx.ID_ANY,
-            value=str(self.conf.filter.maxDistVal or 50.0), size=[100,-1])
+            value=str(geocacher.config().filterMaxDist), size=[100,-1])
         tb.AddControl(self.tbMaxDistance)
         self.tbMaxDistance.Bind(wx.EVT_LEFT_DCLICK, self.OnMaxDistVal)
 
@@ -258,11 +259,12 @@ class MainWindow(wx.Frame):
                                     wx.ID_ANY,
                                     _('Home location'),
                                     style=wx.TEXT_ATTR_FONT_ITALIC))
-        choices = self.db.getLocationNameList()
-        if self.conf.common.currentLoc in choices:
-            current = self.conf.common.currentLoc
+        choices = self.xmldb.getLocationNameList()
+        if geocacher.config().currentLocation in choices:
+            current = geocacher.config().currentLocation
         else:
             current = choices[0]
+            geocacher.config().currentLocation = current
         self.selLocation = wx.ComboBox(tb, wx.ID_ANY,current,
                                        choices = choices,
                                        size=[150,-1],
@@ -271,7 +273,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_COMBOBOX, self.OnSelLocation, self.selLocation)
         tb.Realize()
 
-        self.ShowHideFilterBar(self.conf.common.showFilter or False)
+        self.ShowHideFilterBar(geocacher.config().showFilter)
 
     def buildStatusBar(self):
         '''
@@ -318,7 +320,7 @@ class MainWindow(wx.Frame):
                filtering.
         '''
         self.statusbar.SetStatusText(_('Total: %i') %
-                                     self.db.getNumberCaches(),
+                                     self.xmldb.getNumberCaches(),
                                      STATUS_TOTAL)
         if rows==None:
             self.statusbar.SetStatusText(_('After Filter: %i') %
@@ -346,7 +348,7 @@ class MainWindow(wx.Frame):
         self.displayedCache = newCache
 
         self.pushStatus(_('Loading cache: ') + newCache)
-        newCacheObj = self.db.getCacheByCode(newCache)
+        newCacheObj = self.xmldb.getCacheByCode(newCache)
         if newCacheObj != None:
             self.displayCache = newCacheObj
         if self.displayCache == None:
@@ -378,16 +380,16 @@ class MainWindow(wx.Frame):
         preferences.
         '''
         if gps:
-            conf = self.conf.exGps
+            geocacher.config().exportType = "gps"
         else:
-            conf = self.conf.exFile
-        if conf.filterSel or False:
+            geocacher.config().exportType = "file"
+        if geocacher.config().exportFilterSel:
             caches = self.cacheGrid.GetSelectedCaches()
-        elif conf.filterDisp or False:
+        elif geocacher.config().exportFilterDisp:
             caches = self.cacheGrid.GetDisplayedCaches()
         else:
-            caches = self.db.getCacheList()
-        if conf.filterUser or False:
+            caches = self.xmldb.getCacheList()
+        if geocacher.config().exportFilterUser:
             filteredCaches = []
             for cache in caches:
                 if cache.user_flag:
@@ -412,7 +414,7 @@ class MainWindow(wx.Frame):
         '''
         for i in range(0,self.selLocation.GetCount()): #@UnusedVariable
             self.selLocation.Delete(0)
-        for location in self.db.getLocationNameList():
+        for location in self.xmldb.getLocationNameList():
             self.selLocation.Append(location)
 
     def updateCurrentLocation(self, name):
@@ -425,7 +427,7 @@ class MainWindow(wx.Frame):
         '''
         self.pushStatus(_('Updating home location to: %s') % name)
         self.selLocation.SetValue(name)
-        self.conf.common.currentLoc = name
+        geocacher.config().currentLocation = name
         self.cacheGrid.UpdateLocation()
         self.updateStatus()
         self.popStatus()
@@ -451,13 +453,14 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         HelpAbout = wx.AboutDialogInfo()
-        HelpAbout.SetName('Geocacher')
+        HelpAbout.SetName(geocacher.appname)
         HelpAbout.SetVersion(__version__)
-        HelpAbout.SetCopyright(_('Copyright 2009 Rob Wallace'))
-        HelpAbout.AddDeveloper('Rob Wallace')
-        HelpAbout.SetLicense(open("data/gpl.txt").read())
-        HelpAbout.SetWebSite('http://example.com')
-        HelpAbout.SetDescription(_("Application for Geocaching waypoint management"))
+        HelpAbout.SetCopyright(geocacher.appcopyright)
+        for developer in geocacher.developers:
+            HelpAbout.AddDeveloper(developer)
+        HelpAbout.SetLicense(geocacher.getLicense())
+        HelpAbout.SetWebSite(geocacher.website)
+        HelpAbout.SetDescription(geocacher.appdescription)
         wx.AboutBox(HelpAbout)
 
     def OnInspector(self, event=None):
@@ -482,10 +485,10 @@ class MainWindow(wx.Frame):
                    "Compressed GPX File (*.zip)|*.zip|"\
                    "All files (*.*)|*.*"
 
-        if os.path.isdir(self.conf.load.lastFolder):
-            dir = self.conf.load.lastFolder
+        if os.path.isdir(geocacher.config().importFolder):
+            dir = geocacher.config().importFolder
         else:
-            dir = os.getcwd()
+            dir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
 
         dlg = wx.FileDialog(
             self, message=_("Choose a file to load"),
@@ -494,40 +497,40 @@ class MainWindow(wx.Frame):
             wildcard=wildcard,
             style=wx.OPEN | wx.MULTIPLE
             )
-        if os.path.isfile(self.conf.load.lastFile):
-            dlg.SetPath(self.conf.load.lastFile)
-        ext = os.path.splitext(self.conf.load.lastFile)[1]
-        if ext != '':
-            if ext == '.gpx':
-                dlg.SetFilterIndex(0)
-            elif ext == '.loc':
-                dlg.SetFilterIndex(1)
-            elif ext == '.zip':
-                dlg.SetFilterIndex(2)
+        if os.path.isfile(geocacher.config().importFile):
+            dlg.SetPath(geocacher.config().importFile)
+            ext = os.path.splitext(geocacher.config().importFile)[1]
+            if ext != '':
+                if ext == '.gpx':
+                    dlg.SetFilterIndex(0)
+                elif ext == '.loc':
+                    dlg.SetFilterIndex(1)
+                elif ext == '.zip':
+                    dlg.SetFilterIndex(2)
 
         if dlg.ShowModal() == wx.ID_OK:
-            self.conf.load.lastFolder = dlg.GetDirectory()
+            geocacher.config().importFolder = dlg.GetDirectory()
             paths = dlg.GetPaths()
-            self.conf.load.lastFile = paths[0]
+            geocacher.config().importFile = paths[0]
             options = [_('Update'),_('Replace')]
             dlg = wx.SingleChoiceDialog(self, _('Load option'),
                                         _('Type of file load'),
                                         choices=options,
                                         style=wx.CHOICEDLG_STYLE)
-            if self.conf.load.mode == 'replace':
+            if geocacher.config().importMode == 'replace':
                 dlg.SetSelection(1)
             else:
                 dlg.SetSelection(0)
             if dlg.ShowModal() == wx.ID_OK:
                 if dlg.GetSelection() == 0:
-                    self.conf.load.mode = 'update'
+                    geocacher.config().importMode = 'update'
                 else:
-                    self.conf.load.mode = 'replace'
+                    geocacher.config().importMode = 'replace'
 
                 changes = {}
                 for path in paths:
                     self.pushStatus(_('Loading caches from file: %s')% path)
-                    changes[path] = self.LoadFile(path, self.conf.load.mode)
+                    changes[path] = self.LoadFile(path, geocacher.config().importMode)
                     self.popStatus()
                 self.displayImportedChanges(changes)
                 self.cacheGrid.ReloadCaches()
@@ -542,11 +545,11 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_('Loading caches from folder'))
-        if os.path.isdir(self.conf.load.lastFolder):
-            dir = self.conf.load.lastFolder
+        if os.path.isdir(geocacher.config().importFolder):
+            dir = geocacher.config().importFolder
 
         else:
-            dir = os.getcwd()
+            dir = os.getcwd()#####
 
         dlg = wx.DirDialog(self, _('Select Folder to import waypoint files from'),
                                  defaultPath=dir,
@@ -555,22 +558,22 @@ class MainWindow(wx.Frame):
 
         if dlg.ShowModal() == wx.ID_OK:
             dir = dlg.GetPath()
-            self.conf.load.lastFolder = dir
+            geocacher.config().importFolder = dir
 
             options = [_('Update'),_('Replace')]
             dlg = wx.SingleChoiceDialog(self, _('Load option'),
                                         _('Type of file load'),
                                         choices=options,
                                         style=wx.CHOICEDLG_STYLE)
-            if self.conf.load.mode == 'replace':
+            if geocacher.config().importMode == 'replace':
                 dlg.SetSelection(1)
             else:
                 dlg.SetSelection(0)
             if dlg.ShowModal() == wx.ID_OK:
                 if dlg.GetSelection() == 0:
-                    self.conf.load.mode = 'update'
+                    geocacher.config().importMode = 'update'
                 else:
-                    self.conf.load.mode = 'replace'
+                    geocacher.config().importMode = 'replace'
 
                 changes = {}
                 addWptFiles = []
@@ -579,11 +582,11 @@ class MainWindow(wx.Frame):
                         addWptFiles.append(file)
                     else:
                         self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
-                        changes[file] = self.LoadFile(file, self.conf.load.mode)
+                        changes[file] = self.LoadFile(file, geocacher.config().importMode)
                         self.popStatus()
                 for file in addWptFiles:
                     self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
-                    changes[file] = self.LoadFile(file, self.conf.load.mode)
+                    changes[file] = self.LoadFile(file, geocacher.config().importMode)
                     self.popStatus()
                 self.displayImportedChanges(changes)
                 self.cacheGrid.ReloadCaches()
@@ -600,15 +603,15 @@ class MainWindow(wx.Frame):
         '''
         ext = os.path.splitext(path)[1]
         if ext == '.gpx':
-            sucess,changes= gpxLoad(path,self.db,mode=mode,
-                                    userId=self.conf.gc.userId,
-                                    userName=self.conf.gc.userName)
+            sucess,changes= gpxLoad(path,self.xmldb,mode=mode,
+                                    userId=geocacher.config().GCUserID,
+                                    userName=geocacher.config().GCUserName)
         elif ext == '.loc':
-            sucess,changes = locLoad(path,self.db,mode=mode)
+            sucess,changes = locLoad(path,self.xmldb,mode=mode)
         elif ext == '.zip':
-            sucess,changes = zipLoad(path,self.db,mode=mode,
-                                     userId=self.conf.gc.userId,
-                                     userName=self.conf.gc.userName)
+            sucess,changes = zipLoad(path,self.xmldb,mode=mode,
+                                    userId=geocacher.config().GCUserID,
+                                    userName=geocacher.config().GCUserName)
         if sucess == False:
             wx.MessageDialog(self,
                              _('Could not import "%s" due to an error accessing the file') % path,
@@ -623,7 +626,7 @@ class MainWindow(wx.Frame):
         Argument
         changes: the changes that have been made to the DB
         '''
-        dlg = CacheChanges(self, wx.ID_ANY, changes, self.db)
+        dlg = CacheChanges(self, wx.ID_ANY, changes, self.xmldb)
         dlg.ShowModal()
         dlg.Destroy()
 
@@ -636,7 +639,7 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_('Exporting caches to file'))
-        opts = ExportOptions(self, self.conf, False)
+        opts = ExportOptions(self, False)
         if opts.ShowModal() == wx.ID_OK:
             opts.SaveConf()
             path = opts.GetPath()
@@ -677,7 +680,7 @@ class MainWindow(wx.Frame):
                                     maxLogs    = opts.GetMaxLogs(),
                                     logOrderDesc = opts.GetLogsDecendingSort())
                 elif ext == '.zip':
-                    self.conf.export.sepAddWpts = opts.GetSepAddWpts()
+                    geocacher.config().exportSepAddWpts = opts.GetSepAddWpts()
                     ret = zipExport(path, caches,
                                     full       = opts.GetType() == 'full',
                                     simple     = opts.GetType() == 'simple',
@@ -714,7 +717,7 @@ class MainWindow(wx.Frame):
         wildcard = "Zip (*.zip)|*.zip|"\
                    "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
-        lastFile = self.conf.backupPath or ''
+        lastFile = geocacher.config().dbBackupFile
         lastDir = os.path.dirname(lastFile)
         if not os.path.isfile(lastFile):
             lastFile = ''
@@ -744,14 +747,14 @@ class MainWindow(wx.Frame):
                     return
                 question.Destroy()
 
-            self.conf.backupPath = path
+            geocacher.config().dbBackupFile = path
             zip = os.path.splitext(path)[1] == '.zip'
             if zip:
                 realPath = path
                 tempDir = tempfile.mkdtemp()
                 path = os.path.join(tempDir,'backup.xml')
                 archive = zipfile.ZipFile(realPath, mode='w', compression=zipfile.ZIP_DEFLATED)
-            self.db.backup(path)
+            self.xmldb.backup(path)
             if zip:
                 archive.write(path, os.path.basename(path).encode("utf_8"))
                 archive.close()
@@ -771,7 +774,7 @@ class MainWindow(wx.Frame):
         wildcard = "Zip (*.zip)|*.zip|"\
                    "XML (*.xml)|*.xml|"\
                    "Any Type (*.*)|*.*|"
-        lastFile = self.conf.backupPath or ''
+        lastFile = geocacher.config().dbBackupFile
         lastDir = os.path.dirname(lastFile)
         if not os.path.isfile(lastFile):
             lastFile = ''
@@ -795,7 +798,7 @@ class MainWindow(wx.Frame):
                            style=wx.YES_NO|wx.ICON_WARNING
                            )
             if question.ShowModal() == wx.ID_YES:
-                self.conf.backupPath = path
+                geocacher.config().dbBackupFile = path
                 zip = os.path.splitext(path)[1] == '.zip'
                 if zip:
                     tempDir = tempfile.mkdtemp()
@@ -808,7 +811,7 @@ class MainWindow(wx.Frame):
                         error = True
                     error = error or not os.path.isfile(path)
                 if not error:
-                    error = not self.db.restore(path)
+                    error = not self.xmldb.restore(path)
                 if zip:
                     shutil.rmtree(tempDir)
             question.Destroy()
@@ -833,12 +836,12 @@ class MainWindow(wx.Frame):
         Keyword Argument
         event: The event causing this function to be called.
         '''
-        dlg = Preferences(self, wx.ID_ANY, self.conf, self.db)
+        dlg = Preferences(self, wx.ID_ANY, self.xmldb)
         if dlg.ShowModal() == wx.ID_OK:
             self.cacheGrid.UpdateUserDataLabels()
             self.updateLocations()
             self.updateCurrentLocation(
-                self.conf.common.currentLoc or 'Default')
+                geocacher.config().currentLocation)
         dlg.Destroy()
 
     def ShowHideFilterBar(self, show):
@@ -864,7 +867,7 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         show = self.miShowFilter.IsChecked()
-        self.conf.common.showFilter = show
+        geocacher.config().showFilter = show
         self.ShowHideFilterBar(show)
 
     def OnGpsUpload(self, event=None):
@@ -872,7 +875,7 @@ class MainWindow(wx.Frame):
         Uploads caches to GPS
         '''
         self.pushStatus(_('Uploading caches to GPS'))
-        opts = ExportOptions(self, self.conf, True)
+        opts = ExportOptions(self, True)
         if opts.ShowModal() == wx.ID_OK:
             opts.SaveConf()
             caches = self.selectCaches(True)
@@ -894,8 +897,8 @@ class MainWindow(wx.Frame):
                             corMark    = opts.GetAdjWptSufix(),
                             maxLogs    = opts.GetMaxLogs(),
                             logOrderDesc = opts.GetLogsDecendingSort()):
-                    gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
-                                    port=self.conf.gps.connection or 'usb:')
+                    gpsCom = GpsCom(gps=geocacher.config().gpsType,
+                                    port=geocacher.config().gpsConnection)
                     ok, message = gpsCom.gpxToGps(tmpFile)
                     if not ok:
                         self.GpsError( message)
@@ -910,8 +913,8 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_('Loading new loaction form GPS'))
-        gpsCom = GpsCom(gps=self.conf.gps.type or 'garmin',
-                        port=self.conf.gps.connection or 'usb:')
+        gpsCom = GpsCom(gps=geocacher.config().gpsType,
+                        port=geocacher.config().gpsConnection)
         ok, lat, lon, message = gpsCom.getCurrentPos()
         if ok:
             self.NewLocation(lat, lon, _('the GPS'), _('GPS Point'))
@@ -945,21 +948,21 @@ class MainWindow(wx.Frame):
             return
         name = dlg.GetValue()
         dlg.Destroy()
-        if name in self.db.getLocationNameList():
+        if name in self.xmldb.getLocationNameList():
             dlg = wx.MessageDialog(self,
                 message=_('Are you sure you want to replace the existing laocation named ')+name,
                 caption=_('Replace Existing Location'),
                 style=wx.YES_NO|wx.ICON_QUESTION)
             if dlg.ShowModal() == wx.ID_YES:
                 dlg.Destroy()
-                location = self.db.getLocationByName(name)
+                location = self.xmldb.getLocationByName(name)
                 location.lat = lat
                 location.lon = lon
             else:
                 dlg.Destroy()
                 return
         else:
-            self.db.addLocation(name, lat, lon)
+            self.xmldb.addLocation(name, lat, lon)
         self.updateLocations()
         self.updateCurrentLocation(name)
 
@@ -980,7 +983,7 @@ class MainWindow(wx.Frame):
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
-        self.conf.filter.archived = state
+        geocacher.config().filterArchived = state
         self.miHideArchived.Check(state)
         self.cbHideArchived.SetValue(state)
         self.updateFilter()
@@ -1013,7 +1016,7 @@ class MainWindow(wx.Frame):
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
-        self.conf.filter.disabled = state
+        geocacher.config().filterDisabled = state
         self.miHideDisabled.Check(state)
         self.cbHideDisabled.SetValue(state)
         self.updateFilter()
@@ -1046,7 +1049,7 @@ class MainWindow(wx.Frame):
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
-        self.conf.filter.found = state
+        geocacher.config().filterFound = state
         self.miHideFound.Check(state)
         self.cbHideFound.SetValue(state)
         self.updateFilter()
@@ -1079,7 +1082,7 @@ class MainWindow(wx.Frame):
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
-        self.conf.filter.mine = state
+        geocacher.config().filterMine = state
         self.miHideMine.Check(state)
         self.cbHideMine.SetValue(state)
         self.updateFilter()
@@ -1112,7 +1115,7 @@ class MainWindow(wx.Frame):
         Argument
         state: The state of the checkbox causing the function to be called.
         '''
-        self.conf.filter.overDist = state
+        geocacher.config().filterOverDist = state
         self.miHideOverDist.Check(state)
         self.cbHideOverDist.SetValue(state)
         self.updateFilter()
@@ -1148,7 +1151,7 @@ class MainWindow(wx.Frame):
         dlg = wx.TextEntryDialog(self,
             _('Please enter the maximum distance from your home location to display caches from'),
             caption=_('Maximum Distance'),
-            defaultValue=str(self.conf.filter.maxDistVal or 50.0),
+            defaultValue=str(geocacher.config().filterMaxDist),
             style=wx.OK | wx.CANCEL)
         bad = True
         while bad:
@@ -1168,7 +1171,7 @@ class MainWindow(wx.Frame):
                 bad = False
         dlg.Destroy()
         if response:
-            self.conf.filter.maxDistVal = dist
+            geocacher.config().filterMaxDist = dist
             self.tbMaxDistance.SetValue(str(dist))
             self.updateFilter()
     def OnViewStats(self, event=None):
@@ -1179,7 +1182,7 @@ class MainWindow(wx.Frame):
         Keyword Argument
         event: The event causing this function to be called.
         '''
-        stats = cacheStats(self.db, self.conf)
+        stats = cacheStats(self.xmldb)
         dlg = ViewHtml(self, wx.ID_ANY,stats.html(), 'Geocaching Stats')
         dlg.ShowModal()
 
@@ -1191,14 +1194,14 @@ class MainWindow(wx.Frame):
         Keyword Argument
         event: The event causing this function to be called.
         '''
-        (self.conf.common.mainWidth,self.conf.common.mainHeight) = self.GetSizeTuple()
-        self.conf.common.mainSplit = self.splitter.GetSashPosition()
-        self.conf.common.cacheCols = self.cacheGrid.GetCols()
-        (self.conf.common.sortCol,self.conf.common.sortDescending) = self.cacheGrid.GetSort()
+        geocacher.config().mainWinSize = self.GetSize()
+        geocacher.config().detailSplit = self.splitter.GetSashPosition()
+        geocacher.config().cacheColumnOrder = self.cacheGrid.GetCols()
+        (geocacher.config().cacheSortColumn,
+         geocacher.config().cacheSortDescend) = self.cacheGrid.GetSort()
         if self.displayCache != None:
-            self.conf.common.dispCache = self.displayCache.code
+            geocacher.config().displayedCache = self.displayCache.code
         else:
-            self.conf.common.dispCache = ''
-        self.conf.save()
-        self.db.save()
+            geocacher.config().displayedCache = ''
+        self.xmldb.save()
         self.Destroy()

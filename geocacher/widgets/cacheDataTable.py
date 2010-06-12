@@ -8,6 +8,8 @@ from datetime import datetime
 import wx
 import wx.grid             as  Grid
 
+import geocacher
+
 from geocacher.libs.common import dateCmp
 from geocacher.libs.latlon import distance, cardinalBearing
 
@@ -21,21 +23,17 @@ class CacheDataTable(Grid.PyGridTableBase):
     '''
     Provides the Grid Table implementation for the cache data display grid
     '''
-    def __init__(self, conf, db):
+    def __init__(self, xmldb):
         '''
         Initialisation function for the cache grid.
 
         Arguments
-        conf: configuration object for the program
-        db:   database containing the cache information
+        xmldb:  The xml Database for caches (transitional)
         '''
-        self.conf = conf
-        self.db = db
+        self.xmldb = xmldb
         Grid.PyGridTableBase.__init__(self)
 
-        self.colNames = self.conf.common.cacheCols or \
-                           ['code','id','lat','lon','name','found','type',
-                            'size','distance','bearing']
+        self.colNames = geocacher.config().cacheColumnOrder
 
         self.colLabels = {
             'code'        :_('Code'),
@@ -138,8 +136,8 @@ class CacheDataTable(Grid.PyGridTableBase):
             'distance'    :DistRenderer,
             'bearing'     :CacheBearingRenderer}
 
-        self._sortCol = self.conf.common.sortCol or 'code'
-        self._sortDescend = self.conf.common.sortDescending or False
+        self._sortCol = geocacher.config().cacheSortColumn
+        self._sortDescend = geocacher.config().cacheSortDescend
 
         self.ReloadCaches()
 
@@ -151,7 +149,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         Reloads all of the caches in the table from the database.
         '''
         self.data = []
-        for cache in self.db.getCacheList():
+        for cache in self.xmldb.getCacheList():
             self.__addRow(cache)
         self.DoSort()
 
@@ -239,7 +237,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         Argument
         cache: Cache to perform calculations on.
         '''
-        location = self.db.getLocationByName(self.conf.common.currentLoc or 'Default')
+        location = self.xmldb.getLocationByName(geocacher.config().currentLocation)
         hLat = location.lat
         hLon = location.lon
 
@@ -254,24 +252,24 @@ class CacheDataTable(Grid.PyGridTableBase):
         Argument
         cache: cache to evaluate filter for.
         '''
-        mine = cache.owner == self.conf.gc.userName or\
-               cache.owner_id == self.conf.gc.userId
+        mine = cache.owner == geocacher.config().GCUserName or\
+               cache.owner_id == geocacher.config().GCUserID
         dist, cBear = self.__calcDistBearing(cache)
-        return (bool(self.conf.filter.archived) and cache.archived) or\
-               (bool(self.conf.filter.disabled) and (not cache.available)) or\
-               (bool(self.conf.filter.found) and cache.found) or\
-               (bool(self.conf.filter.mine) and mine)or\
-               ((self.conf.filter.overDist) and ((self.conf.filter.maxDistVal or 50.0) <= dist))
+        return (geocacher.config().filterArchived and cache.archived) or\
+               (geocacher.config().filterDisabled and (not cache.available)) or\
+               (geocacher.config().filterFound and cache.found) or\
+               (geocacher.config().filterFound and mine)or\
+               (geocacher.config().filterOverDist and geocacher.config().filterMaxDist <= dist)
 
     def UpdateLocation(self):
         '''
         Updates the location based information in all cache rows.
         '''
-        if self.conf.filter.overDist:
+        if geocacher.config().filterOverDist:
             self.ReloadCaches()
         else:
             for row in self.data:
-                row['distance'], row['bearing'] = self.__calcDistBearing(self.db.getCacheByCode(row['code']))
+                row['distance'], row['bearing'] = self.__calcDistBearing(self.xmldb.getCacheByCode(row['code']))
             if self._sortCol in ['distance','bearing']:
                 self.DoSort()
 
@@ -279,14 +277,10 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         Updates the user data column labels from the program configuration.
         '''
-        self.colLabels['user_data1'] = \
-            self.conf.common.userData1 or _('User Data 1')
-        self.colLabels['user_data2'] = \
-            self.conf.common.userData2 or _('User Data 2')
-        self.colLabels['user_data3'] = \
-            self.conf.common.userData3 or _('User Data 3')
-        self.colLabels['user_data4'] = \
-            self.conf.common.userData4 or _('User Data 4')
+        self.colLabels['user_data1'] = geocacher.config().userData1Label
+        self.colLabels['user_data2'] = geocacher.config().userData1Label
+        self.colLabels['user_data3'] = geocacher.config().userData1Label
+        self.colLabels['user_data4'] = geocacher.config().userData1Label
 
     def GetNumberRows(self):
         '''
@@ -383,7 +377,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         Argument
         row: Row to get the cache object for.
         '''
-        return self.db.getCacheByCode(self.GetRowCode(row))
+        return self.xmldb.getCacheByCode(self.GetRowCode(row))
 
     def GetRowCaches(self, rows):
         '''
@@ -405,7 +399,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         caches = []
         for row in self.data:
-            caches.append(self.db.getCacheByCode(row['code']))
+            caches.append(self.xmldb.getCacheByCode(row['code']))
         return caches
 
     def GetRowLabelValue(self, row):
@@ -616,7 +610,7 @@ class CacheDataTable(Grid.PyGridTableBase):
                                style=wx.YES_NO|wx.ICON_QUESTION)
         if dlg.ShowModal() == wx.ID_YES:
             for row in rows:
-                self.db.getCacheByCode(self.data[row-deleteCount]['code']).delete()
+                self.xmldb.getCacheByCode(self.data[row-deleteCount]['code']).delete()
                 self.data.pop(row-deleteCount)
                 # we need to advance the delete count
                 # to make sure we delete the right rows
@@ -692,7 +686,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         for colName in self.colNames:
             attr = Grid.GridCellAttr()
             if colName in self.renderers:
-                renderer = self.renderers[colName](self, self.conf)
+                renderer = self.renderers[colName](self)
 
                 if renderer.colSize:
                     grid.SetColSize(colNum, renderer.colSize)

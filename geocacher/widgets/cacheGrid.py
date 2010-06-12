@@ -22,19 +22,17 @@ class CacheGrid(Grid.Grid):
     '''
     Grid to display the cache information.
     '''
-    def __init__(self, parent, conf, db):
+    def __init__(self, parent, db):
         '''
         Initialisation function for the grid
 
         Argumnets
         parent:  Parent window for the grid.
-        conf:    Program configuration object
         db:      Database to build table data form.
         '''
-        self.conf = conf
         Grid.Grid.__init__(self, parent, -1)
 
-        self._table = CacheDataTable(conf, db)
+        self._table = CacheDataTable(db)
 
         # The second parameter means that the grid is to take ownership of the
         # table and will destroy it when done.  Otherwise you would need to keep

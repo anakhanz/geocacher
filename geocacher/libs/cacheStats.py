@@ -25,7 +25,9 @@ MONTHS = [_('January'),
 
 POSSIBLE_STARS = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0]
 
-from geocacher.libs.db import CACHE_CONTAINERS,CACHE_TYPES
+import geocacher
+
+from geocacher.libs.xmldb import CACHE_CONTAINERS,CACHE_TYPES
 
 
 class cacheStats(object):
@@ -34,19 +36,16 @@ class cacheStats(object):
     '''
 
 
-    def __init__(self, db, conf):
+    def __init__(self, xmldb):
         '''
         Initialises the cacheStats object based on the given database and
         configuration objects.
 
         Arguments
-        conf: configuration object for the program
-        db:   database containing the cache information
+        xmldb:   database containing the cache information
         '''
 
-        self.conf = conf
-
-        foundCaches = db.getFoundCacheList()
+        foundCaches = xmldb.getFoundCacheList()
 
         # initialise data tables
         self.difficultyTerrain = {}
@@ -122,7 +121,7 @@ class cacheStats(object):
         # Build the actual HTML
         html = '<html><head></head>\n'
         html += '<body>\n'
-        html +='<h1>Statistics for %s</h1>' % self.conf.gc.userName or ''
+        html +='<h1>Statistics for %s</h1>' % geocacher.config().GCUserName
         html += '<p>Total caches %d (Distinct %d)</p>\n' % (self.total,self.distinct)
         html += '<h2>Chaching Cronology</h2>\n'
         html += '<p>First Cache found on %s</p>\n' % self.firstDate.strftime('%x')

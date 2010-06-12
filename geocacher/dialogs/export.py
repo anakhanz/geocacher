@@ -4,22 +4,23 @@ import os.path
 import wx
 import wx.xrc as Xrc
 
+import geocacher
+
 class ExportOptions(wx.Dialog):
     '''Get the export options from the user'''
-    def __init__(self,parent,conf,gps=False):
+    def __init__(self,parent,gps=False):
         '''
         Initialises the dialog from the supplied information
 
         Arguments:
         parent: The parent window
-        conf:   The configuration object
         Keyword Argument
         gps:    True if the dialog is for exporting to GPS rather than file
         '''
         if gps:
-            self.conf = conf.exGps
+            geocacher.config().exportType = "gps"
         else:
-            self.conf = conf.exFile
+            geocacher.config().exportType = "file"
         self.gps = gps
         self.gpx = False
         self.zip = False
@@ -68,9 +69,9 @@ class ExportOptions(wx.Dialog):
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleAdjWpts, self.adjWpts)
         self.Bind(wx.EVT_CHECKBOX, self.OnToggleLimitLogs, self.limitLogs)
 
-        self.displayed.SetValue(self.conf.filterDisp or False)
-        self.selected.SetValue(self.conf.filterSel or False)
-        self.userFlag.SetValue(self.conf.filterUser or False)
+        self.displayed.SetValue(geocacher.config().exportFilterDisp)
+        self.selected.SetValue(geocacher.config().exportFilterSel)
+        self.userFlag.SetValue(geocacher.config().exportFilterUser)
 
         if gps:
             self.path.Disable()
@@ -79,9 +80,9 @@ class ExportOptions(wx.Dialog):
             self.gpx = True
         else:
             self.gpsLabel.Hide()
-            if os.path.isfile(self.conf.lastFile):
-                self.path.SetPath(self.conf.lastFile)
-                ext = os.path.splitext(self.conf.lastFile)[1]
+            if os.path.isfile(geocacher.config().exportFile):
+                self.path.SetPath(geocacher.config().exportFile)
+                ext = os.path.splitext(geocacher.config().exportFile)[1]
                 if ext == '.zip':
                     self.zip = True
                     self.gpx = True
@@ -96,38 +97,38 @@ class ExportOptions(wx.Dialog):
         self.sepAddWpts.Disable()
         if self.gpx:
             self.exType.Enable()
-            if (self.conf.exType or 'simple') == self.types[0]:
+            if (geocacher.config().exportScope) == self.types[0]:
                 self.exType.SetSelection(0)
-            elif (self.conf.exType or 'simple') == self.types[1]:
+            elif (geocacher.config().exportScope) == self.types[1]:
                 self.exType.SetSelection(1)
                 if self.zip:
                     self.sepAddWpts.Enable()
-                    self.sepAddWpts.SetValue(self.conf.sepAddWpts or False)
+                    self.sepAddWpts.SetValue(geocacher.config().exportSepAddWpts)
             else:
                 self.exType.SetSelection(2)
                 self.gc.Enable()
-                self.gc.SetValue(self.conf.gc or False)
+                self.gc.SetValue(geocacher.config().exportGc)
                 if self.gc.GetValue():
                     self.logs.Enable()
-                    self.logs.SetValue(self.conf.logs or False)
+                    self.logs.SetValue(geocacher.config().exportLogs)
                     self.tbs.Enable()
-                    self.tbs.SetValue(self.conf.tbs or False)
+                    self.tbs.SetValue(geocacher.config().exportTbs)
                 self.addWpts.Enable()
-                self.addWpts.SetValue(self.conf.addWpts or False)
+                self.addWpts.SetValue(geocacher.config().exportAddWpts)
                 if self.zip and self.addWpts.GetValue():
                     self.sepAddWpts.Enable()
-                    self.sepAddWpts.SetValue(self.conf.sepAddWpts or False)
+                    self.sepAddWpts.SetValue(geocacher.config().exportSepAddWpts)
 
-        self.adjWpts.SetValue(self.conf.adjWpts or False)
-        self.adjWptSufix.SetValue(self.conf.adjWptSufix or '')
+        self.adjWpts.SetValue(geocacher.config().exportAdjWpts)
+        self.adjWptSufix.SetValue(geocacher.config().exportAdjWptSufix)
         if not self.adjWpts.GetValue():
             self.adjWptSufix.Disable()
 
-        self.limitLogs.SetValue(self.conf.limitLogs or False)
-        self.maxLogs.SetValue(self.conf.maxLogs or 4)
+        self.limitLogs.SetValue(geocacher.config().exportLimitLogs)
+        self.maxLogs.SetValue(geocacher.config().exportMaxLogs)
         if not self.limitLogs.GetValue():
             self.maxLogs.Disable()
-        self.logOrder.SetSelection(self.conf.logOrder or 0)
+        self.logOrder.SetSelection(geocacher.config().exportLogOrder)
 
     def OnPathChanged(self, event=None):
         '''
@@ -329,24 +330,24 @@ class ExportOptions(wx.Dialog):
         '''
         Saves the values form the dialog to the configuration structure
         '''
-        self.conf.filterDisp = self.displayed.GetValue()
-        self.conf.filterSel = self.selected.GetValue()
-        self.conf.filterUser = self.userFlag.GetValue()
+        geocacher.config().exportFilterDisp = self.displayed.GetValue()
+        geocacher.config().exportFilterSel = self.selected.GetValue()
+        geocacher.config().exportFilterUser = self.userFlag.GetValue()
 
         if not self.gps:
-            self.conf.lastFile = self.path.GetPath()
+            geocacher.config().exportFile = self.path.GetPath()
 
-        self.conf.exType = self.types[self.exType.GetSelection()]
+        geocacher.config().exportScope = self.types[self.exType.GetSelection()]
 
-        self.conf.gc = self.gc.GetValue()
-        self.conf.logs = self.logs.GetValue()
-        self.conf.tbs = self.tbs.GetValue()
+        geocacher.config().exportGc = self.gc.GetValue()
+        geocacher.config().exportLogs = self.logs.GetValue()
+        geocacher.config().exportTbs = self.tbs.GetValue()
 
-        self.conf.addWpts = self.addWpts.GetValue()
-        self.conf.sepAddWpts = self.sepAddWpts.GetValue()
+        geocacher.config().exportAddWpts = self.addWpts.GetValue()
+        geocacher.config().exportSepAddWpts = self.sepAddWpts.GetValue()
 
-        self.conf.adjWpts = self.adjWpts.GetValue()
-        self.conf.adjWptSufix = self.adjWptSufix.GetValue()
-        self.conf.limitLogs = self.limitLogs.GetValue()
-        self.conf.maxLogs = self.maxLogs.GetValue()
-        self.conf.logOrder = self.logOrder.GetSelection()
+        geocacher.config().exportAdjWpts = self.adjWpts.GetValue()
+        geocacher.config().exportAdjWptSufix = self.adjWptSufix.GetValue()
+        geocacher.config().exportLimitLogs = self.limitLogs.GetValue()
+        geocacher.config().exportMaxLogs = self.maxLogs.GetValue()
+        geocacher.config().exportLogOrder = self.logOrder.GetSelection()

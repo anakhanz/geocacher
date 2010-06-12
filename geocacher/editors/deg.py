@@ -3,12 +3,13 @@
 import wx
 import wx.grid             as  Grid
 
+import geocacher
+
 from geocacher.libs.latlon import degToStr, strToDeg
 
 class DegEditor(Grid.PyGridCellEditor):
-    def __init__(self, conf, mode = 'pure'):
+    def __init__(self, mode = 'pure'):
         Grid.PyGridCellEditor.__init__(self)
-        self.conf = conf
         self.mode = mode
 
     def Create(self, parent, id, evtHandler):
@@ -27,7 +28,7 @@ class DegEditor(Grid.PyGridCellEditor):
 
     def BeginEdit(self, row, col, grid):
         self.startValue = grid.GetTable().GetValue(row, col)
-        format = self.conf.common.coordFmt or 'hdd mm.mmm'
+        format = geocacher.config().coordinateFormat
         self._tc.SetValue(degToStr(self.startValue, format, self.mode))
         self._tc.SetInsertionPointEnd()
         self._tc.SetFocus()
@@ -49,7 +50,7 @@ class DegEditor(Grid.PyGridCellEditor):
         self._tc.SetInsertionPointEnd()
 
     def Clone(self):
-        return DegEditor(self.conf, self.mode)
+        return DegEditor(self.mode)
 
     def StartingKey(self, evt):
         self.OnChar(evt)
@@ -58,10 +59,10 @@ class DegEditor(Grid.PyGridCellEditor):
 
 class LatEditor(DegEditor):
     '''Editor for cells containing Latitudes (subclass of DegEditor)'''
-    def __init__(self, conf):
-        DegEditor.__init__(self, conf, 'lat')
+    def __init__(self):
+        DegEditor.__init__(self, 'lat')
 
 class LonEditor(DegEditor):
     '''Editor for cells containing Longitudes (subclass of DegEditor)'''
-    def __init__(self, conf):
-        DegEditor.__init__(self, conf, 'lon')
+    def __init__(self):
+        DegEditor.__init__(self, 'lon')

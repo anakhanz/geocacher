@@ -2,15 +2,14 @@
 
 import wx
 import wx.grid             as  Grid
-
+import geocacher
 
 class DistRenderer(Grid.PyGridCellRenderer):
     '''
     Renderer for cells containing distances
     '''
-    def __init__(self, table, conf):
+    def __init__(self, table):
         Grid.PyGridCellRenderer.__init__(self)
-        self.conf = conf
         self.table = table
 
         self.colSize = None
@@ -18,7 +17,7 @@ class DistRenderer(Grid.PyGridCellRenderer):
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
-        if self.conf.common.miles or False:
+        if geocacher.config().imperialUnits:
             text = '%0.2f Mi' % (value * 0.621371192)
         else:
             text = '%0.2f km' % value
@@ -40,7 +39,7 @@ class DistRenderer(Grid.PyGridCellRenderer):
 
     def GetBestSize(self, grid, attr, dc, row, col):
         value = self.table.GetValue(row, col)
-        if self.conf.common.miles or False:
+        if geocacher.config().imperialUnits:
             text = '%0.2f Mi' % (value * 0.621371192)
         else:
             text = '%0.2f km' % value
@@ -48,4 +47,4 @@ class DistRenderer(Grid.PyGridCellRenderer):
         return wx.Size(w, h)
 
     def clone(self):
-        return DistRenderer(self.table, self.conf)
+        return DistRenderer(self.table)

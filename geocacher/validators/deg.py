@@ -4,17 +4,18 @@ import wx
 
 from geocacher.libs.latlon import degToStr, strToDeg
 
+import geocacher
+
 class DegValidator(wx.PyValidator):
-    def __init__(self, mode, conf, data, key, new=False):
+    def __init__(self, mode, data, key, new=False):
         wx.PyValidator.__init__(self)
         self.mode = mode
-        self.conf = conf
         self.data = data
         self.key = key
         self.new = new
 
     def Clone(self):
-        return DegValidator(self.mode, self.conf , self.data, self.key, self.new)
+        return DegValidator(self.mode, self.data, self.key, self.new)
 
     def Validate(self, win):
         textCtrl = self.GetWindow()
@@ -54,7 +55,7 @@ class DegValidator(wx.PyValidator):
         if self.new:
             textCtrl.SetValue('')
         else:
-            format = self.conf.common.coordFmt or 'hdd mm.mmm'
+            format = geocacher.config().coordinateFormat
             textCtrl.SetValue(degToStr(value, format, self.mode))
         return True
 
@@ -64,9 +65,9 @@ class DegValidator(wx.PyValidator):
         return True
 
 class LatValidator(DegValidator):
-    def __init__(self, conf, data, key, new=False):
-        DegValidator.__init__(self, 'lat', conf, data, key, new)
+    def __init__(self, data, key, new=False):
+        DegValidator.__init__(self, 'lat', data, key, new)
 
 class LonValidator(DegValidator):
-    def __init__(self, conf, data, key, new=False):
-        DegValidator.__init__(self, 'lon', conf, data, key, new)
+    def __init__(self, data, key, new=False):
+        DegValidator.__init__(self, 'lon', data, key, new)

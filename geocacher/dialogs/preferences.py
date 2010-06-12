@@ -5,6 +5,8 @@ import os
 import wx
 import wx.grid             as  Grid
 
+import geocacher
+
 from geocacher.editors.deg import LatEditor, LonEditor
 
 from geocacher.renderers.deg import LatRenderer, LonRenderer
@@ -17,17 +19,15 @@ class Preferences(wx.Dialog):
     '''
     Preferences Dialog
     '''
-    def __init__(self,parent,id,conf, db):
+    def __init__(self,parent,id, db):
         '''
         Creates the Preferences Frame.
 
         Arguments
         parent: The parent window.
         id:     ID to give this dialog.
-        conf:   Configuration object for the application.
         db:     Application database.
         '''
-        self.conf = conf
         self.db = db
         self.labelWidth = 150
         self.entryWidth = 200
@@ -83,7 +83,7 @@ class Preferences(wx.Dialog):
             size = (self.labelWidth,-1))
         displayGrid.Add(label, (0,0))
         self.dispUnitsChoices = [_('Kilometers'), _('Miles')]
-        if self.conf.common.miles or False:
+        if geocacher.config().imperialUnits:
             value = self.dispUnitsChoices[1]
         else:
             value = self.dispUnitsChoices[0]
@@ -97,7 +97,7 @@ class Preferences(wx.Dialog):
         label = wx.StaticText(panel,wx.ID_ANY,_('Coordinate Format'))
         displayGrid.Add(label, (1,0))
         self.dispCoordFmt = wx.ComboBox(panel, wx.ID_ANY,
-            value=self.conf.common.coordFmt or 'hdd mm.mmm',
+            value=geocacher.config().coordinateFormat,
             choices=['hdd.ddddd', 'hdd mm.mmm', 'hdd mm ss.s'],
             style=wx.CB_READONLY,
             size = (self.entryWidth,-1))
@@ -110,7 +110,7 @@ class Preferences(wx.Dialog):
             if os.path.isdir(os.path.join(os.path.curdir,'gfx',folder)):
                 iconThemes.append(folder)
             iconThemes.sort()
-        iconTheme = self.conf.common.iconTheme or 'default'
+        iconTheme = geocacher.config().iconTheme
         if iconTheme not in iconThemes:
             iconTheme = iconThemes[0]
         self.iconThemeSel = wx.ComboBox(panel, wx.ID_ANY,
@@ -127,28 +127,28 @@ class Preferences(wx.Dialog):
         label = wx.StaticText(panel,wx.ID_ANY,_('User Data 1'))
         displayGrid.Add(label, (4,0))
         self.dispUserData1 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData1 or label.GetLabel(),
+            geocacher.config().userData1Label,
             size = (self.entryWidth,-1))
         displayGrid.Add(self.dispUserData1, (4,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,_('User Data 2'))
         displayGrid.Add(label, (5,0))
         self.dispUserData2 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData2 or label.GetLabel(),
+            geocacher.config().userData2Label,
             size = (self.entryWidth,-1))
         displayGrid.Add(self.dispUserData2, (5,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,_('User Data 3'))
         displayGrid.Add(label, (6,0))
         self.dispUserData3 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData3 or label.GetLabel(),
+            geocacher.config().userData4Label,
             size = (self.entryWidth,-1))
         displayGrid.Add(self.dispUserData3, (6,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,_('User Data 4'))
         displayGrid.Add(label, (7,0))
         self.dispUserData4 = wx.TextCtrl(panel, wx.ID_ANY,
-            self.conf.common.userData4 or label.GetLabel(),
+            geocacher.config().userData4Label,
             size = (self.entryWidth,-1))
         displayGrid.Add(self.dispUserData4, (7,1))
 
@@ -160,15 +160,15 @@ class Preferences(wx.Dialog):
         Saves the preferences from the display preferences panel.
         '''
         if self.dispUnits.GetValue() == self.dispUnitsChoices[0]:
-            self.conf.common.miles = False
+            geocacher.config().imperialUnits = False
         else:
-            self.conf.common.miles = True
-        self.conf.common.coordFmt = self.dispCoordFmt.GetValue()
-        self.conf.common.iconTheme = self.iconThemeSel.GetValue()
-        self.conf.common.userData1 = self.dispUserData1.GetValue()
-        self.conf.common.userData2 = self.dispUserData2.GetValue()
-        self.conf.common.userData3 = self.dispUserData3.GetValue()
-        self.conf.common.userData4 = self.dispUserData4.GetValue()
+            geocacher.config().imperialUnits = True
+        geocacher.config().coordinateFormat = self.dispCoordFmt.GetValue()
+        geocacher.config().iconTheme = self.iconThemeSel.GetValue()
+        geocacher.config().userData1Label = self.dispUserData1.GetValue()
+        geocacher.config().userData2Label = self.dispUserData2.GetValue()
+        geocacher.config().userData3Label = self.dispUserData3.GetValue()
+        geocacher.config().userData4Label = self.dispUserData4.GetValue()
 
     def __buildGCPanel(self, parent):
         '''
@@ -184,14 +184,14 @@ class Preferences(wx.Dialog):
             size = (self.labelWidth,-1))
         gcGrid.Add(label, (0,0))
         self.gcUserName = wx.TextCtrl(panel,
-            wx.ID_ANY,self.conf.gc.userName or '',
+            wx.ID_ANY,geocacher.config().GCUserName,
             size = (self.entryWidth,-1))
         gcGrid.Add(self.gcUserName, (0,1))
 
         label = wx.StaticText(panel,wx.ID_ANY,_('User ID'))
         gcGrid.Add(label, (1,0))
         self.gcUserId = wx.TextCtrl(panel,wx.ID_ANY,
-            self.conf.gc.userId or '',
+            geocacher.config().GCUserID,
             size = (self.entryWidth,-1))
         gcGrid.Add(self.gcUserId, (1,1))
 
@@ -202,8 +202,8 @@ class Preferences(wx.Dialog):
         '''
         Saves the preferences from the geocaching.com preferences panel.
         '''
-        self.conf.gc.userName = self.gcUserName.GetValue()
-        self.conf.gc.userId = self.gcUserId.GetValue()
+        geocacher.config().GCUserName = self.gcUserName.GetValue()
+        geocacher.config().GCUserID = self.gcUserId.GetValue()
 
     def __buildGPSPanel(self,parent):
         '''
@@ -219,7 +219,7 @@ class Preferences(wx.Dialog):
             size = (self.labelWidth,-1))
         gpsGrid.Add(label, (0,0))
         self.gpsType = wx.ComboBox(panel, wx.ID_ANY,
-            value=self.conf.gps.type or 'garmin',
+            value=geocacher.config().gpsType,
             choices=['garmin'],
             style=wx.CB_SORT|wx.CB_READONLY,
             size = (self.entryWidth,-1))
@@ -228,7 +228,7 @@ class Preferences(wx.Dialog):
         label = wx.StaticText(panel,wx.ID_ANY,_('Port'))
         gpsGrid.Add(label, (1,0))
         self.gpsConnection = wx.ComboBox(panel, wx.ID_ANY,
-            value=self.conf.gps.connection or 'usb:',
+            value=geocacher.config().gpsConnection,
             choices=['usb:'],
             style=wx.CB_SORT,
             size = (self.entryWidth,-1))
@@ -242,8 +242,8 @@ class Preferences(wx.Dialog):
         '''
         Saves the preferences from the GPS preferences panel.
         '''
-        self.conf.gps.type = self.gpsType.GetValue()
-        self.conf.gps.connection = self.gpsConnection.GetValue()
+        geocacher.config().gpsType = self.gpsType.GetValue()
+        geocacher.config().gpsConnection = self.gpsConnection.GetValue()
 
     def __buildLocationsPanel(self, parent):
         '''
@@ -252,7 +252,7 @@ class Preferences(wx.Dialog):
         Argument
         parent: The parent window for this panel.
         '''
-        grid = LocationsGrid(parent, self.conf, self.db)
+        grid = LocationsGrid(parent, self.db)
         return grid
 
     def __saveLocationsConf(self):
@@ -280,8 +280,7 @@ class Preferences(wx.Dialog):
 
 
 class LocationsDataTable(Grid.PyGridTableBase):
-    def __init__(self, conf, db):
-        self.conf = conf
+    def __init__(self, db):
         self.db = db
         Grid.PyGridTableBase.__init__(self)
         self.colLabels = [_('Name'), _('Latitude'), _('Longitude')]
@@ -310,8 +309,8 @@ class LocationsDataTable(Grid.PyGridTableBase):
             if name not in newNames:
                 location = self.db.getLocationByName(name)
                 location.delete()
-        if (self.conf.common.currentLoc or 'Default') not in newNames:
-            self.conf.common.currentLoc = newNames[0]
+        if geocacher.config().currentLocation not in newNames:
+            geocacher.config().currentLocation = newNames[0]
 
     def DeleteRows(self, rows):
         """
@@ -442,7 +441,7 @@ class LocationsDataTable(Grid.PyGridTableBase):
         for col in range(len(self.colLabels)):
             attr = Grid.GridCellAttr()
             if self.renderers[col] != None:
-                renderer = self.renderers[col](self, self.conf)
+                renderer = self.renderers[col](self)
                 attr.SetRenderer(renderer)
 
                 if renderer.colSize:
@@ -452,17 +451,16 @@ class LocationsDataTable(Grid.PyGridTableBase):
                     grid.SetDefaultRowSize(renderer.rowSize)
 
             if self.editors[col] != None:
-                attr.SetEditor(self.editors[col](self.conf))
+                attr.SetEditor(self.editors[col]())
 
             grid.SetColAttr(col, attr)
 
 
 class LocationsGrid(Grid.Grid):
-    def __init__(self, parent, conf, db):
-        self.conf = conf
+    def __init__(self, parent, db):
         Grid.Grid.__init__(self, parent, wx.ID_ANY)
 
-        self._table = LocationsDataTable(conf, db)
+        self._table = LocationsDataTable(db)
 
         self.SetTable(self._table, True)
         self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnRightClicked)
@@ -499,7 +497,7 @@ class LocationsGrid(Grid.Grid):
                     'lat' :0,
                     'lon' :0}
             names = self._table.GetNames()
-            dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, True)
+            dlg = EditLocation(self, wx.ID_ANY, data, names, True)
             if dlg.ShowModal() == wx.ID_OK:
                 self._table.AddRow([data['name'], data['lat'], data['lon']])
                 self.Reset()
@@ -509,7 +507,7 @@ class LocationsGrid(Grid.Grid):
                     'lat' :self._table.GetValue(row,1),
                     'lon' :self._table.GetValue(row,2)}
             names = self._table.GetNames()
-            dlg = EditLocation(self, wx.ID_ANY, self.conf, data, names, False)
+            dlg = EditLocation(self, wx.ID_ANY, data, names, False)
             if dlg.ShowModal() == wx.ID_OK:
                 self._table.ReplaceRow(row,
                                        [data['name'], data['lat'], data['lon']])
@@ -542,7 +540,7 @@ class LocationsGrid(Grid.Grid):
 
 class EditLocation(wx.Dialog):
     '''Add/Edit a new location'''
-    def __init__(self,parent,id, conf, data, names, new):
+    def __init__(self,parent,id, data, names, new):
         '''Creates the Add/Edit Location Frame'''
         if new:
             caption = _('Add New Location')
@@ -562,9 +560,9 @@ class EditLocation(wx.Dialog):
             #style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER,
             validator=LocNameValidator(data, 'name', names))
         lat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatValidator(conf, data, 'lat', new))
+            validator=LatValidator(data, 'lat', new))
         lon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LonValidator(conf, data, 'lon', new))
+            validator=LonValidator(data, 'lon', new))
 
         # Create Grid for coordinate information and add the controls
         detailGrid = wx.GridBagSizer(3, 3)

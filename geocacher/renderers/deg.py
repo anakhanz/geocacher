@@ -3,13 +3,13 @@
 import wx
 import wx.grid             as  Grid
 
+import geocacher
 from geocacher.libs.latlon import degToStr
 
 class DegRenderer(Grid.PyGridCellRenderer):
     '''Renderer for cells containing measurements in degrees'''
-    def __init__(self, table, conf, mode = 'pure'):
+    def __init__(self, table, mode = 'pure'):
         Grid.PyGridCellRenderer.__init__(self)
-        self.conf = conf
         self.table = table
         self.mode = mode
 
@@ -18,9 +18,12 @@ class DegRenderer(Grid.PyGridCellRenderer):
 
     def Draw(self, grid, attr, dc, rect, row, col, isSelected):
         value = self.table.GetValue(row, col)
-        format = self.conf.common.coordFmt or 'hdd mm.mmm'
-        try: text = degToStr(value, format, self.mode)
-        except: text = ''
+        try:
+            text = degToStr(value,
+                            geocacher.config().coordinateFormat,
+                            self.mode)
+        except:
+            text = ''
         hAlign, vAlign = attr.GetAlignment()
         dc.SetFont(attr.GetFont())
         if isSelected:
@@ -39,20 +42,19 @@ class DegRenderer(Grid.PyGridCellRenderer):
 
     def GetBestSize(self, grid, attr, dc, row, col):
         value = self.table.GetValue(row, col)
-        format = self.conf.common.coordFmt or 'hdd mm.mmm'
-        text = degToStr(value, format, self.mode)
+        text = degToStr(value, geocacher.config().coordinateFormat, self.mode)
         w, h = dc.GetTextExtent(text)
         return wx.Size(w, h)
 
     def clone(self):
-        return DegRenderer(self.table, self.conf, self.mode)
+        return DegRenderer(self.table, self.mode)
 
 class LatRenderer(DegRenderer):
     '''Renderer for cells containing Latitudes (subclass of DegRenderer)'''
-    def __init__(self, table, conf):
-        DegRenderer.__init__(self, table, conf, 'lat')
+    def __init__(self, table):
+        DegRenderer.__init__(self, table, 'lat')
 
 class LonRenderer(DegRenderer):
     '''Renderer for cells containing Longitudes (subclass of DegRenderer)'''
-    def __init__(self, table, conf):
-        DegRenderer.__init__(self, table, conf, 'lon')
+    def __init__(self, table):
+        DegRenderer.__init__(self, table, 'lon')
