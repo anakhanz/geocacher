@@ -3,7 +3,7 @@
 import logging
 import os
 import datetime
-
+from time import mktime
 
 def boolToText(bool):
     '''Converts a text string to a boolean'''
@@ -152,3 +152,21 @@ def dateCmp(x,y):
         return 0
     else:
         return -1
+
+def rows2list(rows):
+    retList = []
+    for row in rows:
+        retList.append(row[0])
+    return retList
+
+def date2float(date):
+    if date is None:
+        return -0.1
+    else:
+        return mktime(date.timetuple())
+
+def float2date(f):
+    if f < 0:
+        return None
+    else:
+        return datetime.datetime.fromtimestamp(f)

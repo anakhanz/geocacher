@@ -14,8 +14,8 @@ import __version__
 
 version = __version__.gcVERSION_STRING
 appname = 'Geocacher'
-appdescription = _("Application for Geocaching waypoint management")
-appcopyright = _('Copyright 2009 Rob Wallace')
+appdescription = "Application for Geocaching waypoint management"
+appcopyright = 'Copyright 2009 Rob Wallace'
 developers = ['Rob Wallace']
 website = 'http://example.com'
 
@@ -25,3 +25,9 @@ def getLicense():
 
 def config():
     return geocacher.libs.config.Config()
+
+def db(debugging=False):
+    return geocacher.libs.db.Database(debugging)
+
+class InvalidID(Exception):
+    pass
