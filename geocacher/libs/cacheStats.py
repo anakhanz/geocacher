@@ -2,6 +2,8 @@
 '''
 Module to build cache stats
 '''
+import geocacher
+
 DAYS = [_('Monday'),
         _('Tuesday'),
         _('Wednesday'),
@@ -25,10 +27,29 @@ MONTHS = [_('January'),
 
 POSSIBLE_STARS = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0]
 
-import geocacher
+CACHE_CONTAINERS = ['Micro',
+                    'Small',
+                    'Regular',
+                    'Large',
+                    'Not chosen',
+                    'Virtual',
+                    'Other']
 
-from geocacher.libs.xmldb import CACHE_CONTAINERS,CACHE_TYPES
-
+CACHE_TYPES = ['Traditional Cache',
+               'Ape',
+               'CITO',
+               'Earthcache',
+               'Event Cache',
+               'Maze',
+               'Letterbox Hybrid',
+               'Mega',
+               'Multi-cache',
+               'Unknown Cache',
+               'Reverse',
+               'Virtual Cache',
+               'Webcam Cache',
+               'Wherigo Cache',
+               'Lost and Found Event Cache']
 
 class cacheStats(object):
     '''
@@ -36,16 +57,13 @@ class cacheStats(object):
     '''
 
 
-    def __init__(self, xmldb):
+    def __init__(self):
         '''
         Initialises the cacheStats object based on the given database and
         configuration objects.
-
-        Arguments
-        xmldb:   database containing the cache information
         '''
 
-        foundCaches = xmldb.getFoundCacheList()
+        foundCaches = geocacher.db().getFoundCacheList()
 
         # initialise data tables
         self.difficultyTerrain = {}
