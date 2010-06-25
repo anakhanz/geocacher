@@ -65,14 +65,6 @@ class Config(object):
             raise Exception('Invalid Database Location. Database must be under %s' % (self.dbpath))
         return self.config.Write('LastOpenedDb', dbfile)
 
-    def getDbBackupFile(self):
-        self.config.SetPath('/PerMachine')
-        return self.config.Read("DbBackupFile", "")
-
-    def setDbBackupFile(self, backupPath):
-        self.config.SetPath('/PerMachine')
-        return self.config.Write("DbBackupFile", backupPath)
-
     def getCacheColumnOrder(self):
         self.config.SetPath("/OptionsUI")
         if not self.config.HasEntry("CacheColumnOrder"):
@@ -444,7 +436,6 @@ class Config(object):
     dbpath             = property(getDbPath)
     dbfile             = property(getDbFile,            setDbFile)
     dbfilebase         = property(getDbFileBase)
-    dbBackupFile       = property(getDbBackupFile,      setDbBackupFile)
     gpsType            = property(getGpsType,           setGpsType)
     gpsConnection      = property(getGpsConnection,     setGpsConnection)
     exportType         = property(getExportType,        setExportType)

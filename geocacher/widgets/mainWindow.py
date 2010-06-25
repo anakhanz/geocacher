@@ -6,9 +6,7 @@ Module to implement the main application window
 import logging
 import optparse
 import os
-import shutil
 import tempfile
-import zipfile
 
 import wx
 import wx.lib.inspection
@@ -105,9 +103,16 @@ class MainWindow(wx.Frame):
                                text=_("&Load Waypoints from Folder"))
         self.Bind(wx.EVT_MENU, self.OnLoadWptDir, item)
 
+        FileMenu.AppendSeparator()
+
         item = FileMenu.Append(wx.ID_ANY,
                                text=_("&Export Waypoints"))
         self.Bind(wx.EVT_MENU, self.OnExportWpt, item)
+
+        FileMenu.AppendSeparator()
+
+        item = FileMenu.Append(wx.ID_ANY, text=_("&Maintain Database"))
+        self.Bind(wx.EVT_MENU, self.OnMaintainDb, item)
 
         item = FileMenu.Append(wx.ID_ANY, text=_("&Back-up Database"))
         self.Bind(wx.EVT_MENU, self.OnBackupDb, item)
@@ -703,6 +708,17 @@ class MainWindow(wx.Frame):
                                   style = wx.OK | wx.ICON_ERROR)
             self.popStatus()
 
+    def OnMaintainDb(self, event=None):
+        '''
+        Handles the event from the "Maintain Database" menu item.
+
+        Keyword Argument
+        event: The event causing this function to be called.
+        '''
+        self.pushStatus(_("Maintaining Database"))
+        geocacher.db().maintdb()
+        self.popStatus()
+
     def OnBackupDb(self, event=None): ### SQL
         '''
         Handles the event from the "Backup Database" menu item.
@@ -711,53 +727,7 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_('Backing up the Database'))
-        wildcard = "Zip (*.zip)|*.zip|"\
-                   "XML (*.xml)|*.xml|"\
-                   "Any Type (*.*)|*.*|"
-        lastFile = geocacher.config().dbBackupFile
-        lastDir = os.path.dirname(lastFile)
-        if not os.path.isfile(lastFile):
-            lastFile = ''
-            if not os.path.isdir(lastDir):
-                lastDir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
-        dlg = wx.FileDialog(
-            self, message=_("Select file to backup the DB to"),
-            defaultDir=lastDir,
-            defaultFile=lastFile,
-            wildcard=wildcard,
-            style=wx.SAVE
-            )
-        if dlg.ShowModal() == wx.ID_OK:
-            path = dlg.GetPath()
-            self.popStatus()
-            self.pushStatus(_('Backing up the Database to: %s') % path)
-            if os.path.isfile(path):
-                question = wx.MessageDialog(None,
-                               message=path + _(" already exists are you sure you want to replace it ?"),
-                               caption=_("File Already Exists"),
-                               style=wx.YES_NO|wx.ICON_WARNING
-                               )
-                if question.ShowModal() == wx.ID_NO:
-                    question.Destroy()
-                    dlg.Destroy()
-                    self.popStatus()
-                    return
-                question.Destroy()
-
-            geocacher.config().dbBackupFile = path
-            zip = os.path.splitext(path)[1] == '.zip'
-            if zip:
-                realPath = path
-                tempDir = tempfile.mkdtemp()
-                path = os.path.join(tempDir,'backup.xml')
-                archive = zipfile.ZipFile(realPath, mode='w', compression=zipfile.ZIP_DEFLATED)
-            self.xmldb.backup(path)
-            if zip:
-                archive.write(path, os.path.basename(path).encode("utf_8"))
-                archive.close()
-                shutil.rmtree(tempDir)
-
-        dlg.Destroy()
+        geocacher.db().backup()
         self.popStatus()
 
     def OnRestoreDb(self, event=None): ### SQL
@@ -768,20 +738,10 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_('Restoring database from file'))
-        wildcard = "Zip (*.zip)|*.zip|"\
-                   "XML (*.xml)|*.xml|"\
-                   "Any Type (*.*)|*.*|"
-        lastFile = geocacher.config().dbBackupFile
-        lastDir = os.path.dirname(lastFile)
-        if not os.path.isfile(lastFile):
-            lastFile = ''
-            if not os.path.isdir(lastDir):
-                lastDir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
         dlg = wx.FileDialog(
             self, message=_("Select file to restore the DB from"),
-            defaultDir=lastDir,
-            defaultFile=lastFile,
-            wildcard=wildcard,
+            defaultDir=geocacher.config().dbpath,
+            wildcard="Zip (*.zip)|*.zip|",
             style=wx.OPEN
             )
         error = False
@@ -790,39 +750,24 @@ class MainWindow(wx.Frame):
             self.popStatus()
             self.pushStatus(_('Restoring database from file: %s') % path)
             question = wx.MessageDialog(None,
-                           message=_("Are you sure you want to replace the contents of the DB with ") + path + '?',
-                           caption=_("Replace DB?"),
+                           message=_("Are you sure you want to restore the Database from ") + path + '?',
+                           caption=_("Restore Database?"),
                            style=wx.YES_NO|wx.ICON_WARNING
                            )
             if question.ShowModal() == wx.ID_YES:
-                geocacher.config().dbBackupFile = path
-                zip = os.path.splitext(path)[1] == '.zip'
-                if zip:
-                    tempDir = tempfile.mkdtemp()
-                    try:
-                        archive = zipfile.ZipFile(path, mode='r')
-                        archive.extractall(tempDir)
-                        archive.close()
-                        path = os.path.join(tempDir,'backup.xml')
-                    except:
-                        error = True
-                    error = error or not os.path.isfile(path)
-                if not error:
-                    error = not self.xmldb.restore(path)
-                if zip:
-                    shutil.rmtree(tempDir)
+                sucess = geocacher.db().restore(path)
             question.Destroy()
         dlg.Destroy()
-        if error:
+        if sucess:
+            self.cacheGrid.ReloadCaches()
+        else:
             dlg = wx.MessageDialog(None,
                            message=_("Problem restoring database from ") + path + '?',
-                           caption=_(" DB?"),
+                           caption=_("Error Restoring Database "),
                            style=wx.OK|wx.ICON_ERROR
                            )
             dlg.ShowModal()
             dlg.Destroy()
-        else:
-            self.cacheGrid.ReloadCaches()
         self.popStatus()
 
 
@@ -1170,7 +1115,8 @@ class MainWindow(wx.Frame):
         if response:
             geocacher.config().filterMaxDist = dist
             self.tbMaxDistance.SetValue(str(dist))
-            self.updateFilter()
+            self.updateFilter()\
+
     def OnViewStats(self, event=None):
         '''
         Handles view statistics menu event.

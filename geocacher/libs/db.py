@@ -6,6 +6,8 @@ import datetime
 import os
 import os.path
 import sqlite3
+import shutil
+import tempfile
 import zipfile
 
 import wx
@@ -116,6 +118,30 @@ class Database(object):
             z.write(dbfile, arcname, compress_type=zipfile.ZIP_DEFLATED)
         z.close()
         self.open()
+
+    def restore(self, backup_file):
+        self.close()
+        dbpath = geocacher.config().dbpath
+        tempDir = tempfile.mkdtemp()
+        sucess = False
+        try:
+            z = zipfile.ZipFile(backup_file, mode='r')
+            for f in z.namelist():
+                print f
+                if f[:9] == geocacher.appname and os.path.splitext(f)[1] == '.sqlite':
+                    z.extract(f, tempDir)
+                    sucess = True
+                    break
+            z.close()
+        except:
+            sucess = False
+        if sucess:
+            print f
+            shutil.move(os.path.join(tempDir, f), geocacher.config().dbfile)
+            print tempDir
+        shutil.rmtree(tempDir)
+        self.open()
+        return sucess
 
     statements_v001 = [
         "CREATE TABLE version (version integer)",
