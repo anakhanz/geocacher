@@ -15,11 +15,10 @@ import wx.lib.inspection
 from wx.lib.pubsub import Publisher as Publisher
 import wx.html as Html
 
+import geocacher
 import geocacher.__version__
 
 __version__ = geocacher.__version__.gcVERSION_NUMBER
-
-import geocacher
 
 from geocacher.widgets.cacheGrid import CacheGrid
 
@@ -43,21 +42,19 @@ class MainWindow(wx.Frame):
     '''
     The main frome for the application.
     '''
-    def __init__(self,parent,id, xmldb):
+    def __init__(self,parent,id):
         '''
         Initialisation for the main frame.
 
         Arguments
         parent: The parent window of the frame.
         id:     The ID to give the frame.
-        xmldb:  The xml Database for caches (transitional)
         '''
-        self.xmldb = xmldb
         self.displayCache = None
         size = geocacher.config().mainWinSize
         # check that the Current location is in the db
-        if geocacher.config().currentLocation not in self.xmldb.getLocationNameList():
-            geocacher.config().currentLocation = self.xmldb.getLocationNameList()[0]
+        if geocacher.config().currentLocation not in geocacher.db().getLocationNameList():
+            geocacher.config().currentLocation = geocacher.db().getLocationNameList()[0]
         wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (size),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
@@ -70,7 +67,7 @@ class MainWindow(wx.Frame):
 
         self.splitter = wx.SplitterWindow(self, wx.ID_ANY,
                                           style=wx.SP_LIVE_UPDATE | wx.SP_BORDER)
-        self.cacheGrid = CacheGrid(self.splitter, self.xmldb)
+        self.cacheGrid = CacheGrid(self.splitter)
         self.Description = Html.HtmlWindow(self.splitter, wx.ID_ANY, name="Description Pannel")
         self.splitter.SetMinimumPaneSize(20)
         self.splitter.SplitHorizontally(self.cacheGrid,
@@ -259,7 +256,7 @@ class MainWindow(wx.Frame):
                                     wx.ID_ANY,
                                     _('Home location'),
                                     style=wx.TEXT_ATTR_FONT_ITALIC))
-        choices = self.xmldb.getLocationNameList()
+        choices = geocacher.db().getLocationNameList()
         if geocacher.config().currentLocation in choices:
             current = geocacher.config().currentLocation
         else:
@@ -320,7 +317,7 @@ class MainWindow(wx.Frame):
                filtering.
         '''
         self.statusbar.SetStatusText(_('Total: %i') %
-                                     self.xmldb.getNumberCaches(),
+                                     geocacher.db().getNumberCaches(),
                                      STATUS_TOTAL)
         if rows==None:
             self.statusbar.SetStatusText(_('After Filter: %i') %
@@ -348,7 +345,7 @@ class MainWindow(wx.Frame):
         self.displayedCache = newCache
 
         self.pushStatus(_('Loading cache: ') + newCache)
-        newCacheObj = self.xmldb.getCacheByCode(newCache)
+        newCacheObj = geocacher.db().getCacheByCode(newCache)
         if newCacheObj != None:
             self.displayCache = newCacheObj
         if self.displayCache == None:
@@ -388,7 +385,7 @@ class MainWindow(wx.Frame):
         elif geocacher.config().exportFilterDisp:
             caches = self.cacheGrid.GetDisplayedCaches()
         else:
-            caches = self.xmldb.getCacheList()
+            caches = geocacher.db().getCacheList()
         if geocacher.config().exportFilterUser:
             filteredCaches = []
             for cache in caches:
@@ -412,9 +409,9 @@ class MainWindow(wx.Frame):
         '''
         Updates the location selector after a change to lt list of loactions.
         '''
-        for i in range(0,self.selLocation.GetCount()): #@UnusedVariable
+        for i in range(0,self.selLocation.GetCount()):
             self.selLocation.Delete(0)
-        for location in self.xmldb.getLocationNameList():
+        for location in geocacher.db().getLocationNameList():
             self.selLocation.Append(location)
 
     def updateCurrentLocation(self, name):
@@ -603,13 +600,13 @@ class MainWindow(wx.Frame):
         '''
         ext = os.path.splitext(path)[1]
         if ext == '.gpx':
-            sucess,changes= gpxLoad(path,self.xmldb,mode=mode,
+            sucess,changes= gpxLoad(path,mode=mode,
                                     userId=geocacher.config().GCUserID,
                                     userName=geocacher.config().GCUserName)
         elif ext == '.loc':
-            sucess,changes = locLoad(path,self.xmldb,mode=mode)
+            sucess,changes = locLoad(path,mode=mode)
         elif ext == '.zip':
-            sucess,changes = zipLoad(path,self.xmldb,mode=mode,
+            sucess,changes = zipLoad(path,mode=mode,
                                     userId=geocacher.config().GCUserID,
                                     userName=geocacher.config().GCUserName)
         if sucess == False:
@@ -626,7 +623,7 @@ class MainWindow(wx.Frame):
         Argument
         changes: the changes that have been made to the DB
         '''
-        dlg = CacheChanges(self, wx.ID_ANY, changes, self.xmldb)
+        dlg = CacheChanges(self, wx.ID_ANY, changes)
         dlg.ShowModal()
         dlg.Destroy()
 
@@ -706,7 +703,7 @@ class MainWindow(wx.Frame):
                                   style = wx.OK | wx.ICON_ERROR)
             self.popStatus()
 
-    def OnBackupDb(self, event=None):
+    def OnBackupDb(self, event=None): ### SQL
         '''
         Handles the event from the "Backup Database" menu item.
 
@@ -763,7 +760,7 @@ class MainWindow(wx.Frame):
         dlg.Destroy()
         self.popStatus()
 
-    def OnRestoreDb(self, event=None):
+    def OnRestoreDb(self, event=None): ### SQL
         '''
         Handles the event from the "Restore Database" menu item.
 
@@ -836,7 +833,7 @@ class MainWindow(wx.Frame):
         Keyword Argument
         event: The event causing this function to be called.
         '''
-        dlg = Preferences(self, wx.ID_ANY, self.xmldb)
+        dlg = Preferences(self, wx.ID_ANY)
         if dlg.ShowModal() == wx.ID_OK:
             self.cacheGrid.UpdateUserDataLabels()
             self.updateLocations()
@@ -926,7 +923,7 @@ class MainWindow(wx.Frame):
         lat, lon, source, name = message.data
         self.NewLocation(lat, lon, source, name)
 
-    def NewLocation(self, lat, lon, source, name=''):
+    def NewLocation(self, lat, lon, source, name=''): ### SQL
         '''
         Handles the creation of a new home loaction.
 
@@ -948,14 +945,14 @@ class MainWindow(wx.Frame):
             return
         name = dlg.GetValue()
         dlg.Destroy()
-        if name in self.xmldb.getLocationNameList():
+        if name in geocacher.db().getLocationNameList():
             dlg = wx.MessageDialog(self,
                 message=_('Are you sure you want to replace the existing laocation named ')+name,
                 caption=_('Replace Existing Location'),
                 style=wx.YES_NO|wx.ICON_QUESTION)
             if dlg.ShowModal() == wx.ID_YES:
                 dlg.Destroy()
-                location = self.xmldb.getLocationByName(name)
+                location = geocacher.db().getLocationByName(name)
                 location.lat = lat
                 location.lon = lon
             else:
@@ -1182,7 +1179,7 @@ class MainWindow(wx.Frame):
         Keyword Argument
         event: The event causing this function to be called.
         '''
-        stats = cacheStats(self.xmldb)
+        stats = cacheStats()
         dlg = ViewHtml(self, wx.ID_ANY,stats.html(), 'Geocaching Stats')
         dlg.ShowModal()
 
@@ -1199,9 +1196,8 @@ class MainWindow(wx.Frame):
         geocacher.config().cacheColumnOrder = self.cacheGrid.GetCols()
         (geocacher.config().cacheSortColumn,
          geocacher.config().cacheSortDescend) = self.cacheGrid.GetSort()
-        if self.displayCache != None:
-            geocacher.config().displayedCache = self.displayCache.code
+        if self.displayedCache != None:
+            geocacher.config().displayedCache = self.displayedCache
         else:
             geocacher.config().displayedCache = ''
-        self.xmldb.save()
         self.Destroy()

@@ -3,6 +3,8 @@
 import wx
 import  wx.gizmos   as  gizmos
 
+import geocacher
+
 class CacheChanges (wx.Dialog):
     '''Display cache changes to the user'''
     def __init__(self,parent,id,changes,db):
@@ -13,10 +15,7 @@ class CacheChanges (wx.Dialog):
         parent:  Parent frame
         id:      Frame ID to be used
         changes: Dictioinary containing the change s to be displayed
-        db:      Cache database
         '''
-
-        self.db = db
 
         exceptions = ['change type','Logs','Travel Bugs','Add Wpts',
                        'gpx_date', 'source']
@@ -63,7 +62,7 @@ class CacheChanges (wx.Dialog):
         for filename in changes.keys():
             fileNode = self.addBranch(self.root, filename)
             for cacheCode in changes[filename].keys():
-                self.cache = self.db.getCacheByCode(cacheCode)
+                self.cache = geocacher.db().getCacheByCode(cacheCode)
                 text = cacheCode + ' ' + self.cache.name
                 cacheNode = self.addBranch(fileNode,
                                            text,

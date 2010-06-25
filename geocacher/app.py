@@ -51,9 +51,6 @@ mytranslation = gettext.translation(domain, localedir,
     [mylocale.GetCanonicalName()], fallback = True)
 mytranslation.install()
 
-from geocacher.libs.xmldb import Geocacher
-from geocacher.libs.db import Database
-
 from geocacher.widgets.mainWindow import MainWindow
 
 import geocacher.__version__
@@ -86,9 +83,7 @@ class GeocacherApp (wx.App):
                             wx.SPLASH_TIMEOUT, 5000, None,
                             wx.ID_ANY)
             wx.Yield()
-            geocacher = Geocacher(True)
-            xmldb = geocacher.db
-            frame = MainWindow(None,-1, xmldb)
+            frame = MainWindow(None,-1)
             self.SetTopWindow(frame)
             frame.Show(True)
             return True

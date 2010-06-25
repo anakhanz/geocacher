@@ -263,7 +263,7 @@ class Database(object):
         '''
         cur = self.cursor()
         cur.execute("SELECT id FROM Caches")
-        return cur.rowcount()
+        return len(cur.fetchall())
 
     def getCacheByCode(self,code):
         '''
@@ -273,12 +273,12 @@ class Database(object):
         code: code of the cache to be returned
         '''
         cur = self.cursor()
-        cur.execute("SELECT id FROM Caches WHERE code = ?"(code,))
-        id = cur.fetchone()
-        if id is None:
+        cur.execute("SELECT id FROM Caches WHERE code = ?", (code,))
+        id_row = cur.fetchone()
+        if id_row is None:
             return None
         else:
-            return Cache(id)
+            return Cache(id_row[0])
 
     def getFoundCacheList(self):
         '''

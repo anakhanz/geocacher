@@ -75,6 +75,21 @@ class Cache(object):
 
         self.refreshOwnLog()
 
+    def __getCurrentLat(self):
+        if self.corrected:
+            return self.clat
+        else:
+            return self.lat
+
+    def __getCurrentLon(self):
+        if self.corrected:
+            return self.clon
+        else:
+            return self.lon
+
+    currentLat = property(__getCurrentLat)
+    currentLon = property(__getCurrentLon)
+
     def refreshOwnLog(self):
         self.own_log = ""
         self.own_log_encoded = False
@@ -137,8 +152,8 @@ class Cache(object):
     def getNumLogs(self):
         '''Returns the number of logs in the DB for the cache'''
         cur = geocacher.db().cursor()
-        cur.execute("SELECT id FROM Logs WHERE cache_id = ?"(self.id,))
-        return cur.rowcount()
+        cur.execute("SELECT id FROM Logs WHERE cache_id = ?", (self.id,))
+        return cur.rowcount
 
     def getLogById(self,id):
         '''Returns the log with the given id if found, otherwise "None"'''
@@ -163,7 +178,7 @@ class Cache(object):
         '''Returns the date of the last log or None if no logs'''
         cur = geocacher.db().cursor()
         cur.execute("SELECT MAX(date) FROM Logs WHERE cache_id = ?", (self.id,))
-        return datetime.fromtimestamp(cur.fetchone()[0])
+        return float2date(cur.fetchone()[0])
 
     def getFoundDates(self):
         '''
@@ -181,12 +196,15 @@ class Cache(object):
         '''Returns the date on which the cache was found or None if never Found'''
         cur = geocacher.db().cursor()
         cur.execute("SELECT date FROM Logs WHERE cache_id = ? AND type=? ORDER BY date DESC", (self.id,'Found it',))
-        return datetime.fromtimestamp(cur.fetchone()[0])
+        if cur.rowcount > 0:
+            return float2date(cur.fetchone()[0])
+        else:
+            return None
 
     def getFoundCount(self):
         cur = geocacher.db().cursor()
         cur.execute("SELECT date FROM Logs WHERE cache_id = ? AND type=? ORDER BY date DESC", (self.id,'Found it',))
-        return cur.rowcount()
+        return cur.rowcount
 
     def addLog(self,id,
                     date        = None,
@@ -226,7 +244,7 @@ class Cache(object):
         '''Returns True if the cache has travel bugs in it at present'''
         cur = geocacher.db().cursor()
         cur.execute("SELECT id FROM Travelbugs WHERE cache_id = ?" , (self.id,))
-        return cur.rowcount() > 0
+        return cur.rowcount > 0
 
     def getTravelBugByRef(self,ref):
         '''Returns the travel bug with the given ref if found, otherwise "None"'''

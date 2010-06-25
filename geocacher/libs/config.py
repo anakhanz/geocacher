@@ -243,7 +243,7 @@ class Config(object):
         return self.config.Read("DisplayedCache", "")
 
     def setDisplayedCache(self, s):
-        self.config.SetPath("/Geocaching.com")
+        self.config.SetPath("/State")
         return self.config.Write("DisplayedCache", s)
 
     def getGpsType(self):

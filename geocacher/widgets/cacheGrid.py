@@ -9,6 +9,8 @@ from wx.lib.pubsub import Publisher as Publisher
 import wx.grid             as  Grid
 import wx.lib.gridmovers   as  Gridmovers
 
+import geocacher
+
 from geocacher.widgets.cacheDataTable import CacheDataTable
 
 from geocacher.libs.common import wxDateTimeToPy
@@ -22,17 +24,16 @@ class CacheGrid(Grid.Grid):
     '''
     Grid to display the cache information.
     '''
-    def __init__(self, parent, db):
+    def __init__(self, parent):
         '''
         Initialisation function for the grid
 
         Argumnets
         parent:  Parent window for the grid.
-        db:      Database to build table data form.
         '''
         Grid.Grid.__init__(self, parent, -1)
 
-        self._table = CacheDataTable(db)
+        self._table = CacheDataTable()
 
         # The second parameter means that the grid is to take ownership of the
         # table and will destroy it when done.  Otherwise you would need to keep

@@ -23,14 +23,11 @@ class CacheDataTable(Grid.PyGridTableBase):
     '''
     Provides the Grid Table implementation for the cache data display grid
     '''
-    def __init__(self, xmldb):
+    def __init__(self):
         '''
         Initialisation function for the cache grid.
-
-        Arguments
-        xmldb:  The xml Database for caches (transitional)
         '''
-        self.xmldb = xmldb
+
         Grid.PyGridTableBase.__init__(self)
 
         self.colNames = geocacher.config().cacheColumnOrder
@@ -149,7 +146,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         Reloads all of the caches in the table from the database.
         '''
         self.data = []
-        for cache in self.xmldb.getCacheList():
+        for cache in geocacher.db().getCacheList():
             self.__addRow(cache)
         self.DoSort()
 
@@ -237,7 +234,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         Argument
         cache: Cache to perform calculations on.
         '''
-        location = self.xmldb.getLocationByName(geocacher.config().currentLocation)
+        location = geocacher.db().getLocationByName(geocacher.config().currentLocation)
         hLat = location.lat
         hLon = location.lon
 
@@ -269,7 +266,7 @@ class CacheDataTable(Grid.PyGridTableBase):
             self.ReloadCaches()
         else:
             for row in self.data:
-                row['distance'], row['bearing'] = self.__calcDistBearing(self.xmldb.getCacheByCode(row['code']))
+                row['distance'], row['bearing'] = self.__calcDistBearing(geocacher.db().getCacheByCode(row['code']))
             if self._sortCol in ['distance','bearing']:
                 self.DoSort()
 
@@ -377,7 +374,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         Argument
         row: Row to get the cache object for.
         '''
-        return self.xmldb.getCacheByCode(self.GetRowCode(row))
+        return geocacher.db().getCacheByCode(self.GetRowCode(row))
 
     def GetRowCaches(self, rows):
         '''
@@ -399,7 +396,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         caches = []
         for row in self.data:
-            caches.append(self.xmldb.getCacheByCode(row['code']))
+            caches.append(geocacher.db().getCacheByCode(row['code']))
         return caches
 
     def GetRowLabelValue(self, row):
@@ -610,7 +607,7 @@ class CacheDataTable(Grid.PyGridTableBase):
                                style=wx.YES_NO|wx.ICON_QUESTION)
         if dlg.ShowModal() == wx.ID_YES:
             for row in rows:
-                self.xmldb.getCacheByCode(self.data[row-deleteCount]['code']).delete()
+                geocacher.db().getCacheByCode(self.data[row-deleteCount]['code']).delete()
                 self.data.pop(row-deleteCount)
                 # we need to advance the delete count
                 # to make sure we delete the right rows

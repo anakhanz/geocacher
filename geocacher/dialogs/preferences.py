@@ -19,16 +19,14 @@ class Preferences(wx.Dialog):
     '''
     Preferences Dialog
     '''
-    def __init__(self,parent,id, db):
+    def __init__(self,parent,id):
         '''
         Creates the Preferences Frame.
 
         Arguments
         parent: The parent window.
         id:     ID to give this dialog.
-        db:     Application database.
         '''
-        self.db = db
         self.labelWidth = 150
         self.entryWidth = 200
         wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Preferences"),
@@ -252,7 +250,7 @@ class Preferences(wx.Dialog):
         Argument
         parent: The parent window for this panel.
         '''
-        grid = LocationsGrid(parent, self.db)
+        grid = LocationsGrid(parent)
         return grid
 
     def __saveLocationsConf(self):
@@ -280,34 +278,34 @@ class Preferences(wx.Dialog):
 
 
 class LocationsDataTable(Grid.PyGridTableBase):
-    def __init__(self, db):
-        self.db = db
+    def __init__(self):
         Grid.PyGridTableBase.__init__(self)
         self.colLabels = [_('Name'), _('Latitude'), _('Longitude')]
         self.renderers=[None, LatRenderer, LonRenderer]
         self.editors = [None, LatEditor, LonEditor]
         self.data = []
-        locationNames = self.db.getLocationNameList()
+        locationNames = geocacher.db().getLocationNameList()
         for locationName in locationNames:
-            location = self.db.getLocationByName(locationName)
+            location = geocacher.db().getLocationByName(locationName)
             self.data.append([location.name, location.lat, location.lon])
 
         self._rows = self.GetNumberRows()
         self._cols = self.GetNumberCols()
 
     def Save(self):
-        existingNames = self.db.getLocationNameList()
+        existingNames = geocacher.db().getLocationNameList()
         newNames = self.GetNames()
         for row in self.data:
             if row[0] in existingNames:
-                location = self.db.getLocationByName(row[0])
+                location = geocacher.db().getLocationByName(row[0])
                 location.lat = row[1]
                 location.lon = row[2]
+                location.save()
             else:
-                self.db.addLocation(row[0], row[1], row[2])
+                geocacher.db().addLocation(row[0], row[1], row[2])
         for name in existingNames:
             if name not in newNames:
-                location = self.db.getLocationByName(name)
+                location = geocacher.db().getLocationByName(name)
                 location.delete()
         if geocacher.config().currentLocation not in newNames:
             geocacher.config().currentLocation = newNames[0]
@@ -457,10 +455,10 @@ class LocationsDataTable(Grid.PyGridTableBase):
 
 
 class LocationsGrid(Grid.Grid):
-    def __init__(self, parent, db):
+    def __init__(self, parent):
         Grid.Grid.__init__(self, parent, wx.ID_ANY)
 
-        self._table = LocationsDataTable(db)
+        self._table = LocationsDataTable()
 
         self.SetTable(self._table, True)
         self.Bind(Grid.EVT_GRID_LABEL_RIGHT_CLICK, self.OnRightClicked)
