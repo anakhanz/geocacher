@@ -15,6 +15,7 @@ import wx
 import geocacher
 from geocacher.libs.common import rows2list
 from geocacher.libs.dbobjects import Cache, Location
+from geocacher.libs.latlon import cardinalBearing, distance
 
 
 class Database(object):
@@ -52,7 +53,8 @@ class Database(object):
 
     def prepdb(self, dbname, debug=False):
         self.database = sqlite3.connect(database=dbname, timeout=1.0)
-        #self.database.create_function("distance", 4, cache901.util.distance_exact)
+        self.database.create_function('distance', 5, distance)
+        self.database.create_function('bearing', 4, cardinalBearing)
         self.database.row_factory = sqlite3.Row
         cur = self.database.cursor()
         try:
@@ -446,7 +448,18 @@ class Database(object):
         location.save()
         return location
 
-def main ():
+    def getCurrentLocationLatLon(self):
+        '''Returns the Lat and lon of the currently configured location or 0.0,0.0 if it does not exist'''
+        cur = self.cursor()
+        cur.execute("SELECT lat, lon FROM Locations WHERE name = ?", (geocacher.config().currentLocation,))
+        row = cur.fetchone()
+        if row is None:
+            return (0.0, 0.0)
+        else:
+            lat, lon = row
+            return (lat, lon)
+
+def import_main ():
     # set-up old xml db for import
     from datetime import datetime
     from geocacher.libs.xmldb import Geocacher
@@ -498,6 +511,15 @@ def main ():
     geocacher.db().maintdb()
     geocacher.db().backup()
 
+def main_new():
+    lat, lon = geocacher.db().getCurrentLocationLatLon()
+    miles = geocacher.config().imperialUnits
+    cur = geocacher.db().cursor()
+    cur.execute("SELECT id, code, lat as oLat, lon as oLon FROM Caches")
+    row = cur.fetchone()
+    for key in row.keys():
+        print key, row[key]
+
 
 if __name__ == "__main__":
-    main()
+    import_main()
