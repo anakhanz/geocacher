@@ -3,6 +3,8 @@
 Module to implement the cache information grid
 '''
 
+from datetime import datetime
+
 import wx
 from wx.lib.pubsub import Publisher as Publisher
 
@@ -148,21 +150,22 @@ class CacheGrid(Grid.Grid):
         # build the append column menu and the dictionary mapping the ID of the
         # selected menu item to the table column name
 
-        appMenu = wx.Menu()
-        appColIds={}
-        for colDisp,colName in colDispName:
-            colId = wx.NewId()
-            appColIds[colId]=colName
-            appMenu.Append(colId, colDisp)
+        if len(colDispName) > 0:
+            appMenu = wx.Menu()
+            appColIds={}
+            for colDisp,colName in colDispName:
+                colId = wx.NewId()
+                appColIds[colId]=colName
+                appMenu.Append(colId, colDisp)
 
-        # build the insert column menu and the dictionary mapping the ID of the
-        # selected menu item to the table column name
-        insMenu = wx.Menu()
-        insColIds={}
-        for colDisp,colName in colDispName:
-            colId = wx.NewId()
-            insColIds[colId]=colName
-            insMenu.Append(colId, colDisp)
+            # build the insert column menu and the dictionary mapping the ID of the
+            # selected menu item to the table column name
+            insMenu = wx.Menu()
+            insColIds={}
+            for colDisp,colName in colDispName:
+                colId = wx.NewId()
+                insColIds[colId]=colName
+                insMenu.Append(colId, colDisp)
 
         # Column pop-up
         def colDelete(event, self=self, col=col):
@@ -201,17 +204,6 @@ class CacheGrid(Grid.Grid):
             self.Reset()
 
         # Row pop-up
-        def cacheAdd(event, self=self, row=row):
-            '''Add a new cache to the grid/database'''
-            dlg = wx.MessageDialog(None,
-                message=_('Manualy adding cache not yet implemented!'),
-                caption=_('Not Implemented'),
-                style=wx.CANCEL|wx.ICON_HAND)
-            dlg.ShowModal()
-            dlg.Destroy()
-            #self._table.AddCache(cache)
-            #self.Reset()
-            print "adding cache not yet implemented"
 
         def cacheDelete(event, self=self, row=row):
             '''Delete the selected cache(s) (row(s))'''
@@ -240,6 +232,8 @@ class CacheGrid(Grid.Grid):
                                   _('Marking cache %s as available') % cache.code)
             cache.available = True
             cache.user_date = datetime.now()
+            cache.save()
+            geocacher.db().commit()
             self._table.ReloadRow(row)
             self.Reset()
             Publisher.sendMessage('status.pop')
@@ -250,6 +244,8 @@ class CacheGrid(Grid.Grid):
                                   _('Marking cache %s as un-available') % cache.code)
             cache.available = False
             cache.user_date = datetime.now()
+            cache.save()
+            geocacher.db().commit()
             self._table.ReloadRow(row)
             self.Reset()
             Publisher.sendMessage('status.pop')
@@ -261,6 +257,8 @@ class CacheGrid(Grid.Grid):
             cache.available = False
             cache.archived = True
             cache.user_date = datetime.now()
+            cache.save()
+            geocacher.db().commit()
             self._table.ReloadRow(row)
             self.Reset()
             Publisher.sendMessage('status.pop')
@@ -271,6 +269,8 @@ class CacheGrid(Grid.Grid):
                                   _('Un-archiving cache: %s') % cache.code)
             cache.archived = False
             cache.user_date = datetime.now()
+            cache.save()
+            geocacher.db().commit()
             self._table.ReloadRow(row)
             self.Reset()
             Publisher.sendMessage('status.pop')
@@ -283,7 +283,7 @@ class CacheGrid(Grid.Grid):
             data = {'lat': cache.lat, 'lon': cache.lon,
                     'clat': cache.clat, 'clon': cache.clon,
                     'cnote': cache.cnote}
-            dlg = CorrectLatLon(self, wx.ID_ANY, self.conf, cache.code, data,
+            dlg = CorrectLatLon(self, wx.ID_ANY, cache.code, data,
                 not cache.corrected)
             # show the dialog and update the cache if OK clicked and there
             # where changes
@@ -296,6 +296,8 @@ class CacheGrid(Grid.Grid):
                 cache.cnote = data['cnote']
                 cache.corrected = True
                 cache.user_date = datetime.now()
+                cache.save()
+                geocacher.db().commit()
                 self._table.ReloadRow(row)
                 self.Reset()
                 Publisher.sendMessage('status.pop')
@@ -316,6 +318,8 @@ class CacheGrid(Grid.Grid):
                 cache.corrected = False
                 cache.cnote = ''
                 cache.user_date = datetime.now()
+                cache.save()
+                geocacher.db().commit()
                 self._table.ReloadRow(row)
                 self.Reset()
                 Publisher.sendMessage('status.pop')
@@ -341,39 +345,47 @@ class CacheGrid(Grid.Grid):
                                                    'cache ' + cache.code,
                                                    'cache ' + cache.code))
 
-        def cacheSetFound(event, self=self, cache=cache):
-            dlg = FoundCache(self,cache.code,_('found'),
-                             cache.found_date,cache.own_log,
+        def cacheAddLog(found, self=self, cache=cache):
+            if found:
+                logType = 'Found It'
+                logDate = cache.found_date
+            else:
+                logType = "Didn't find it"
+                logDate = cache.dnf_date
+            dlg = FoundCache(self, cache.code, logType,
+                             logDate, cache.own_log,
                              cache.own_log_encoded)
             if dlg.ShowModal() == wx.ID_OK:
                 Publisher.sendMessage('status.push',
-                                      _('Marking cache %s as found') % cache.code)
-                cache.found_date = wxDateTimeToPy(dlg.date.GetValue())
-                cache.own_log = dlg.logText.GetValue()
-                cache.own_log_encoded = dlg.encodeLog.GetValue()
-                cache.found = True
+                                      _('Marking cache %s as "%s"') % (cache.code, logType))
+                newLog = cache.addLog(None,
+                                      date        = wxDateTimeToPy(dlg.date.GetValue()),
+                                      logType     = logType,
+                                      finder_id   = geocacher.config().GCUserID,
+                                      finder_name = geocacher.config().GCUserName,
+                                      encoded     = dlg.encodeLog.GetValue(),
+                                      text        = dlg.logText.GetValue())
+                if found:
+                    cache.found = True
+                    cache.found_date = newLog.date
+                else:
+                    cache.dnf = True
+                    cache.dnf_date = newLog.date
+                cache.own_log_id = newLog.logId
                 cache.user_date = datetime.now()
+                cache.save()
+                geocacher.db().commit()
+                cache.refreshOwnLog()
                 self._table.ReloadRow(row)
                 self.Reset()
                 Publisher.sendMessage('status.pop')
             dlg.Destroy()
 
+        def cacheSetFound(event, self=self, cache=cache):
+            cacheAddLog(True)
+
         def cacheSetDnf(event, self=self, cache=cache):
-            dlg = FoundCache(self,cache.code,_('found'),
-                             cache.dnf_date,cache.own_log,
-                             cache.own_log_encoded)
-            if dlg.ShowModal() == wx.ID_OK:
-                Publisher.sendMessage('status.push',
-                                      _('Marking cache %s as did not find') % cache.code)
-                cache.dnf_date = wxDateTimeToPy(dlg.date.GetValue())
-                cache.own_log = dlg.logText.GetValue()
-                cache.own_log_encoded = dlg.encodeLog.GetValue()
-                cache.dnf = True
-                cache.user_date = datetime.now()
-                self._table.ReloadRow(row)
-                self.Reset()
-                Publisher.sendMessage('status.pop')
-            dlg.Destroy()
+            cacheAddLog(False)
 
         # Non row/col pop-up functions
         def sortByCodeAscending(event, self=self):
@@ -391,7 +403,6 @@ class CacheGrid(Grid.Grid):
             Publisher.sendMessage('status.pop')
 
         # Menu
-        cacheAddID      = wx.NewId()
         cacheDeleteID   = wx.NewId()
         cacheArcID      = wx.NewId()
         cacheUnArcID    = wx.NewId()
@@ -419,12 +430,12 @@ class CacheGrid(Grid.Grid):
             menu.Append(colSortAsID, _('Ascending Sort By Column'))
             menu.Append(colSortDsID, _('Descending Sort By Column'))
         menu.AppendSeparator()
-        menu.AppendMenu(wx.ID_ANY, _('Append Column'), appMenu)
-        menu.AppendMenu(wx.ID_ANY, _('Insert Column'), insMenu)
+        if len(colDispName) > 0:
+            menu.AppendMenu(wx.ID_ANY, _('Append Column'), appMenu)
+            menu.AppendMenu(wx.ID_ANY, _('Insert Column'), insMenu)
         menu.Append(colDeleteID, _('Delete Column(s)'))
-        menu.AppendSeparator()
-        menu.Append(cacheAddID, _('Add Cache'))
         if row >= 0:
+            menu.AppendSeparator()
             menu.Append(cacheDeleteID, _('Delete Cache(s)'))
             if cache.archived:
                 menu.Append(cacheUnArcID,_('Un-archive Cache'))
@@ -447,7 +458,6 @@ class CacheGrid(Grid.Grid):
             menu.Append(cacheSetDnfID, _('Set cache as Did Not Find'))
 
         # Bind functions
-        self.Bind(wx.EVT_MENU, cacheAdd, id=cacheAddID)
         self.Bind(wx.EVT_MENU, cacheDelete, id=cacheDeleteID)
         self.Bind(wx.EVT_MENU, cacheArc, id=cacheArcID)
         self.Bind(wx.EVT_MENU, cacheUnArc, id=cacheUnArcID)

@@ -7,7 +7,7 @@ from geocacher.validators.notEmpty import NotEmptyValidator
 
 class CorrectLatLon(wx.Dialog):
     '''Get the import options from the user'''
-    def __init__(self,parent,id, conf, code, data, new):
+    def __init__(self,parent,id, code, data, new):
         '''Creates the Lat/Lon correction Frame'''
         wx.Dialog.__init__(self,parent,id,
             _('Lat/Lon Correction for ')+code,size = (350,250),
@@ -22,13 +22,13 @@ class CorrectLatLon(wx.Dialog):
 
         # Create controls
         oLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatValidator(conf, data, 'lat'))
+            validator=LatValidator(data, 'lat'))
         oLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LonValidator(conf, data, 'lon'))
+            validator=LonValidator(data, 'lon'))
         cLat = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LatValidator(conf, data, 'clat', new))
+            validator=LatValidator(data, 'clat', new))
         cLon = wx.TextCtrl(self, wx.ID_ANY, size=(100, -1),
-            validator=LonValidator(conf, data, 'clon', new))
+            validator=LonValidator(data, 'clon', new))
 
         comment = wx.TextCtrl(self, wx.ID_ANY, size=(200, 100),
             style=wx.TE_MULTILINE | wx.TE_PROCESS_ENTER,

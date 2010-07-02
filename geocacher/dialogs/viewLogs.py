@@ -12,7 +12,7 @@ class ViewLogs(wx.Dialog):
     def __init__(self,parent,cache):
         '''
         Initialises the View Logs dialog.
-        
+
         Arguments
         parent: The parent window for the dialog.
         cache:  The cache object to display the logs from.
@@ -32,12 +32,12 @@ class ViewLogs(wx.Dialog):
         for log in cache.getLogs():
             logPanel = res.LoadPanel(sw, 'logPanel')
             date     = Xrc.XRCCTRL(logPanel, 'dateText')
-            type     = Xrc.XRCCTRL(logPanel, 'typeText')
+            logType     = Xrc.XRCCTRL(logPanel, 'typeText')
             finder   = Xrc.XRCCTRL(logPanel, 'finderText')
             message  = Xrc.XRCCTRL(logPanel, 'messageText')
 
             date.SetValue(log.date.strftime("%x"))
-            type.SetValue(log.type)
+            logType.SetValue(log.logType)
             finder.SetValue(log.finder_name)
             message.SetValue(log.text)
 

@@ -307,6 +307,7 @@ class LocationsDataTable(Grid.PyGridTableBase):
             if name not in newNames:
                 location = geocacher.db().getLocationByName(name)
                 location.delete()
+        geocacher.db().commit()
         if geocacher.config().currentLocation not in newNames:
             geocacher.config().currentLocation = newNames[0]
 

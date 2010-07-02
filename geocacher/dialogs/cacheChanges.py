@@ -7,7 +7,7 @@ import geocacher
 
 class CacheChanges (wx.Dialog):
     '''Display cache changes to the user'''
-    def __init__(self,parent,id,changes,db):
+    def __init__(self,parent,id,changes):
         '''
         Init function
 
@@ -101,7 +101,7 @@ class CacheChanges (wx.Dialog):
         logsNode = self.addBranch(parent, _('Logs'))
         for log in logChanges.keys():
             logOwner = self.cache.getLogById(log).finder_name
-            logNode = self.addBranch(logsNode,'#'+log+' '+logOwner)
+            logNode = self.addBranch(logsNode,'#'+srt(log)+' '+logOwner)
             self.processFields(logNode, logChanges[log])
         self.tree.SortChildren(logsNode)
 

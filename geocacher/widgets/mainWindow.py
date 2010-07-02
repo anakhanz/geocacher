@@ -24,7 +24,7 @@ from geocacher.libs.common import nl2br, listFiles
 from geocacher.libs.cacheStats import cacheStats
 from geocacher.libs.gpsbabel import GpsCom
 from geocacher.libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
-from geocacher.libs.loc import locLoad, locExport
+from geocacher.libs.loc import locExport
 
 from geocacher.dialogs.cacheChanges import CacheChanges
 from geocacher.dialogs.export import ExportOptions
@@ -483,7 +483,6 @@ class MainWindow(wx.Frame):
         '''
         self.pushStatus(_('Loading caches from file'))
         wildcard = "GPX File (*.gpx)|*.gpx|"\
-                   "LOC file (*.loc)|*.loc|"\
                    "Compressed GPX File (*.zip)|*.zip|"\
                    "All files (*.*)|*.*"
 
@@ -505,8 +504,6 @@ class MainWindow(wx.Frame):
             if ext != '':
                 if ext == '.gpx':
                     dlg.SetFilterIndex(0)
-                elif ext == '.loc':
-                    dlg.SetFilterIndex(1)
                 elif ext == '.zip':
                     dlg.SetFilterIndex(2)
 
@@ -551,7 +548,7 @@ class MainWindow(wx.Frame):
             dir = geocacher.config().importFolder
 
         else:
-            dir = os.getcwd()#####
+            dir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
 
         dlg = wx.DirDialog(self, _('Select Folder to import waypoint files from'),
                                  defaultPath=dir,
@@ -604,16 +601,18 @@ class MainWindow(wx.Frame):
         mode" Mode to addthe file in (merge or Replace).
         '''
         ext = os.path.splitext(path)[1]
+        sucess = False
         if ext == '.gpx':
-            sucess,changes= gpxLoad(path,mode=mode,
-                                    userId=geocacher.config().GCUserID,
-                                    userName=geocacher.config().GCUserName)
-        elif ext == '.loc':
-            sucess,changes = locLoad(path,mode=mode)
+            sucess,changes = gpxLoad(path,mode=mode,
+                                     userId=geocacher.config().GCUserID,
+                                     userName=geocacher.config().GCUserName)
         elif ext == '.zip':
             sucess,changes = zipLoad(path,mode=mode,
-                                    userId=geocacher.config().GCUserID,
-                                    userName=geocacher.config().GCUserName)
+                                     userId=geocacher.config().GCUserID,
+                                     userName=geocacher.config().GCUserName)
+        else:
+            changes = {}
+            sucess = True
         if sucess == False:
             wx.MessageDialog(self,
                              _('Could not import "%s" due to an error accessing the file') % path,
@@ -868,7 +867,7 @@ class MainWindow(wx.Frame):
         lat, lon, source, name = message.data
         self.NewLocation(lat, lon, source, name)
 
-    def NewLocation(self, lat, lon, source, name=''): ### SQL
+    def NewLocation(self, lat, lon, source, name=''):
         '''
         Handles the creation of a new home loaction.
 
@@ -904,7 +903,7 @@ class MainWindow(wx.Frame):
                 dlg.Destroy()
                 return
         else:
-            self.xmldb.addLocation(name, lat, lon)
+            geocacher.db().addLocation(name, lat, lon)
         self.updateLocations()
         self.updateCurrentLocation(name)
 

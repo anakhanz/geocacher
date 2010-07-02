@@ -59,7 +59,6 @@ class Database(object):
             cur.execute("select version from version")
             row = cur.fetchone()
             vname = 'statements_v%03d' % row[0]
-            print vname
             for stgrp in self.allstatements[self.allstatements.index(vname)+1:]:
                 stmts = Database.__dict__[stgrp]
                 self.sqlexec(stmts, debug)
@@ -127,7 +126,6 @@ class Database(object):
         try:
             z = zipfile.ZipFile(backup_file, mode='r')
             for f in z.namelist():
-                print f
                 if f[:9] == geocacher.appname and os.path.splitext(f)[1] == '.sqlite':
                     z.extract(f, tempDir)
                     sucess = True
@@ -136,9 +134,7 @@ class Database(object):
         except:
             sucess = False
         if sucess:
-            print f
             shutil.move(os.path.join(tempDir, f), geocacher.config().dbfile)
-            print tempDir
         shutil.rmtree(tempDir)
         self.open()
         return sucess
@@ -456,44 +452,49 @@ def main ():
     from geocacher.libs.xmldb import Geocacher
     old_db = Geocacher(True).db
 
-##    # Import old Locations
-##    for loc in old_db.getLocationList():
-##        geocacher.db().addLocation(loc.name, loc.lat, loc.lon)
-##    geocacher.db().close()
-##
-##    # Import old caches
-##    c = 0
-##    total_waypoints = 0
-##    total_logs = 0
-##    total_travelbugs = 0
-##    for cache in old_db.getCacheList():
-##        c += 1
-##        print " cache %i" % c
-##        new_cache = geocacher.db().addCache(cache.code, cache.id, cache.lat, cache.lon, cache.name, cache.url, cache.locked, cache.user_date, cache.gpx_date, cache.symbol, cache.placed, cache.placed_by, cache.owner, cache.owner_id, cache.container, cache.difficulty, cache.terrain, cache.type, cache.available, cache.archived, cache.state, cache.country, cache.short_desc, cache.short_desc_html, cache.long_desc, cache.long_desc_html, cache.encoded_hints, cache.ftf, cache.found, cache.found_date, cache.dnf, cache.dnf_date, 0, cache.source, cache.corrected, cache.clat, cache.clon, cache.cnote, cache.user_comments, cache.user_flag, cache.user_data1, cache.user_data2, cache.user_data3, cache.user_data4)
-##        w = 0
-##        l = 0
-##        t = 0
-##        for wp in cache.getAddWaypoints():
-##            w += 1
-##            print "    waypoint %i" % w
-##            new_wp = new_cache.addAddWaypoint(wp.code, wp.lat, wp.lon, wp.name, wp.url, wp.time, wp.cmt, wp.sym)
-##        for log in cache.getLogs():
-##            l += 1
-##            print "    log %i" % l
-##            new_log = new_cache.addLog(log.id, log.date, log.type, log.finder_id, log.finder_name, log.encoded, log.text)
-##        for tb in cache.getTravelBugs():
-##            t += 1
-##            print "    travel bug %i" % t
-##            new_tb = new_cache.addTravelBug(tb.ref, tb.id, tb.name)
-##        total_waypoints += w
-##        total_logs += l
-##        total_travelbugs += t
-##
-##    print "Totals:"
-##    print "    Caches     %i" % c
-##    print "    Waypoints  %i" % total_waypoints
-##    print "    Logs       %i" % total_logs
-##    print "    Travel bug %i" % total_travelbugs
+    # Import old Locations
+    for loc in old_db.getLocationList():
+        geocacher.db().addLocation(loc.name, loc.lat, loc.lon)
+    geocacher.db().commit()
+    geocacher.db().close()
+
+    # Import old caches
+    c = 0
+    total_waypoints = 0
+    total_logs = 0
+    total_travelbugs = 0
+    for cache in old_db.getCacheList():
+        c += 1
+        print " cache %i" % c
+        new_cache = geocacher.db().addCache(cache.code, cache.id, cache.lat, cache.lon, cache.name, cache.url, cache.locked, cache.user_date, cache.gpx_date, cache.symbol, cache.placed, cache.placed_by, cache.owner, cache.owner_id, cache.container, cache.difficulty, cache.terrain, cache.type, cache.available, cache.archived, cache.state, cache.country, cache.short_desc, cache.short_desc_html, cache.long_desc, cache.long_desc_html, cache.encoded_hints, cache.ftf, cache.found, cache.found_date, cache.dnf, cache.dnf_date, 0, cache.source, cache.corrected, cache.clat, cache.clon, cache.cnote, cache.user_comments, cache.user_flag, cache.user_data1, cache.user_data2, cache.user_data3, cache.user_data4)
+        w = 0
+        l = 0
+        t = 0
+        for wp in cache.getAddWaypoints():
+            w += 1
+            print "    waypoint %i" % w
+            new_wp = new_cache.addAddWaypoint(wp.code, wp.lat, wp.lon, wp.name, wp.url, wp.time, wp.cmt, wp.sym)
+        for log in cache.getLogs():
+            l += 1
+            print "    log %i" % l
+            new_log = new_cache.addLog(log.id, log.date, log.type, log.finder_id, log.finder_name, log.encoded, log.text)
+        for tb in cache.getTravelBugs():
+            t += 1
+            print "    travel bug %i" % t
+            new_tb = new_cache.addTravelBug(tb.ref, tb.id, tb.name)
+        total_waypoints += w
+        total_logs += l
+        total_travelbugs += t
+        if c % 100 == 0:
+            geocacher.db().commit()
+
+
+    print "Totals:"
+    print "    Caches     %i" % c
+    print "    Waypoints  %i" % total_waypoints
+    print "    Logs       %i" % total_logs
+    print "    Travel bug %i" % total_travelbugs
+    geocacher.db().commit()
     geocacher.db().maintdb()
     geocacher.db().backup()
 

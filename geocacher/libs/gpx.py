@@ -7,6 +7,8 @@ import shutil
 import tempfile
 import zipfile
 
+import geocacher
+
 from geocacher.libs.common import textToBool,textToDateTime,dateTimeToText
 from geocacher.libs.common import getTextFromPath,getAttribFromPath
 
@@ -14,7 +16,7 @@ NS = {'gpx': "http://www.topografix.com/GPX/1/0",
       'gs': "http://www.groundspeak.com/cache/1/0"}
 
 
-def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
+def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
             gpxFilename = None):
     '''
     Imports the given .gpx file into the database.
@@ -56,16 +58,15 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             continue
         lon = float(wpt.attrib['lon'])
         lat = float(wpt.attrib['lat'])
-        id = getAttribFromPath(wpt,"gs:cache","id",NS)
+        id = int(getAttribFromPath(wpt,"gs:cache","id",NS))
         available = textToBool(getAttribFromPath(wpt,"gs:cache","available",NS,'True'))
         archived = textToBool(getAttribFromPath(wpt,"gs:cache","archived",NS,'False'))
         name = getTextFromPath(wpt,"gpx:urlname",NS)
         url = getTextFromPath(wpt,"gpx:url",NS)
-        symbol = getTextFromPath(wpt,"gpx:sym",NS)
         placed = textToDateTime(getTextFromPath(wpt,"gpx:time",NS))
         placed_by = getTextFromPath(wpt,"gs:cache//gs:placed_by",NS)
         owner = getTextFromPath(wpt,"gs:cache//gs:owner",NS)
-        owner_id = getAttribFromPath(wpt,"gs:cache//gs:owner","id",NS)
+        owner_id = int(getAttribFromPath(wpt,"gs:cache//gs:owner","id",NS))
         cachetype = getTextFromPath(wpt,"gs:cache//gs:type",NS)
         container = getTextFromPath(wpt,"gs:cache//gs:container",NS,"Not Specified")
         difficulty = float(getTextFromPath(wpt,"gs:cache//gs:difficulty",NS,"1"))
@@ -83,7 +84,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
         else:
             cacheUpdates = {}
 
-        cache = DB.getCacheByCode(code)
+        cache = geocacher.db().getCacheByCode(code)
         if cache==None:
             cacheUpdates['change type'] = 'new'
             cacheUpdates['lat'] = [lat,'']
@@ -93,7 +94,6 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             cacheUpdates['archived'] = [archived,'']
             cacheUpdates['name'] = [name,'']
             cacheUpdates['url'] = [url,'']
-            cacheUpdates['symbol'] = [symbol,'']
             cacheUpdates['placed_by'] = [placed_by,'']
             cacheUpdates['owner'] = [owner,'']
             cacheUpdates['owner_id'] = [owner_id,'']
@@ -109,9 +109,9 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             cacheUpdates['long_desc_html'] = [long_desc_html,'']
             cacheUpdates['encoded_hints'] = [hints,'']
             cacheUpdates['gpx_date'] = [gpxDate,'']
-            cache = DB.addCache(code,lat=lat,lon=lon,id=id,
+            cache = geocacher.db().addCache(code,lat=lat,lon=lon,id=id,
                                 available=available,archived=archived,
-                                name=name,url=url,symbol=symbol,
+                                name=name,url=url,
                                 placed=placed,placed_by=placed_by,
                                 owner=owner,owner_id=owner_id,
                                 type=cachetype,container=container,
@@ -145,9 +145,6 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             if cache.url != url:
                 cacheUpdates['url'] = [url,cache.url]
                 cache.url = url
-            if cache.symbol != symbol:
-                cacheUpdates['symbol'] = [symbol,cache.symbol]
-                cache.symbol = symbol
             if cache.placed_by != placed_by:
                 cacheUpdates['placed_by'] = [placed_by,cache.placed_by]
                 cache.placed_by = placed_by
@@ -196,10 +193,10 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
         foundUpdated=False
         logsUpdates = {}
         for wptLog in wpt.xpath("gs:cache//gs:logs//gs:log", namespaces=NS):
-            logId = wptLog.attrib["id"]
+            logId = int(wptLog.attrib["id"])
             logDate = textToDateTime(getTextFromPath(wptLog, "gs:date",NS))
             logType = getTextFromPath(wptLog, "gs:type",NS)
-            logFinderId = getAttribFromPath(wptLog, "gs:finder", "id", NS)
+            logFinderId = int(getAttribFromPath(wptLog, "gs:finder", "id", NS))
             logFinderName = getTextFromPath(wptLog, "gs:finder",NS)
             logEncoded = textToBool(getAttribFromPath(wptLog, "gs:text", "encoded", NS, "False"))
             logText = getTextFromPath(wptLog, "gs:text",NS)
@@ -216,16 +213,16 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                 logUpdates['encoded'] = [logEncoded,'']
                 logUpdates['text'] = [logText,'']
 
-                log = cache.addLog(logId,date=logDate,type=logType,
+                log = cache.addLog(logId,date=logDate,logType=logType,
                 finder_id=logFinderId,finder_name=logFinderName,
                 encoded=logEncoded,text=logText)
             else:
                 if logDate != log.date:
-                    logUpdates['id'] = [logId,log.date]
+                    logUpdates['id'] = [logDate,log.date]
                     log.date = logDate
-                if logType != log.type:
-                    logUpdates['type'] = [logType,log.type]
-                    log.type = logType
+                if logType != log.logType:
+                    logUpdates['type'] = [logType,log.logType]
+                    log.logType = logType
                 if logFinderId != log.finder_id:
                     logUpdates['finder_id'] = [logFinderId,log.finder_id]
                     log.finder_id = logFinderId
@@ -239,6 +236,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                     logUpdates['text'] = [logText,log.text]
                     log.text = logText
             if len(logUpdates) > 0:
+                log.save()
                 logsUpdates[logId] = logUpdates
                 # Update Own find details if this is the first log with changes
                 # in it that is of the "Found it" type and the finderId or
@@ -248,33 +246,26 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                     if logType in ['Found it', 'Attended']:
                         if not cache.found:
                             cacheUpdates['found'] = [True,False]
-                            updated = True
                             cache.found = True
+                            cacheUpdates['found'] = [True, False]
                         if cache.found_date != logDate:
                             cacheUpdates['found_date'] = [logDate,cache.found_date]
-                            updated = True
                             cache.found_date = logDate
                         foundUpdated = True
                     elif logType == "Didn't find it":
                         if not cache.dnf:
                             cacheUpdates['dnf'] = [True,False]
                             cache.dnf = True
-                            updated = True
+                            cacheUpdates['dnf'] = [True, False]
                         if cache.dnf_date != logDate:
                             cacheUpdates['dnf_date'] = [logDate,cache.dnf_date]
-                            updated = True
                             cache.found_date = logDate
                         foundUpdated = True
                     if foundUpdated:
-                        if cache.own_log != logText:
-                            cacheUpdates['own_log'] = [logText,cache.own_log]
-                            updated = True
-                            cache.own_log = logText
-                        if cache.own_log_encoded != logEncoded:
-                            cacheUpdates['own_log_encoded'] = [logEncoded,
-                                                               cache.own_log_encoded]
-                            updated = True
-                            cache.own_log_encoded = logEncoded
+                        if cache.own_log_id != logId:
+                            cacheUpdates['own_log_id'] = [logId,cache.own_log_id]
+                            cache.own_log_id = logId
+                            cache.refreshOwnLog()
         if len(logsUpdates) > 0:
             cacheUpdates['Logs'] = logsUpdates
         tbUpdates = {}
@@ -286,21 +277,21 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             wptTbId = wptTb.attrib['id']
             wptTbName = getTextFromPath(wptTb,'gs:name',NS)
             if not (wptTbRef in cacheTbRefs):
-                tbUpdates[wptTbRef + ' ' +wptTbName] = _('Added')
+                tbUpdates[wptTbRef + ' ' +wptTbName] = [_('Added'),'']
                 cacheTb = cache.addTravelBug(wptTbRef,id=wptTbId,name=wptTbName)
-                updated = True
             else:
                 cacheTb = cache.getTravelBugByRef(wptTbRef)
-                cacheTb.id = wptTbId
-                cacheTb.name = wptTbName
+                if cacheTb.name != wptTbName:
+                    tbUpdates[wptTbRef + ' ' +wptTbName] = [cacheTb.name, wptTbName]
+                    cacheTb.name = wptTbName
+                    cacheTb.save()
         # Go through the list of travel bugs in the cache and delete any
         # that are not listed in the wpt
         for cacheTbRef in cacheTbRefs:
             if not(cacheTbRef in wptTbRefs):
                 toDelete = cache.getTravelBugByRef(cacheTbRef)
-                tbUpdates[cacheTbRef + ' ' +toDelete.name] = _('Removed')
+                tbUpdates[cacheTbRef + ' ' +toDelete.name] = [_('Removed'),'']
                 toDelete.delete()
-                updated = True
         if len(tbUpdates) > 0:
             cacheUpdates['Travel Bugs'] = tbUpdates
 
@@ -312,6 +303,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
             if cache.source != sourceFile:
                 cache.source = sourceFile
                 cacheUpdates['source'] = [sourceFile,cache.source]
+            cache.save()
             fileUpdates[code] = cacheUpdates
 
     for wpt in extraWpts:
@@ -324,7 +316,7 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
         url = getTextFromPath(wpt,'gpx:url',NS)
         sym = getTextFromPath(wpt,'gpx:sym',NS)
         cacheCode = 'GC'+id[2:]
-        cache = DB.getCacheByCode(cacheCode)
+        cache = geocacher.db().getCacheByCode(cacheCode)
         if cache != None:
             if cacheCode in fileUpdates.keys():
                 cacheUpdates = fileUpdates[cacheCode]
@@ -337,8 +329,14 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                 if id in cacheUpdates['Add Wpts'].keys():
                     addWptUpdates =cacheUpdates['Add Wpts'][id]
             if addWaypoint == None:
-                cache.addAddWaypoint(id,lat=lat,lon=lon,name=name,url=url,
-                                     time=time,cmt=cmt,sym=sym)
+                addWaypoint = cache.addAddWaypoint(id,
+                                                   lat=lat,
+                                                   lon=lon,
+                                                   name=name,
+                                                   url=url,
+                                                   time=time,
+                                                   cmt=cmt,
+                                                   sym=sym)
                 addWptUpdates['id'] = [id,'']
                 addWptUpdates['lat'] = [lat,'']
                 addWptUpdates['lon'] = [lon,'']
@@ -376,7 +374,11 @@ def gpxLoad(filename,DB,mode="update",userName="",userId="",fileUpdates={},
                     cacheUpdates['Add Wpts'][id] = addWptUpdates
                 else:
                     cacheUpdates['Add Wpts'] = {id: addWptUpdates}
+                addWaypoint.save()
+                cache.save()
                 fileUpdates[cacheCode] = cacheUpdates
+    if len(fileUpdates) > 0:
+        geocacher.db().commit()
 
     return (True,fileUpdates)
 
@@ -470,7 +472,7 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
         if gc:
             GS_NAMESPACE = NS['gs']
             GS = "{%s}" %GS_NAMESPACE
-            gsCache = Element(GS + 'cache',id=cache.id,
+            gsCache = Element(GS + 'cache',id=str(cache.id),
                                 available=str(cache.available),
                                 archived=str(cache.archived))
             wpt.append(gsCache)
@@ -480,7 +482,7 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
             gsPlaced_by = Element(GS + 'placed_by')
             gsPlaced_by.text = cache.placed_by
             gsCache.append(gsPlaced_by)
-            gsOwner = Element(GS + 'owner', id=cache.owner_id)
+            gsOwner = Element(GS + 'owner', id=str(cache.owner_id))
             gsOwner.text = cache.owner
             gsCache.append(gsOwner)
             gsType = Element(GS + 'type')
@@ -518,7 +520,7 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
                 for log in cache.getLogs(sort=True,
                                          descending=logOrderDesc,
                                          maxLen=maxLogs):
-                    gsLog = Element(GS + 'log', id=log.id)
+                    gsLog = Element(GS + 'log', id=str(log.id))
                     gsLogs.append(gsLog)
                     gsLogDate = Element(GS + 'date')
                     gsLogDate.text = dateTimeToText(log.date)
@@ -526,7 +528,7 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
                     gsLogType = Element(GS + 'type')
                     gsLogType.text = log.type
                     gsLog.append(gsLogType)
-                    gsLogFinder = Element(GS + 'finder', id=log.finder_id)
+                    gsLogFinder = Element(GS + 'finder', id=str(log.finder_id))
                     gsLogFinder.text = log.finder_name
                     gsLog.append(gsLogFinder)
                     gsLogText = Element(GS + 'text', encoded=str(log.encoded))
@@ -536,7 +538,7 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
                 gsTbs = Element(GS + 'travelbugs')
                 gsCache.append(gsTbs)
                 for tb in cache.getTravelBugs():
-                    gsTb = Element(GS + 'travelbug', id=tb.id, ref=tb.ref)
+                    gsTb = Element(GS + 'travelbug', id=str(tb.id), ref=tb.ref)
                     gsTbs.append(gsTb)
                     gsTbName = Element(GS + 'name')
                     gsTbName.text = tb.name
@@ -631,13 +633,12 @@ def gpxSave(filename,root):
     ElementTree(root).write(fid,encoding="utf-8", pretty_print=True)
     fid.close()
 
-def zipLoad(filename,DB,mode="update",userName="",userId=""):
+def zipLoad(filename,mode="update",userName="",userId=""):
     '''
     Imports the given zip file containing .gpx files into the database.
 
     Arguments
     filename: path to the file from which to import the cache information
-    DB:       Database object to import the caches into
 
     Keyword Arguments
     mode:     mode to run the import in (update or replace)
@@ -659,15 +660,17 @@ def zipLoad(filename,DB,mode="update",userName="",userId=""):
             if file.rfind('-wpts') >= 0:
                 addWptFiles.append(file)
             else:
-                gpxLoad(os.path.join(tempDir,file),DB,mode=mode,
+                gpxLoad(os.path.join(tempDir,file),
+                        mode=mode,
                         userName=userName,userId=userId,
                         fileUpdates=zipChanges,
                         gpxFilename=os.path.abspath(filename))
         for file in addWptFiles:
-            gpxLoad(os.path.join(tempDir,file),DB,mode=mode,
+            gpxLoad(os.path.join(tempDir,file),
+                    mode=mode,
                     userName=userName,userId=userId,
-                        fileUpdates=zipChanges,
-                        gpxFilename=os.path.abspath(filename))
+                    fileUpdates=zipChanges,
+                    gpxFilename=os.path.abspath(filename))
         shutil.rmtree(tempDir)
         return (True,zipChanges)
     else:
