@@ -314,6 +314,7 @@ class Cache(object):
                                  sym  = u""):
         '''Adds an additional waypoint to the cache with the given information'''
         addWpt = Waypoint(code)
+        addWpt.cache_id = self.id
         addWpt.lat  = lat
         addWpt.lon  = lon
         addWpt.name = name

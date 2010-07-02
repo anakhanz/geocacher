@@ -317,7 +317,7 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
         sym = getTextFromPath(wpt,'gpx:sym',NS)
         cacheCode = 'GC'+id[2:]
         cache = geocacher.db().getCacheByCode(cacheCode)
-        if cache != None:
+        if cache is not None:
             if cacheCode in fileUpdates.keys():
                 cacheUpdates = fileUpdates[cacheCode]
             else:
@@ -328,7 +328,7 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
             if 'Add Wpts' in cacheUpdates.keys():
                 if id in cacheUpdates['Add Wpts'].keys():
                     addWptUpdates =cacheUpdates['Add Wpts'][id]
-            if addWaypoint == None:
+            if addWaypoint is None:
                 addWaypoint = cache.addAddWaypoint(id,
                                                    lat=lat,
                                                    lon=lon,
@@ -520,13 +520,13 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
                 for log in cache.getLogs(sort=True,
                                          descending=logOrderDesc,
                                          maxLen=maxLogs):
-                    gsLog = Element(GS + 'log', id=str(log.id))
+                    gsLog = Element(GS + 'log', id=str(log.logId))
                     gsLogs.append(gsLog)
                     gsLogDate = Element(GS + 'date')
                     gsLogDate.text = dateTimeToText(log.date)
                     gsLog.append(gsLogDate)
                     gsLogType = Element(GS + 'type')
-                    gsLogType.text = log.type
+                    gsLogType.text = log.logType
                     gsLog.append(gsLogType)
                     gsLogFinder = Element(GS + 'finder', id=str(log.finder_id))
                     gsLogFinder.text = log.finder_name

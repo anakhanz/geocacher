@@ -101,7 +101,7 @@ class CacheChanges (wx.Dialog):
         logsNode = self.addBranch(parent, _('Logs'))
         for log in logChanges.keys():
             logOwner = self.cache.getLogById(log).finder_name
-            logNode = self.addBranch(logsNode,'#'+srt(log)+' '+logOwner)
+            logNode = self.addBranch(logsNode,'#'+str(log)+' '+logOwner)
             self.processFields(logNode, logChanges[log])
         self.tree.SortChildren(logsNode)
 
