@@ -153,7 +153,10 @@ class Cache(object):
         cur.execute(sql , (self.id,))
         rows = cur.fetchall()
         if maxLen is not None:
-            rows = rows[:maxLen]
+            if descending:
+                rows = rows[:maxLen]
+            else:
+                rows = rows[-maxLen:]
         return rows2list(rows)
 
     def getNumLogs(self):

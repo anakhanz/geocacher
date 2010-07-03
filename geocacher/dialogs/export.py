@@ -315,7 +315,7 @@ class ExportOptions(wx.Dialog):
         '''
         Returns True if exporting of additional way points is enabled
         '''
-        if self.maxLogs.GetValue():
+        if self.limitLogs.GetValue():
             return self.maxLogs.GetValue()
         else:
             return None
