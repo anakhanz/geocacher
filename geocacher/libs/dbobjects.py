@@ -4,7 +4,7 @@ import sys
 import sqlite3
 
 import geocacher
-from geocacher.libs.common import rows2list, float2date, date2float
+from geocacher.libs.common import rows2list
 
 minint = 0-sys.maxint
 
@@ -24,7 +24,8 @@ class Cache(object):
                     cid = min(row[0]-1, -1)
         cur.execute('select id from caches where id=?', (cid, ))
         if cur.fetchone() is None:
-            cur.execute("INSERT INTO Caches(id, code, lat, lon, name, url, locked, user_date, gpx_date, placed,placed_by, owner, owner_id, container, difficulty, terrain, type, available, archived, state, country, short_desc, short_desc_html, long_desc, long_desc_html, encoded_hints, ftf, found, found_date, dnf, dnf_date, own_log_id, source, corrected, clat, clon, cnote, user_comments, user_flag, user_data1, user_data2, user_data3, user_data4) VALUES(?, '', 0.0, 0.0, '', '', 0, -0.1, -0.1, -0.1, '', '', 0, '', 1.0, 1.0, '', 1, 0, '', '', '', 0, '', 0, '', 0, 0, -0.1, 0, -0.1, 0, '', 0, 0.0, 0.0, '', '', '', '', '', '', '')", (cid,))
+            cur.execute("INSERT INTO Caches(id, code) VALUES(?, '')", (cid,))
+            #cur.execute("INSERT INTO Caches(id, code, lat, lon, name, url, locked, user_date, gpx_date, placed,placed_by, owner, owner_id, container, difficulty, terrain, type, available, archived, state, country, short_desc, short_desc_html, long_desc, long_desc_html, encoded_hints, ftf, found, found_date, dnf, dnf_date, own_log_id, source, corrected, clat, clon, cnote, user_comments, user_flag, user_data1, user_data2, user_data3, user_data4) VALUES(?, '', 0.0, 0.0, '', '', 0, -0.1, -0.1, -0.1, '', '', 0, '', 1.0, 1.0, '', 1, 0, '', '', '', 0, '', 0, '', 0, 0, -0.1, 0, -0.1, 0, '', 0, 0.0, 0.0, '', '', '', '', '', '', '')", (cid,))
         cur.execute("SELECT id, code, lat, lon, name, url, locked, user_date, gpx_date, placed,placed_by, owner, owner_id, container, difficulty, terrain, type, available, archived, state, country, short_desc, short_desc_html, long_desc, long_desc_html, encoded_hints, ftf, found, found_date, dnf, dnf_date, own_log_id, source, corrected, clat, clon, cnote, user_comments, user_flag, user_data1, user_data2, user_data3, user_data4 FROM Caches WHERE id=?", (cid,))
         row = cur.fetchone()
         if type(row) is not sqlite3.dbapi2.Row:
@@ -35,10 +36,10 @@ class Cache(object):
         self.lon             = row[ 3]
         self.name            = row[ 4]
         self.url             = row[ 5]
-        self.locked          = (row[ 6] == 1)
-        self.user_date       = float2date(row[ 7])
-        self.gpx_date        = float2date(row[ 8])
-        self.placed          = float2date(row[ 9])
+        self.locked          = row[ 6]
+        self.user_date       = row[ 7]
+        self.gpx_date        = row[ 8]
+        self.placed          = row[ 9]
         self.placed_by       = row[10]
         self.owner           = row[11]
         self.owner_id        = row[12]
@@ -46,8 +47,8 @@ class Cache(object):
         self.difficulty      = row[14]
         self.terrain         = row[15]
         self.type            = row[16]
-        self.available       = (row[17] == 1)
-        self.archived        = (row[18] == 1)
+        self.available       = row[17]
+        self.archived        = row[18]
         self.state           = row[19]
         self.country         = row[20]
         self.short_desc      = row[21]
@@ -55,14 +56,14 @@ class Cache(object):
         self.long_desc       = row[23]
         self.long_desc_html  = row[24]
         self.encoded_hints   = row[25]
-        self.ftf             = (row[26] == 1)
-        self.found           = (row[27] == 1)
-        self.found_date      = float2date(row[28])
-        self.dnf             = (row[29] == 1)
-        self.dnf_date        = float2date(row[30])
+        self.ftf             = row[26]
+        self.found           = row[27]
+        self.found_date      = row[28]
+        self.dnf             = row[29]
+        self.dnf_date        = row[30]
         self.own_log_id      = row[31]
         self.source          = row[32]
-        self.corrected       = (row[33] == 1)
+        self.corrected       = row[33]
         self.clat            = row[34]
         self.clon            = row[35]
         self.cnote           = row[36]
@@ -100,19 +101,19 @@ class Cache(object):
     def refreshOwnLog(self):
         self.own_log = ""
         self.own_log_encoded = False
-        if self.own_log_id != 0:
+        if self.own_log_id not in [0, None]:
             cur = geocacher.db().cursor()
             cur.execute("SELECT encoded, text FROM Logs WHERE id=?",(self.own_log_id,))
             row = cur.fetchone()
             if type(row) is not sqlite3.dbapi2.Row:
-                raise geocacher.InvalidID("Invalid Log ID: %s" % str(cid))
+                raise geocacher.InvalidID("Invalid Log ID: %s" % str(self.own_log_id))
             self.own_log_encoded = (row[0] == 1)
             self.own_log         = row[1]
 
     def save(self):
         cur = geocacher.db().cursor()
         cur.execute("DELETE FROM Caches WHERE id=?", (self.id,))
-        cur.execute("INSERT INTO Caches(id, code, lat, lon, name, url, locked, user_date, gpx_date, placed, placed_by, owner, owner_id, container, difficulty, terrain, type, available, archived, state, country, short_desc, short_desc_html, long_desc, long_desc_html, encoded_hints, ftf, found, found_date, dnf, dnf_date, own_log_id, source, corrected, clat, clon, cnote, user_comments, user_flag, user_data1, user_data2, user_data3, user_data4) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.id, self.code, self.lat, self.lon, self.name, self.url, self.locked, date2float(self.user_date),date2float(self.gpx_date), date2float(self.placed), self.placed_by, self.owner, self.owner_id, self.container, self.difficulty, self.terrain, self.type, self.available, self.archived, self.state, self.country, self.short_desc, self.short_desc_html, self.long_desc, self.long_desc_html, self.encoded_hints, self.ftf, self.found, date2float(self.found_date), self.dnf, date2float(self.dnf_date), self.own_log_id, self.source, self.corrected, self.clat, self.clon, self.cnote, self.user_comments, self.user_flag, self.user_data1, self.user_data2, self.user_data3 , self.user_data4,))
+        cur.execute("INSERT INTO Caches(id, code, lat, lon, name, url, locked, user_date, gpx_date, placed, placed_by, owner, owner_id, container, difficulty, terrain, type, available, archived, state, country, short_desc, short_desc_html, long_desc, long_desc_html, encoded_hints, ftf, found, found_date, dnf, dnf_date, own_log_id, source, corrected, clat, clon, cnote, user_comments, user_flag, user_data1, user_data2, user_data3, user_data4) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.id, self.code, self.lat, self.lon, self.name, self.url, self.locked, self.user_date,self.gpx_date, self.placed, self.placed_by, self.owner, self.owner_id, self.container, self.difficulty, self.terrain, self.type, self.available, self.archived, self.state, self.country, self.short_desc, self.short_desc_html, self.long_desc, self.long_desc_html, self.encoded_hints, self.ftf, self.found, self.found_date, self.dnf, self.dnf_date, self.own_log_id, self.source, self.corrected, self.clat, self.clon, self.cnote, self.user_comments, self.user_flag, self.user_data1, self.user_data2, self.user_data3 , self.user_data4,))
 
     def delete(self):
         cur = geocacher.db().cursor()
@@ -188,7 +189,7 @@ class Cache(object):
         if row is None:
             return None
         else:
-            return float2date(row[0])
+            return row[0]
 
     def getFoundDates(self):
         '''
@@ -210,7 +211,7 @@ class Cache(object):
         if row is None:
             return None
         else:
-            return float2date(row[0])
+            return row[0]
 
     def getFoundCount(self):
         cur = geocacher.db().cursor()
@@ -339,17 +340,18 @@ class Log(object):
                     lid = min(row[0]-1, -1)
         cur.execute("SELECT id FROM Logs WHERE id=?", (lid, ))
         if cur.fetchone() is None:
-            cur.execute("INSERT INTO Logs(id, cache_id, date, type, finder_id, finder_name, encoded, text) VALUES (?, -1, -0.1, '', 0, '', 0, '')", (lid,))
+            cur.execute("INSERT INTO Logs(id) VALUES (?)", (lid,))
+            #cur.execute("INSERT INTO Logs(id, cache_id, date, type, finder_id, finder_name, encoded, text) VALUES (?, -1, -0.1, '', 0, '', 0, '')", (lid,))
         cur.execute('SELECT id, cache_id, date, type, finder_id, finder_name, encoded, text FROM Logs WHERE id=?', (lid,))
         row = cur.fetchone()
         if type(row) is sqlite3.dbapi2.Row:
             self.logId       = row[0]
             self.cache_id    = row[1]
-            self.date        = float2date(row[2])
+            self.date        = row[2]
             self.logType     = row[3]
             self.finder_id   = row[4]
             self.finder_name = row[5]
-            self.encoded     = (row[6] == 1)
+            self.encoded     = row[6]
             self.text        = row[7]
         else:
             raise geocacher.InvalidID('Invalid Log ID: %d' % lid)
@@ -357,7 +359,7 @@ class Log(object):
     def save(self):
         cur = geocacher.db().cursor()
         cur.execute("DELETE FROM Logs WHERE id=?", (self.logId,))
-        cur.execute("INSERT INTO Logs(id, cache_id, date, type, finder_id, finder_name, encoded, text) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", (self.logId, self.cache_id, date2float(self.date), self.logType, self.finder_id, self.finder_name, self.encoded, self.text,))
+        cur.execute("INSERT INTO Logs(id, cache_id, date, type, finder_id, finder_name, encoded, text) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", (self.logId, self.cache_id, self.date, self.logType, self.finder_id, self.finder_name, self.encoded, self.text,))
 
     def delete(self):
         cur = geocacher.db().cursor()
@@ -402,7 +404,8 @@ class Waypoint(object):
         cur = geocacher.db().cursor()
         cur.execute("SELECT code FROM Waypoints WHERE code=?", (code, ))
         if cur.fetchone() is None:
-            cur.execute("INSERT INTO Waypoints(code, cache_id, lat, lon, name, url, time, cmt, sym) VALUES (?, -1, 0.0, 0.0, '', '', -0.1, '', '')", (code,))
+            cur.execute("INSERT INTO Waypoints(code) VALUES (?)", (code,))
+            #cur.execute("INSERT INTO Waypoints(code, cache_id, lat, lon, name, url, time, cmt, sym) VALUES (?, -1, 0.0, 0.0, '', '', ?, '', '')", (code,None,))
         cur.execute('SELECT code, cache_id, lat, lon, name, url, time, cmt, sym FROM Waypoints WHERE code=?', (code,))
         row = cur.fetchone()
         if type(row) is sqlite3.dbapi2.Row:
@@ -412,7 +415,7 @@ class Waypoint(object):
             self.lon      = row[3]
             self.name     = row[4]
             self.url      = row[5]
-            self.time     = float2date(row[6])
+            self.time     = row[6]
             self.cmt      = row[7]
             self.sym      = row[8]
         else:
@@ -421,7 +424,7 @@ class Waypoint(object):
     def save(self):
         cur = geocacher.db().cursor()
         cur.execute("DELETE FROM Waypoints WHERE code=?", (self.code,))
-        cur.execute("INSERT INTO Waypoints(code, cache_id, lat, lon, name, url, time, cmt, sym) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.code , self.cache_id, self.lat, self.lon, self.name, self.url, date2float(self.time), self.cmt, self.sym,))
+        cur.execute("INSERT INTO Waypoints(code, cache_id, lat, lon, name, url, time, cmt, sym) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (self.code , self.cache_id, self.lat, self.lon, self.name, self.url, self.time, self.cmt, self.sym,))
 
     def delete(self):
         cur = geocacher.db().cursor()

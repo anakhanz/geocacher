@@ -17,6 +17,9 @@ from geocacher.libs.common import rows2list
 from geocacher.libs.dbobjects import Cache, Location
 from geocacher.libs.latlon import cardinalBearing, distance
 
+def convert_bool (value):
+    return bool(int(value))
+
 
 class Database(object):
     __shared_state = {}
@@ -52,7 +55,8 @@ class Database(object):
         return self.database.commit()
 
     def prepdb(self, dbname, debug=False):
-        self.database = sqlite3.connect(database=dbname, timeout=1.0)
+        self.database = sqlite3.connect(database=dbname, timeout=1.0,detect_types=sqlite3.PARSE_DECLTYPES)
+        sqlite3.register_converter('BOOL',convert_bool)
         self.database.create_function('distance', 5, distance)
         self.database.create_function('bearing', 4, cardinalBearing)
         self.database.row_factory = sqlite3.Row
@@ -170,10 +174,10 @@ class Database(object):
             lon REAL,
             name TEXT,
             url TEXT,
-            locked INTEGER,
-            user_date REAL,
-            gpx_date REAL,
-            placed REAL,
+            locked BOOL,
+            user_date TIMESTAMP,
+            gpx_date TIMESTAMP,
+            placed TIMESTAMP,
             placed_by TEXT,
             owner TEXT,
             owner_id INTEGER,
@@ -181,23 +185,23 @@ class Database(object):
             difficulty REAL,
             terrain REAL,
             type TEXT,
-            available INTEGER,
-            archived INTEGER,
+            available BOOL,
+            archived BOOL,
             state TEXT,
             country TEXT,
             short_desc TEXT,
-            short_desc_html INTEGER,
+            short_desc_html BOOL,
             long_desc TEXT,
-            long_desc_html INTEGER,
+            long_desc_html BOOL,
             encoded_hints TEXT,
-            ftf INTEGER,
-            found INTEGER,
-            found_date REAL,
-            dnf INTEGER,
-            dnf_date REAL,
+            ftf BOOL,
+            found BOOL,
+            found_date TIMESTAMP,
+            dnf BOOL,
+            dnf_date TIMESTAMP,
             own_log_id INTEGER,
             source TEXT,
-            corrected INTEGER,
+            corrected BOOL,
             clat REAL,
             clon REAL,
             cnote TEXT,
@@ -217,11 +221,11 @@ class Database(object):
         CREATE TABLE Logs (
             id INTEGER PRIMARY KEY,
             cache_id INTEGER,
-            date FLOAT,
+            date TIMESTAMP,
             type TEXT,
             finder_id INTEGER,
             finder_name TEXT,
-            encoded INTEGER,
+            encoded BOOL,
             text TEXT)
         """,
         "CREATE INDEX logs_cache_id ON Logs(cache_id)",
@@ -244,7 +248,7 @@ class Database(object):
             lon FLOAT,
             name TEXT,
             url TEXT,
-            time REAL,
+            time TIMESTAMP,
             cmt TEXT,
             sym TEXT)
         """,
