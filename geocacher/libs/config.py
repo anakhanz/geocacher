@@ -70,7 +70,7 @@ class Config(object):
         if not self.config.HasEntry("CacheColumnOrder"):
             return ["code","id","lat","lon","name","found","type","size","distance","bearing"]
         else:
-            colOrderString = self.config.Read("CacheColumnOrder")
+            colOrderString = str(self.config.Read("CacheColumnOrder"))
             return colOrderString.split(",")
 
     def setCacheColumnOrder(self, colOrderList):
@@ -80,7 +80,7 @@ class Config(object):
 
     def getCacheSortColumn(self):
         self.config.SetPath("/OptionsUI")
-        return self.config.Read("CacheSortColumn", "code")
+        return str(self.config.Read("CacheSortColumn", "code"))
 
     def setCacheSortColumn(self, column):
         self.config.SetPath("/OptionsUI")
@@ -133,6 +133,15 @@ class Config(object):
     def setCurrentLocation(self, location):
         self.config.SetPath("/OptionsUI")
         return self.config.Write("CurrentLocation", location)
+
+    def getCurrentLatLon(self):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT lat, lon FROM Locations WHERE name = ?",(self.currentLocation,))
+        row = cur.fetchone()
+        if row is None:
+            return (0.0, 0.0)
+        else:
+            return (row[0], row[1])
 
     def getIconTheme(self):
         self.config.SetPath("/OptionsUI")
@@ -421,6 +430,7 @@ class Config(object):
     filterOverDist     = property(getFilterOverDist,    setFilterOverDist)
     filterMaxDist      = property(getFilterMaxDist,     setFilterMaxDist)
     currentLocation    = property(getCurrentLocation,   setCurrentLocation)
+    currentLatLon      = property(getCurrentLatLon)
     iconTheme          = property(getIconTheme,         setIconTheme)
     coordinateFormat   = property(getCoordinateFormat,  setCoordinateFormat)
     imperialUnits      = property(getImperialUnits,     setImperialUnits)

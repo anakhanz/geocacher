@@ -20,6 +20,14 @@ from geocacher.libs.latlon import cardinalBearing, distance
 def convert_bool (value):
     return bool(int(value))
 
+def absDist(lat, lon):
+    homeLat, homeLon = geocacher.config().currentLatLon
+    return distance(homeLat, homeLon, lat, lon, geocacher.config().imperialUnits)
+
+def absBear(lat, lon):
+    homeLat, homeLon = geocacher.config().currentLatLon
+    return cardinalBearing(homeLat, homeLon, lat, lon)
+
 
 class Database(object):
     __shared_state = {}
@@ -57,8 +65,8 @@ class Database(object):
     def prepdb(self, dbname, debug=False):
         self.database = sqlite3.connect(database=dbname, timeout=1.0,detect_types=sqlite3.PARSE_DECLTYPES)
         sqlite3.register_converter('BOOL',convert_bool)
-        self.database.create_function('distance', 5, distance)
-        self.database.create_function('bearing', 4, cardinalBearing)
+        self.database.create_function('distance', 2, absDist)
+        self.database.create_function('bearing', 2, absBear)
         self.database.row_factory = sqlite3.Row
         cur = self.database.cursor()
         try:
@@ -515,15 +523,91 @@ def import_main ():
     geocacher.db().maintdb()
     geocacher.db().backup()
 
-def main_new():
-    lat, lon = geocacher.db().getCurrentLocationLatLon()
-    miles = geocacher.config().imperialUnits
+def new_main():
     cur = geocacher.db().cursor()
-    cur.execute("SELECT id, code, lat as oLat, lon as oLon FROM Caches")
-    row = cur.fetchone()
-    for key in row.keys():
-        print key, row[key]
+    sql = '''
+SELECT * FROM(
+SELECT c.id,
+       c.code,
+       CASE WHEN c.corrected = 1 THEN c.cLat
+            ELSE c.lat
+       END AS lat,
+       CASE WHEN c.corrected = 1 THEN c.cLon
+            ELSE c.lon
+       END AS lon,
+       c.name,
+       c.url,
+       c.found,
+       c.type,
+       c.container AS size,
+       c.difficulty,
+       c.terrain,
+       CASE WHEN c.corrected = 1 THEN distance(c.cLat, c.cLon)
+            ELSE distance(c.lat, c.lon)
+       END AS distance,
+       CASE WHEN c.corrected = 1 THEN bearing(c.cLat, c.cLon)
+            ELSE bearing(c.lat, c.lon)
+       END AS bearing,
+       c.lat AS oLat,
+       c.lon AS oLon,
+       c.cLat,
+       c.cLon,
+       c.corrected,
+       c.available,
+       c.archived,
+       c.state,
+       c.country,
+       c.owner,
+       c.placed_by as placedBy,
+       c.placed,
+       c.user_date,
+       c.gpx_date,
+       (SELECT count(l.cache_id) FROM Logs l where l.cache_id = c.id) AS num_logs,
+       (SELECT max(l.date) FROM Logs l where l.cache_id = c.id) AS last_log,
+       (SELECT max(l.date) FROM Logs l where l.cache_id = c.id AND l.type = "Found it") AS last_found,
+       (SELECT count(l.cache_id) FROM Logs l where l.cache_id = c.id AND l.type = "Found it") AS found_count,
+       (SELECT count(t.cache_id) FROM Travelbugs t WHERE t.cache_id = c.id) = 0 AS has_tb,
+       c.locked,
+       c.ftf,
+       c.found,
+       c.found_date,
+       c.dnf,
+       c.dnf_date,
+       c.source,
+       c.user_flag,
+       c.user_data1,
+       c.user_data2,
+       c.user_data3,
+       c.user_data4
+FROM Caches c)
+'''
+    sqlConditions = []
+    if geocacher.config().filterMine:
+        sqlConditions.append('owner != "%s"' % geocacher.config().GCUserName)
+    if geocacher.config().filterFound:
+        sqlConditions.append('found = 0')
+    if geocacher.config().filterOverDist:
+        sqlConditions.append('distance <= %f' % geocacher.config().filterMaxDist)
+    if geocacher.config().filterArchived:
+        sqlConditions.append('archived = 0')
+    if geocacher.config().filterDisabled:
+        sqlConditions.append('available = 1')
+    first = True
+    for condition in sqlConditions:
+        if first:
+            sql = sql + ' WHERE ' + condition
+            first = False
+        else:
+            sql = sql + ' AND ' + condition
+    print sqlConditions
+    print sql
+    cur.execute(sql)
+##    rows = cur.fetchall()
+##    print len(rows)
+##    for row in rows:
+##        for key in row.keys():
+##            print key, row[key], type(row[key])
 
 
 if __name__ == "__main__":
-    import_main()
+    new_main()

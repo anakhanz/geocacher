@@ -1139,8 +1139,6 @@ class MainWindow(wx.Frame):
         geocacher.config().mainWinSize = self.GetSize()
         geocacher.config().detailSplit = self.splitter.GetSashPosition()
         geocacher.config().cacheColumnOrder = self.cacheGrid.GetCols()
-        (geocacher.config().cacheSortColumn,
-         geocacher.config().cacheSortDescend) = self.cacheGrid.GetSort()
         if self.displayedCache != None:
             geocacher.config().displayedCache = self.displayedCache
         else:

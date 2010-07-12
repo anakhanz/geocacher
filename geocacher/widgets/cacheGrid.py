@@ -424,8 +424,10 @@ class CacheGrid(Grid.Grid):
         # Build the pop-up menu
         menu = wx.Menu()
         if col == -1:
-            menu.Append(sortByCodeAsID, _('Ascending Sort By Cache Code'))
-            menu.Append(sortByCodeDsID, _('Descending Sort By Cache Code'))
+            item = menu.Append(sortByCodeAsID, _('Ascending Sort By Cache Code'))
+            item.Enable(enable = not geocacher.config().cacheSortDescend)
+            item = menu.Append(sortByCodeDsID, _('Descending Sort By Cache Code'))
+            item.Enable(enable = geocacher.config().cacheSortDescend)
         else:
             menu.Append(colSortAsID, _('Ascending Sort By Column'))
             menu.Append(colSortDsID, _('Descending Sort By Column'))
@@ -557,9 +559,3 @@ class CacheGrid(Grid.Grid):
         Returns the number of rows in the grid.
         '''
         return self._table.GetNumberRows()
-
-    def GetSort(self):
-        '''
-        Returns the sort column and type for the grid
-        '''
-        return self._table.GetSort()

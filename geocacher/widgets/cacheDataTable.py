@@ -10,9 +10,6 @@ import wx.grid             as  Grid
 
 import geocacher
 
-from geocacher.libs.common import dateCmp
-from geocacher.libs.latlon import distance, cardinalBearing
-
 from geocacher.renderers.deg import LatRenderer, LonRenderer
 from geocacher.renderers.dist import DistRenderer
 from geocacher.renderers.image import CacheBearingRenderer
@@ -133,9 +130,6 @@ class CacheDataTable(Grid.PyGridTableBase):
             'distance'    :DistRenderer,
             'bearing'     :CacheBearingRenderer}
 
-        self._sortCol = geocacher.config().cacheSortColumn
-        self._sortDescend = geocacher.config().cacheSortDescend
-
         self.ReloadCaches()
 
         self._rows = self.GetNumberRows()
@@ -145,10 +139,89 @@ class CacheDataTable(Grid.PyGridTableBase):
         '''
         Reloads all of the caches in the table from the database.
         '''
-        self.data = []
-        for cache in geocacher.db().getCacheList():
-            self.__addRow(cache)
-        self.DoSort()
+        sql = '''
+SELECT * FROM(
+SELECT c.id,
+       c.code,
+       CASE WHEN c.corrected = 1 THEN c.cLat
+            ELSE c.lat
+       END AS lat,
+       CASE WHEN c.corrected = 1 THEN c.cLon
+            ELSE c.lon
+       END AS lon,
+       c.name,
+       c.url,
+       c.found,
+       c.type,
+       c.container AS size,
+       c.difficulty,
+       c.terrain,
+       CASE WHEN c.corrected = 1 THEN distance(c.cLat, c.cLon)
+            ELSE distance(c.lat, c.lon)
+       END AS distance,
+       CASE WHEN c.corrected = 1 THEN bearing(c.cLat, c.cLon)
+            ELSE bearing(c.lat, c.lon)
+       END AS bearing,
+       c.lat AS oLat,
+       c.lon AS oLon,
+       c.cLat,
+       c.cLon,
+       c.corrected,
+       c.available,
+       c.archived,
+       c.state,
+       c.country,
+       c.owner,
+       c.placed_by as placedBy,
+       c.placed,
+       c.user_date,
+       c.gpx_date,
+       (SELECT count(l.cache_id) FROM Logs l where l.cache_id = c.id) AS num_logs,
+       (SELECT max(l.date) FROM Logs l where l.cache_id = c.id) AS last_log,
+       (SELECT max(l.date) FROM Logs l where l.cache_id = c.id AND l.type = "Found it") AS last_found,
+       (SELECT count(l.cache_id) FROM Logs l where l.cache_id = c.id AND l.type = "Found it") AS found_count,
+       (SELECT count(t.cache_id) FROM Travelbugs t WHERE t.cache_id = c.id) = 0 AS has_tb,
+       c.locked,
+       c.ftf,
+       c.found,
+       c.found_date,
+       c.dnf,
+       c.dnf_date,
+       c.source,
+       c.user_flag,
+       c.user_data1,
+       c.user_data2,
+       c.user_data3,
+       c.user_data4
+FROM Caches c)
+'''
+        sqlParameters = []
+        sqlConditions = []
+        if geocacher.config().filterMine:
+            sqlConditions.append('owner != ?')
+            sqlParameters.append(geocacher.config().GCUserName)
+        if geocacher.config().filterFound:
+            sqlConditions.append('found = 0')
+        if geocacher.config().filterOverDist:
+            sqlConditions.append('distance <= ?')
+            sqlParameters.append(geocacher.config().filterMaxDist)
+        if geocacher.config().filterArchived:
+            sqlConditions.append('archived = 0')
+        if geocacher.config().filterDisabled:
+            sqlConditions.append('available = 1')
+        first = True
+        for condition in sqlConditions:
+            if first:
+                sql = sql + ' WHERE ' + condition
+                first = False
+            else:
+                sql = sql + ' AND ' + condition
+        sql = sql + ' ORDER BY ' + geocacher.config().cacheSortColumn
+        if geocacher.config().cacheSortDescend:
+            sql = sql + ' DESC'
+        cur = geocacher.db().cursor()
+        cur.execute(sql, sqlParameters)
+        self.data = cur.fetchall()
 
     def ReloadRow(self, row):
         '''
@@ -162,113 +235,11 @@ class CacheDataTable(Grid.PyGridTableBase):
         if not self.__cacheFilter(cache):
             self.data.insert(row, self.__buildRow(cache))
 
-    def __addRow(self, cache):
-        '''
-        Adds the given cache to the table.
-        cache: Cache to add to the table
-        '''
-        if not self.__cacheFilter(cache):
-            self.data.append(self.__buildRow(cache))
-
-    def __buildRow(self, cache):
-        '''
-        Builds a set of row data form the given cache ready for adding to the
-        table.
-
-        Argument
-        cache: Cache to build row data from.
-        '''
-        dist, cBear = self.__calcDistBearing(cache)
-
-        row = {'code':cache.code,
-               'id':cache.id,
-               'lon':cache.currentLon,
-               'lat':cache.currentLat,
-               'name':cache.name,
-               'url':cache.url,
-               'found':cache.found,
-               'type':cache.type,
-               'size':cache.container,
-               'terrain':cache.terrain,
-               'difficulty':cache.difficulty,
-               'distance':dist,
-               'bearing':cBear,
-               'oLat':cache.lat,
-               'oLon':cache.lon,
-               'cLat':cache.clat,
-               'cLon':cache.clon,
-               'corrected':cache.corrected,
-               'available':cache.available,
-               'archived':cache.archived,
-               'state':cache.state,
-               'country':cache.country,
-               'owner':cache.owner,
-               'placedBy':cache.placed_by,
-               'placed':cache.placed,
-               'user_date':cache.user_date,
-               'gpx_date':cache.gpx_date,
-               'num_logs':cache.getNumLogs(),
-               'last_log':cache.getLastLogDate(),
-               'last_found':cache.getLastFound(),
-               'found_count' :cache.getFoundCount(),
-               'has_tb':cache.hasTravelBugs(),
-               'locked':cache.locked,
-               'ftf':cache.ftf,
-               'found':cache.found,
-               'found_date':cache.found_date,
-               'dnf':cache.dnf,
-               'dnf_date':cache.dnf_date,
-               'source':cache.source,
-               'user_flag':cache.user_flag,
-               'user_data1':cache.user_data1,
-               'user_data2':cache.user_data2,
-               'user_data3':cache.user_data3,
-               'user_data4':cache.user_data4}
-        return row
-
-    def __calcDistBearing(self, cache):
-        '''
-        Calculates the distance and cardinal Bearing of the given cache and
-        returns it as a tuple
-
-        Argument
-        cache: Cache to perform calculations on.
-        '''
-        location = geocacher.db().getLocationByName(geocacher.config().currentLocation)
-        hLat = location.lat
-        hLon = location.lon
-
-        dist = distance(hLat,hLon,cache.currentLat,cache.currentLon)
-        cBear = cardinalBearing(hLat,hLon,cache.currentLat,cache.currentLon)
-        return dist, cBear
-
-    def __cacheFilter(self, cache):
-        '''
-        Returns true if the given cache should be filtered out of the list.
-
-        Argument
-        cache: cache to evaluate filter for.
-        '''
-        mine = cache.owner == geocacher.config().GCUserName or\
-               cache.owner_id == geocacher.config().GCUserID
-        dist, cBear = self.__calcDistBearing(cache)
-        return (geocacher.config().filterArchived and cache.archived) or\
-               (geocacher.config().filterDisabled and (not cache.available)) or\
-               (geocacher.config().filterFound and cache.found) or\
-               (geocacher.config().filterFound and mine)or\
-               (geocacher.config().filterOverDist and geocacher.config().filterMaxDist <= dist)
-
     def UpdateLocation(self):
         '''
         Updates the location based information in all cache rows.
         '''
-        if geocacher.config().filterOverDist:
-            self.ReloadCaches()
-        else:
-            for row in self.data:
-                row['distance'], row['bearing'] = self.__calcDistBearing(geocacher.db().getCacheByCode(row['code']))
-            if self._sortCol in ['distance','bearing']:
-                self.DoSort()
+        self.ReloadCaches()
 
     def UpdateUserDataLabels(self):
         '''
@@ -641,34 +612,11 @@ class CacheDataTable(Grid.PyGridTableBase):
         """
         if self.colLabels.has_key(name):
             if descending == None:
-                descending = (not self._sortDescend) and self._sortCol == name
-            if self._sortCol != name or self._sortDescend != descending:
-                self._sortCol = name
-                self._sortDescend = descending
-                self.DoSort()
-
-    def SortDataItem(self, rowData):
-        '''
-        Returns the data item to be sorted by for a given table row.
-
-        Argument
-        rowData: The row data set to return the data item to sort by.
-        '''
-        return rowData[self._sortCol]
-
-    def DoSort(self):
-        '''
-        Performs the actual data sort on the table based on the stored
-        parameters.
-        '''
-
-        # Fix the comparison function for dates
-        if self.dataTypes[self._sortCol] == Grid.GRID_VALUE_DATETIME:
-            cmp = dateCmp
-        else:
-            cmp = None
-
-        self.data.sort(cmp=cmp, key=self.SortDataItem, reverse=self._sortDescend)
+                descending = (not geocacher.config().cacheSortDescend) and (geocacher.config().cacheSortColumn == name)
+            if (geocacher.config().cacheSortColumn != name) or (geocacher.config().cacheSortDescend != descending):
+                geocacher.config().cacheSortColumn = name
+                geocacher.config().cacheSortDescend = descending
+                self.ReloadCaches()
 
     def _updateColAttrs(self, grid):
         """
@@ -708,9 +656,3 @@ class CacheDataTable(Grid.PyGridTableBase):
         Returns a list of all of the column identifiers.
         '''
         return self.colLabels.keys()
-
-    def GetSort(self):
-        '''
-        Returns a tuple containing the sort column and the sort direction.
-        '''
-        return (self._sortCol, self._sortDescend)
