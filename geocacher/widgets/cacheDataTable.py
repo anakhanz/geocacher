@@ -135,7 +135,7 @@ class CacheDataTable(Grid.PyGridTableBase):
         self._rows = self.GetNumberRows()
         self._cols = self.GetNumberCols()
 
-    def ReloadCaches(self):
+    def GetCacheRows(self, cache_id=None):
         '''
         Reloads all of the caches in the table from the database.
         '''
@@ -197,6 +197,9 @@ FROM Caches c)
 '''
         sqlParameters = []
         sqlConditions = []
+        if cache_id is not None:
+            sqlConditions.append('id = ?')
+            sqlParameters.append(cache_id)
         if geocacher.config().filterMine:
             sqlConditions.append('owner != ?')
             sqlParameters.append(geocacher.config().GCUserName)
@@ -221,7 +224,13 @@ FROM Caches c)
             sql = sql + ' DESC'
         cur = geocacher.db().cursor()
         cur.execute(sql, sqlParameters)
-        self.data = cur.fetchall()
+        if cache_id is None:
+            return cur.fetchall()
+        else:
+            return cur.fetchone()
+
+    def ReloadCaches(self):
+        self.data = self.GetCacheRows()
 
     def ReloadRow(self, row):
         '''
@@ -230,10 +239,11 @@ FROM Caches c)
         Argument
         row: The row number to reload.
         '''
-        cache = self.GetRowCache(row)
-        self.data.pop(row)
-        if not self.__cacheFilter(cache):
-            self.data.insert(row, self.__buildRow(cache))
+        rowData = self.GetCacheRows(self.data[row]['id'])
+        if rowData is None:
+            self.data.pop(row)
+        else:
+            self.data[row] = rowData
 
     def UpdateLocation(self):
         '''
@@ -297,36 +307,38 @@ FROM Caches c)
         '''
         id = self.colNames[col]
         cache = self.GetRowCache(row)
-        changed = False
         if self.dataTypes[id] == Grid.GRID_VALUE_BOOL:
             value = bool(value)
-        if not cache.locked:
-            if id == 'ftf':
-                cache.ftf = value
-                changed = True
-            elif id == 'user_data1':
-                cache.user_data1 = value
-                changed = True
-            elif id == 'user_data2':
-                cache.user_data1 = value
-                changed = True
-            elif id == 'user_data3':
-                cache.user_data1 = value
-                changed = True
-            elif id == 'user_data4':
-                cache.user_data1 = value
-                changed = True
-            elif id == 'user_flag':
-                cache.user_flag = value
-                changed = True
         if id == 'locked':
+            changed = (cache.locked != value)
             cache.locked = value
-            changed = True
+        elif not cache.locked:
+            if id == 'ftf':
+                changed = cache.ftf
+                cache.ftf = value
+            elif id == 'user_data1':
+                changed = (cache.user_data1 != value)
+                cache.user_data1 = value
+            elif id == 'user_data2':
+                changed = (cache.user_data2 != value)
+                cache.user_data2 = value
+            elif id == 'user_data3':
+                changed = (cache.user_data3 != value)
+                cache.user_data3 = value
+            elif id == 'user_data4':
+                changed = (cache.user_data4 != value)
+                cache.user_data4 = value
+            elif id == 'user_flag':
+                changed = (cache.user_flag != value)
+                cache.user_flag = value
+        else:
+            changed = False
         if changed:
-            now = datetime.now()
-            cache.user_date = now
-            self.data[row]['user_date'] = now
-            self.data[row][id] = value
+            cache.user_date = datetime.now()
+            cache.save()
+            geocacher.db().commit()
+            ## TODO check if moified column is sorted of filtered by, if so do a complete refresh
+            self.ReloadRow(row)
             self.GetView().ForceRefresh()
 
     def GetRowCode(self, row):
