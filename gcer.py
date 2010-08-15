@@ -25,17 +25,8 @@ except ImportError:
 
 import sys
 
-if not hasattr(sys, "frozen") and 'wx' not in sys.modules and 'wxPython' not in sys.modules:
-    import wxversion
-    wxversion.ensureMinimal("2.8")
-import geocacher.app
-
-def main():
-    app = geocacher.app.GeocacherApp(redirect=False, useBestVisual=True)
-    app.MainLoop()
+import geocacher
 
 if __name__ == "__main__":
-    if not hasattr(sys, "frozen") and 'wx' not in sys.modules and 'wxPython' not in sys.modules:
-        import wxversion
-        wxversion.ensureMinimal("2.8")
-    main()
+    app = geocacher.GeocacherApp(redirect=False, useBestVisual=True)
+    app.MainLoop()
