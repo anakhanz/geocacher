@@ -1,0 +1,1 @@
+recursive-include geocacher *.txt *.py *.png *.gif *.ico *.xrc

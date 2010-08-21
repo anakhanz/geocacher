@@ -11,13 +11,24 @@ import wx
 import geocacher.libs.config
 import geocacher.libs.db
 
-import __version__
+MAJOR_VERSION   = 0 # major functionality change
+MINOR_VERSION   = 1 # minor functionality change
+BUILD_NUMBER    = 0 # problem/bug fix
+STATUS          = 1 # 1 = alpha, 2 = beta, 3 = release candidate, 9 = final stable
+VERSION_STRING  = u'%s.%s.%s.%s' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,
+                                    STATUS)
 
-version = __version__.gcVERSION_STRING
+VERSION_NUMBER  = u'%s.%s.%s' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER)
+
+version = VERSION_STRING
+__version__ = VERSION_NUMBER
+
 appname = 'Geocacher'
 appdescription = "Application for Geocaching waypoint management"
 appcopyright = 'Copyright 2009 Rob Wallace'
 developers = ['Rob Wallace']
+author = 'Rob Wallace'
+authoremail = 'rob@wallace.gen.nz'
 website = 'http://rnr.wallace.gen.nz/redmine/geocacher'
 
 def we_are_frozen():
@@ -50,8 +61,6 @@ mytranslation = gettext.translation(domain, localedir,
 mytranslation.install()
 
 from geocacher.widgets.mainWindow import MainWindow
-
-__version__ = geocacher.__version__.gcVERSION_NUMBER
 
 def getLicense():
     return open("data/gpl.txt").read()

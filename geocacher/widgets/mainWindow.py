@@ -14,9 +14,8 @@ from wx.lib.pubsub import Publisher as Publisher
 import wx.html as Html
 
 import geocacher
-import geocacher.__version__
 
-__version__ = geocacher.__version__.gcVERSION_NUMBER
+__version__ = geocacher.__version__
 
 from geocacher.widgets.cacheGrid import CacheGrid
 
