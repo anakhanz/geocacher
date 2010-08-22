@@ -37,7 +37,11 @@ class Config(object):
         return self.config.WriteInt('DetailSplitPos', pos)
 
     def getDbPath(self):
-        return(os.sep.join([wx.StandardPaths.GetUserConfigDir(wx.StandardPaths.Get()), geocacher.appname]))
+        if sys.platform[:3] == 'win':
+            envvar = 'APPDATA'
+        else:
+            envvar = 'HOME'
+        return os.sep.join([os.environ[envvar], geocacher.appname])
 
     def getDbFile(self):
         self.config.SetPath('/PerMachine')

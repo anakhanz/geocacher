@@ -7,7 +7,6 @@ if not hasattr(sys, "frozen") and 'wx' not in sys.modules and 'wxPython' not in 
     import wxversion
     wxversion.ensureMinimal("2.8")
 import wx
-
 import geocacher.libs.config
 import geocacher.libs.db
 
@@ -46,22 +45,6 @@ def module_path():
 
     return os.path.dirname(unicode(__file__, sys.getfilesystemencoding( )))
 
-basepath = module_path()
-localedir = os.path.join(basepath, 'locale')
-langid = wx.LANGUAGE_DEFAULT    # use OS default; or use LANGUAGE_JAPANESE, etc.
-domain = "messages"             # the translation file is messages.mo
-# Set locale for wxWidgets
-mylocale = wx.Locale(langid)
-mylocale.AddCatalogLookupPathPrefix(localedir)
-mylocale.AddCatalog(domain)
-
-# Set up Python's gettext
-mytranslation = gettext.translation(domain, localedir,
-    [mylocale.GetCanonicalName()], fallback = True)
-mytranslation.install()
-
-from geocacher.widgets.mainWindow import MainWindow
-
 def getLicense():
     return open("data/gpl.txt").read()
 
@@ -69,7 +52,7 @@ def config():
     return geocacher.libs.config.Config()
 
 def db(debugging=False):
-    return geocacher.libs.db.Database(debugging)
+    return geocacher.libs.db.Database(False)
 
 class GeocacherApp (wx.App):
     '''
@@ -88,6 +71,8 @@ class GeocacherApp (wx.App):
             dlg.ShowModal()
             return False
         else:
+            self.SetupTanslation()
+            from geocacher.widgets.mainWindow import MainWindow
             dirName = os.path.dirname(os.path.abspath(__file__))
             imageName = os.path.join(dirName, 'gfx', 'splash.png')
             image = wx.Image(imageName, wx.BITMAP_TYPE_PNG)
@@ -100,6 +85,22 @@ class GeocacherApp (wx.App):
             self.SetTopWindow(frame)
             frame.Show(True)
             return True
+
+    def SetupTanslation(self):
+        basepath = module_path()
+        localedir = os.path.join(basepath, 'locale')
+        langid = wx.LANGUAGE_DEFAULT    # use OS default; or use LANGUAGE_JAPANESE, etc.
+        domain = "messages"             # the translation file is messages.mo
+
+        # Set locale for wxWidgets
+        mylocale = wx.Locale(langid)
+        mylocale.AddCatalogLookupPathPrefix(localedir)
+        mylocale.AddCatalog(domain)
+
+        # Set up Python's gettext
+        mytranslation = gettext.translation(domain, localedir,
+            [mylocale.GetCanonicalName()], fallback = True)
+        mytranslation.install()
 
     def OnExit(self):
         pass
