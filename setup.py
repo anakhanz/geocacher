@@ -136,10 +136,9 @@ setup(
                                            "comctl32.dll", "advapi32.dll",
                                            "ws2_32.dll", "gdi32.dll",
                                            "winmm.dll", "ws2help.dll",
-                                           "mswsock.dll"]
+                                           "mswsock.dll", "MSVCP90.dll"]
         }
     },
-    console=[{'script': 'gcer'}],
     windows=[{'script': 'gcer'}],
     data_files=dataFiles,
 
