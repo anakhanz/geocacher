@@ -8,6 +8,29 @@ from geocacher.libs.common import rows2list
 
 minint = 0-sys.maxint
 
+CACHE_CONTAINERS = ['Micro',
+                    'Small',
+                    'Regular',
+                    'Large',
+                    'Not chosen',
+                    'Virtual',
+                    'Other']
+
+CACHE_TYPES = ['Traditional Cache',
+               'Ape',
+               'CITO',
+               'Earthcache',
+               'Event Cache',
+               'Maze',
+               'Letterbox Hybrid',
+               'Mega',
+               'Multi-cache',
+               'Unknown Cache',
+               'Reverse',
+               'Virtual Cache',
+               'Webcam Cache',
+               'Wherigo Cache',
+               'Lost and Found Event Cache']
 
 
 class Cache(object):
