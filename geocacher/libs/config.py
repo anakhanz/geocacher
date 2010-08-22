@@ -384,7 +384,7 @@ class Config(object):
 
     def getExportLogOrder(self):
         self.exportPath()
-        return self.config.ReadInt("LogOrder", 4)
+        return self.config.ReadInt("LogOrder", 0)
 
     def setExportLogOrder(self, i):
         self.exportPath()
