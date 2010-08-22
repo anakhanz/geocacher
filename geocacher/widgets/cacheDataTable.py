@@ -331,6 +331,8 @@ FROM Caches c)
             elif id == 'user_flag':
                 changed = (cache.user_flag != value)
                 cache.user_flag = value
+            else:
+                changed = False
         else:
             changed = False
         if changed:
