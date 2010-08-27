@@ -45,6 +45,9 @@ def module_path():
 
     return os.path.dirname(unicode(__file__, sys.getfilesystemencoding( )))
 
+def getBasePath():
+    return module_path()
+
 def getLicense():
     return open("data/gpl.txt").read()
 

@@ -55,7 +55,7 @@ class MainWindow(wx.Frame):
         wx.Frame.__init__(self,parent,wx.ID_ANY,_("Geocacher"),size = (size),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
         self.Bind(wx.EVT_CLOSE, self.OnQuit)
-
+        self.SetIcon(wx.Icon(os.path.join(geocacher.getBasePath(), 'gfx', 'treasure_chest.ico'), wx.BITMAP_TYPE_ICO))
         self.buildStatusBar()
 
         self.buildMenu()
