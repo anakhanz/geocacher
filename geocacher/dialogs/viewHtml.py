@@ -115,3 +115,4 @@ class ViewHtml(wx.Dialog):
         dlg = wx.lib.dialogs.ScrolledMessageDialog(self, source, 'HTML Source')
         dlg.ShowModal()
         dlg.Destroy()
+

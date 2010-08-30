@@ -159,6 +159,14 @@ class Config(object):
         self.config.SetPath("/OptionsUI")
         return self.config.Write("CoordinateFormat", fmt)
 
+    def getDateFormat(self):
+        self.config.SetPath("/OptionsUI")
+        return self.config.Read("DateFormat", "%d/%m/%Y")
+
+    def setDateFormat(self, fmt):
+        self.config.SetPath("/OptionsUI")
+        return self.config.Write("DateFormat", fmt)
+
     def getImperialUnits(self):
         self.config.SetPath("/OptionsUI")
         return self.config.ReadBool("ImperialUnits", )
@@ -433,6 +441,7 @@ class Config(object):
     currentLatLon      = property(getCurrentLatLon)
     iconTheme          = property(getIconTheme,         setIconTheme)
     coordinateFormat   = property(getCoordinateFormat,  setCoordinateFormat)
+    dateFormat         = property(getDateFormat,        setDateFormat)
     imperialUnits      = property(getImperialUnits,     setImperialUnits)
     cacheColumnOrder   = property(getCacheColumnOrder,  setCacheColumnOrder)
     cacheSortColumn    = property(getCacheSortColumn,   setCacheSortColumn)
