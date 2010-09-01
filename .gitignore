@@ -19,3 +19,6 @@ dist/*
 .project
 .pydevproject
 .settings
+
+# Wing IDE per user project file
+geocacher.wpu
