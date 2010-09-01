@@ -404,7 +404,14 @@ FROM Caches c)
         row: Column number to return the label for.
         '''
         id = self.colNames[col]
-        return self.colLabels[id]
+        label = self.colLabels[id]
+        if id == geocacher.config().cacheSortColumn:
+            if geocacher.config().cacheSortDescend:
+                return label + u" \u2207"
+            else:
+                return label + u" \u2206"
+        else:
+            return label
 
     def GetColLabelValueByName(self, name):
         '''
