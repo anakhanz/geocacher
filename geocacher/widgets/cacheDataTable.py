@@ -215,13 +215,16 @@ FROM Caches c)
         first = True
         for condition in sqlConditions:
             if first:
-                sql = sql + ' WHERE ' + condition
+                sql += ' WHERE ' + condition
                 first = False
             else:
-                sql = sql + ' AND ' + condition
-        sql = sql + ' ORDER BY ' + geocacher.config().cacheSortColumn
+                sql += ' AND ' + condition
+        if self.dataTypes[geocacher.config().cacheSortColumn] == Grid.GRID_VALUE_STRING:
+            sql += ' ORDER BY LOWER(' + geocacher.config().cacheSortColumn + ')'
+        else:
+            sql += ' ORDER BY ' + geocacher.config().cacheSortColumn
         if geocacher.config().cacheSortDescend:
-            sql = sql + ' DESC'
+            sql += ' DESC'
         cur = geocacher.db().cursor()
         cur.execute(sql, sqlParameters)
         if cache_id is None:
