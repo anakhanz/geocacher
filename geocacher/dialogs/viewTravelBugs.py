@@ -1,9 +1,12 @@
 # -*- coding: UTF-8 -*-
 
+import os.path
+
 import wx
 import wx.lib.scrolledpanel as Scrolled
 import wx.xrc as Xrc
 
+import geocacher
 
 class ViewTravelBugs(wx.Dialog):
     '''
@@ -12,7 +15,7 @@ class ViewTravelBugs(wx.Dialog):
     def __init__(self,parent,cache):
         '''
         Initialises the View Travel Bugs Frame
-        
+
         Arguments
         parent: The parent window for the dialog.
         cache:  The cache object to display the travel bugs from.
@@ -21,7 +24,7 @@ class ViewTravelBugs(wx.Dialog):
         wx.Dialog.__init__(self,parent,wx.ID_ANY,_("Travel Bugs for ")+cache.code,size = (420,500),
                            style = wx.DEFAULT_FRAME_STYLE | wx.NO_FULL_REPAINT_ON_RESIZE)
 
-        res = Xrc.XmlResource('xrc\geocacher.xrc')
+        res = Xrc.XmlResource(os.path.join(geocacher.getBasePath(), 'xrc', 'bugPanel.xrc'))
 
         # Create a scrolled panel and a vertical sizer within it to take the bugs
         sw = Scrolled.ScrolledPanel(self, -1, size=(400, 450),

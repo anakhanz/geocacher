@@ -28,7 +28,7 @@ class ExportOptions(wx.Dialog):
         self.types = ['simple','full','custom']
 
         pre = wx.PreDialog()
-        self.res = Xrc.XmlResource('xrc\geocacher.xrc')
+        self.res = Xrc.XmlResource(os.path.join(geocacher.getBasePath(), 'xrc', 'export.xrc'))
         self.res.LoadOnDialog(pre, parent, 'ExportWaypointDialog')
         self.PostCreate(pre)
 

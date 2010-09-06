@@ -1,9 +1,12 @@
 # -*- coding: UTF-8 -*-
 
+import os.path
+
 import wx
 import wx.lib.scrolledpanel as Scrolled
 import wx.xrc as Xrc
 
+import geocacher
 
 class ViewLogs(wx.Dialog):
     '''
@@ -26,7 +29,7 @@ class ViewLogs(wx.Dialog):
                                  style = wx.TAB_TRAVERSAL)
         logSizer = wx.BoxSizer(orient=wx.VERTICAL)
 
-        res = Xrc.XmlResource('xrc\geocacher.xrc')
+        res = Xrc.XmlResource(os.path.join(geocacher.getBasePath(), 'xrc', 'logPanel.xrc'))
 
         # Create a block for each log and add it to the logs sizer
         for log in cache.getLogs():

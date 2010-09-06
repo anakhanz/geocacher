@@ -1,7 +1,11 @@
 # -*- coding: UTF-8 -*-
 
+import os.path
+
 import wx
 import wx.xrc as Xrc
+
+import geocacher
 
 class FoundCache(wx.Dialog):
     '''
@@ -10,13 +14,13 @@ class FoundCache(wx.Dialog):
     def __init__(self,parent,cache,markType,date=None, logText='',encoded=False):
         '''
         Initialises the View Travel Bugs Frame
-        
+
         Arguments
         parent: The parent window for the dialog.
         cache:  The cache object to display the travel bugs from.
         '''
         pre = wx.PreDialog()
-        self.res = Xrc.XmlResource('xrc\geocacher.xrc')
+        self.res = Xrc.XmlResource(os.path.join(geocacher.getBasePath(), 'xrc', 'foundCache.xrc'))
         self.res.LoadOnDialog(pre, parent, 'FoundCacheDialog')
         self.PostCreate(pre)
 
