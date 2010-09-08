@@ -19,6 +19,7 @@ from geocacher.libs.common import wxDateTimeToPy
 
 from geocacher.dialogs.correctLatLon import CorrectLatLon
 from geocacher.dialogs.foundCache import FoundCache
+from geocacher.dialogs.addWaypoints import AddWpts
 from geocacher.dialogs.viewLogs import ViewLogs
 from geocacher.dialogs.viewTravelBugs import ViewTravelBugs
 
@@ -325,6 +326,13 @@ class CacheGrid(Grid.Grid):
                 Publisher.sendMessage('status.pop')
             dlg.Destroy()
 
+        def cacheAddWpts(event, self=self, cache=cache):
+            '''View the additional waypoints for the selected cache (row).'''
+            self.SelectRow(row)
+            dlg = AddWpts(self, cache)
+            dlg.ShowModal()
+            dlg.Destroy()
+
         def cacheViewLogs(event, self=self, cache=cache):
             '''View the logs for the selected cache (row).'''
             self.SelectRow(row)
@@ -410,6 +418,7 @@ class CacheGrid(Grid.Grid):
         cacheUnAvailID  = wx.NewId()
         cacheCorrectID  = wx.NewId()
         cacheRmCorrID   = wx.NewId()
+        cacheAddWptsID  = wx.NewId()
         cacheViewLogsID = wx.NewId()
         cacheViewBugsID = wx.NewId()
         cacheAsHomeID   = wx.NewId()
@@ -453,6 +462,8 @@ class CacheGrid(Grid.Grid):
                 menu.Append(cacheRmCorrID, _('Remove Cordinate Correction'))
             else:
                 menu.Append(cacheCorrectID, _('Correct Cordinates'))
+            if cache.hasAddWaypoints():
+                menu.Append(cacheAddWptsID, _('Additional Waypoints'))
             if cache.getNumLogs() > 0: menu.Append(cacheViewLogsID, _('View Logs'))
             if cache.hasTravelBugs(): menu.Append(cacheViewBugsID, _('View Travel Bugs'))
             menu.Append(cacheAsHomeID, _('Add cache as Home location'))
@@ -467,6 +478,7 @@ class CacheGrid(Grid.Grid):
         self.Bind(wx.EVT_MENU, cacheUnAvail, id=cacheUnAvailID)
         self.Bind(wx.EVT_MENU, cacheCorrect, id=cacheCorrectID)
         self.Bind(wx.EVT_MENU, cacheRemCorrection, id=cacheRmCorrID)
+        self.Bind(wx.EVT_MENU, cacheAddWpts, id=cacheAddWptsID)
         self.Bind(wx.EVT_MENU, cacheViewLogs, id=cacheViewLogsID)
         self.Bind(wx.EVT_MENU, cacheViewBugs, id=cacheViewBugsID)
         self.Bind(wx.EVT_MENU, cacheAsHome, id=cacheAsHomeID)

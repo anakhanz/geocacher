@@ -283,9 +283,7 @@ class Cache(object):
 
     def hasTravelBugs(self):
         '''Returns True if the cache has travel bugs in it at present'''
-        cur = geocacher.db().cursor()
-        cur.execute("SELECT id FROM Travelbugs WHERE cache_id = ?" , (self.id,))
-        return len(cur.fetchall()) > 0
+        return len(self.getTravelBugRefs()) > 0
 
     def getTravelBugByRef(self,ref):
         '''Returns the travel bug with the given ref if found, otherwise "None"'''
@@ -330,6 +328,10 @@ class Cache(object):
             return None
         else:
             return Waypoint(row[0])
+
+    def hasAddWaypoints(self):
+        '''Returns True if the cache has additional waypoints, otherwise False'''
+        return len(self.getAddWaypointCodes()) > 0
 
 
     def addAddWaypoint(self,code,lat  = 0,
