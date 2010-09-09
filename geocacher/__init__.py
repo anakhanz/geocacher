@@ -12,8 +12,8 @@ import geocacher.libs.db
 
 MAJOR_VERSION   = 0 # major functionality change
 MINOR_VERSION   = 1 # minor functionality change
-BUILD_NUMBER    = 0 # problem/bug fix
-STATUS          = 1 # 1 = alpha, 2 = beta, 3 = release candidate, 9 = final stable
+BUILD_NUMBER    = 1 # problem/bug fix
+STATUS          = 3 # 1 = alpha, 2 = beta, 3 = release candidate, 9 = final stable
 VERSION_STRING  = u'%s.%s.%s.%s' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,
                                     STATUS)
 
