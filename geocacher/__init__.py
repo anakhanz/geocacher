@@ -65,6 +65,7 @@ class GeocacherApp (wx.App):
         '''
         Provides the additional initalisation needed for the application.
         '''
+        self.SetupTanslation()
         self.checker = wx.SingleInstanceChecker(".Geocacher_"+wx.GetUserId())
         if self.checker.IsAnotherRunning():
             dlg = wx.MessageDialog(None,
@@ -74,7 +75,6 @@ class GeocacherApp (wx.App):
             dlg.ShowModal()
             return False
         else:
-            self.SetupTanslation()
             from geocacher.widgets.mainWindow import MainWindow
             dirName = os.path.dirname(os.path.abspath(__file__))
             imageName = os.path.join(dirName, 'gfx', 'splash.png')
