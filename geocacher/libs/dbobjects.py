@@ -32,6 +32,15 @@ CACHE_TYPES = ['Traditional Cache',
                'Wherigo Cache',
                'Lost and Found Event Cache']
 
+LOG_TYPES = ["Found it",
+             "Didn't find it",
+             "Other",
+             "Needs Archived",
+             "Unknown",
+             "Archive (show)",
+             "Archive (no show)",
+             "Attended"]
+
 
 class Cache(object):
     def __init__(self, cid=minint):
