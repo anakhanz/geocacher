@@ -1,7 +1,9 @@
 # -*- coding: UTF-8 -*-
 
 from datetime import datetime
-from lxml.etree import Element,ElementTree,XML
+#from xml.etree import Element,ElementTree,XML
+from xml.etree import ElementTree
+import logging
 import os
 import shutil
 import tempfile
@@ -14,6 +16,12 @@ from geocacher.libs.common import getTextFromPath,getAttribFromPath
 
 NS = {'gpx': "http://www.topografix.com/GPX/1/0",
       'gs': "http://www.groundspeak.com/cache/1/0"}
+
+GPX = "{%s}" %NS['gpx']
+GS = "{%s}" %NS['gs']
+
+ElementTree.register_namespace('', "http://www.topografix.com/GPX/1/0")
+ElementTree.register_namespace('groundspeak', "http://www.groundspeak.com/cache/1/0")
 
 
 def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
@@ -34,7 +42,7 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
     '''
     # Load GPX file
     if os.path.isfile(filename):
-        gpxDoc = ElementTree(file=filename).getroot()
+        gpxDoc = ElementTree.parse(filename).getroot()
         if gpxFilename == None:
             sourceFile = os.path.abspath(filename)
         else:
@@ -43,21 +51,24 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
         return (False, fileUpdates)
     # Get the date the GPX file was created
     try:
-        gpxDate = textToDateTime(gpxDoc.xpath("//gpx:gpx//gpx:time", namespaces=NS)[0].text)
+        gpxDate = textToDateTime('%s' % gpxDoc.find("gpx:time", NS).text)
+        logging.debug('Date from File contents: %s' % dateTimeToText(gpxDate))
     except:
         gpxDate = datetime.utcfromtimestamp(os.path.getmtime(filename))
+        logging.debug('Date from file timestamp: %s' % dateTimeToText(gpxDate))
 
     # Create list for extra points
     extraWpts = []
 
     # Find the waypoints and process them
-    for wpt in gpxDoc.xpath("//gpx:gpx//gpx:wpt", namespaces=NS):
+    for wpt in gpxDoc.findall("gpx:wpt", NS):
         code = getTextFromPath(wpt,"gpx:name",NS)
+        logging.debug(code)
         if code[:2] !="GC":
             extraWpts.append(wpt)
             continue
-        lon = float(wpt.attrib['lon'])
-        lat = float(wpt.attrib['lat'])
+        lon = float(getAttribFromPath(wpt,".","lon",NS,'0.0'))
+        lat = float(getAttribFromPath(wpt,".","lat",NS,'0.0'))
         id = int(getAttribFromPath(wpt,"gs:cache","id",NS))
         available = textToBool(getAttribFromPath(wpt,"gs:cache","available",NS,'True'))
         archived = textToBool(getAttribFromPath(wpt,"gs:cache","archived",NS,'False'))
@@ -122,6 +133,7 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
                                 long_desc=long_desc,
                                 long_desc_html=long_desc_html,
                                 encoded_hints=hints,gpx_date=gpxDate)
+
 
 
         elif 'change type' not in cacheUpdates.keys():
@@ -192,8 +204,9 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
         # Always update Logs and travel bugs
         foundUpdated=False
         logsUpdates = {}
-        for wptLog in wpt.xpath("gs:cache//gs:logs//gs:log", namespaces=NS):
-            logId = int(wptLog.attrib["id"])
+        for wptLog in wpt.findall("gs:cache//gs:logs//gs:log", NS):
+            logId = int(getAttribFromPath(wptLog, '.', "id",NS))
+            #logId = int(wptLog.attrib["id"])
             logDate = textToDateTime(getTextFromPath(wptLog, "gs:date",NS))
             logType = getTextFromPath(wptLog, "gs:type",NS)
             logFinderId = int(getAttribFromPath(wptLog, "gs:finder", "id", NS))
@@ -205,6 +218,7 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
 
             log = cache.getLogById(logId)
             if  log==None:
+                logging.debug('Log %i not forund in existing data, creating' % logId)
                 logUpdates['id'] = [logId,'']
                 logUpdates['date'] = [logDate,'']
                 logUpdates['type'] = [logType,'']
@@ -217,6 +231,8 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
                 finder_id=logFinderId,finder_name=logFinderName,
                 encoded=logEncoded,text=logText)
             else:
+
+                logging.debug('Log %i found in existing data, checking data' % logId)
                 if logDate != log.date:
                     logUpdates['id'] = [logDate,log.date]
                     log.date = logDate
@@ -243,20 +259,21 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
                 # finderName matches the users values
                 if ((not foundUpdated) and(logFinderId == userId or
                                            logFinderName == userName)):
+                    logging.debug('User ID or Name match for log id %i' % logId)
                     if logType in ['Found it', 'Attended']:
+                        logging.debug('Log type is found or atttended')
                         if not cache.found:
                             cacheUpdates['found'] = [True,False]
                             cache.found = True
-                            cacheUpdates['found'] = [True, False]
                         if cache.found_date != logDate:
                             cacheUpdates['found_date'] = [logDate,cache.found_date]
                             cache.found_date = logDate
                         foundUpdated = True
                     elif logType == "Didn't find it":
+                        logging.debug('Log type is DNF')
                         if not cache.dnf:
                             cacheUpdates['dnf'] = [True,False]
                             cache.dnf = True
-                            cacheUpdates['dnf'] = [True, False]
                         if cache.dnf_date != logDate:
                             cacheUpdates['dnf_date'] = [logDate,cache.dnf_date]
                             cache.found_date = logDate
@@ -268,10 +285,11 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
                             cache.refreshOwnLog()
         if len(logsUpdates) > 0:
             cacheUpdates['Logs'] = logsUpdates
+
         tbUpdates = {}
         wptTbRefs = []
         cacheTbRefs = cache.getTravelBugRefs()
-        for wptTb in wpt.xpath('gs:cache//gs:travelbugs//gs:travelbug', namespaces=NS):
+        for wptTb in wpt.findall('gs:cache//gs:travelbugs//gs:travelbug', NS):
             wptTbRef = wptTb.attrib['ref']
             wptTbRefs.append(wptTbRef)
             wptTbId = wptTb.attrib['id']
@@ -307,8 +325,8 @@ def gpxLoad(filename,mode="update",userName="",userId="",fileUpdates={},
             fileUpdates[code] = cacheUpdates
 
     for wpt in extraWpts:
-        lon = float(wpt.attrib['lon'])
-        lat = float(wpt.attrib['lat'])
+        lon = float(getAttribFromPath(wpt,".","lon",NS,'0.0'))
+        lat = float(getAttribFromPath(wpt,".","lat",NS,'0.0'))
         id = getTextFromPath(wpt,'gpx:name',NS)
         time = textToDateTime(getTextFromPath(wpt,'gpx:time',NS))
         cmt = getTextFromPath(wpt,'gpx:cmt',NS,'')
@@ -423,12 +441,13 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
 
     for cache in caches:
         if correct:
-            wpt = Element('wpt',
-                          lat='%f' % cache.currentLat,
-                          lon='%f' % cache.currentLon)
+            wpt = ElementTree.SubElement(root,
+                                         'wpt',
+                                         {'lat':'%f' % cache.currentLat,
+                                          'lon':'%f' % cache.currentLon})
         else:
-            wpt = Element('wpt', lat='%f' % cache.lat, lon='%f' % cache.lon)
-        root.append(wpt)
+            wpt = ElementTree.SubElement(root, 'wpt', {'lat':'%f' % cache.lat,
+                                                       'lon':'%f' % cache.lon})
         if cache.gpx_date == None and cache.user_date == None:
             cacheTime = datetime.now()
         elif cache.gpx_date == None:
@@ -439,147 +458,120 @@ def gpxExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
             cacheTime=cache.user_date
         else:
             cacheTime=cache.gpx_date
-        time = Element('time')
+        time = ElementTree.SubElement(wpt, 'time')
         time.text = dateTimeToText(cacheTime)
-        wpt.append(time)
-        name = Element('name')
+        name = ElementTree.SubElement(wpt, 'name')
         if correct and cache.corrected:
             name.text = cache.code+corMark
         else:
             name.text = cache.code
-        wpt.append(name)
-        desc = Element('desc')
+        desc = ElementTree.SubElement(wpt, 'desc')
         desc.text = '%s by %s, %s (%0.1f/%0.1f)' % (cache.name, cache.placed_by,
                                               cache.type, cache.difficulty,
                                               cache.terrain)
-        wpt.append(desc)
         if cache.url != '':
-            url = Element('url')
+            url = ElementTree.SubElement(wpt, 'url')
             url.text = cache.url
-            wpt.append(url)
-            urlname = Element('urlname')
+            urlname = ElementTree.SubElement(wpt, 'urlname')
             urlname.text = cache.name
-            wpt.append(urlname)
-        sym = Element('sym')
+        sym = ElementTree.SubElement(wpt, 'sym')
         if cache.found:
             sym.text = 'Geocache Found'
         else:
             sym.text = 'Geocache'
-        wpt.append(sym)
-        type = Element('type')
-        type.text = 'Geocache|%s' % cache.type
-        wpt.append(type)
+        wpttype = ElementTree.SubElement(wpt, 'type')
+        wpttype.text = 'Geocache|%s' % cache.type
         if gc:
-            GS_NAMESPACE = NS['gs']
-            GS = "{%s}" %GS_NAMESPACE
-            gsCache = Element(GS + 'cache',id=str(cache.id),
-                                available=str(cache.available),
-                                archived=str(cache.archived))
-            wpt.append(gsCache)
-            gsName = Element(GS + 'name')
+            gsCache = ElementTree.SubElement(wpt, GS + 'cache',
+                                             {'id':str(cache.id),
+                                              'available':str(cache.available),
+                                              'archived':str(cache.archived)})
+            gsName = ElementTree.SubElement(gsCache, GS + 'name')
             gsName.text = cache.name
-            gsCache.append(gsName)
-            gsPlaced_by = Element(GS + 'placed_by')
+            gsPlaced_by = ElementTree.SubElement(gsCache, GS + 'placed_by')
             gsPlaced_by.text = cache.placed_by
-            gsCache.append(gsPlaced_by)
-            gsOwner = Element(GS + 'owner', id=str(cache.owner_id))
+            gsOwner = ElementTree.SubElement(gsCache, GS + 'owner',
+                                             {'id':str(cache.owner_id)})
             gsOwner.text = cache.owner
-            gsCache.append(gsOwner)
-            gsType = Element(GS + 'type')
+            gsType = ElementTree.SubElement(gsCache, GS + 'type')
             gsType.text = cache.type
-            gsCache.append(gsType)
-            gsContainer = Element(GS + 'container')
+            gsContainer = ElementTree.SubElement(gsCache, GS + 'container')
             gsContainer.text = cache.container
-            gsCache.append(gsContainer)
-            gsDifficulty = Element(GS + 'difficulty')
+            gsDifficulty = ElementTree.SubElement(gsCache, GS + 'difficulty')
             gsDifficulty.text = '%0.1f' % cache.difficulty
-            gsCache.append(gsDifficulty)
-            gsTerrain = Element(GS + 'terrain')
+            gsTerrain = ElementTree.SubElement(gsCache, GS + 'terrain')
             gsTerrain.text = '%0.1f' % cache.terrain
-            gsCache.append(gsTerrain)
-            gsCountry = Element(GS + 'country')
+            gsCountry = ElementTree.SubElement(gsCache, GS + 'country')
             gsCountry.text = cache.country
-            gsCache.append(gsCountry)
-            gsState = Element(GS + 'state')
+            gsState = ElementTree.SubElement(gsCache, GS + 'state')
             gsState.text = cache.state
-            gsCache.append(gsState)
-            gsShort_desc = Element(GS + 'short_description',
-                                   html=str(cache.short_desc_html))
+            gsShort_desc = ElementTree.SubElement(gsCache,
+                                                  GS + 'short_description',
+                                                  {'html':str(cache.short_desc_html)})
             gsShort_desc.text = cache.short_desc
-            gsCache.append(gsShort_desc)
-            gsLong_desc = Element(GS + 'long_description',
-                                  html=str(cache.long_desc_html))
+            gsLong_desc = ElementTree.SubElement(gsCache,
+                                                 GS + 'long_description',
+                                                 {'html':str(cache.long_desc_html)})
             gsLong_desc.text = cache.long_desc
-            gsCache.append(gsLong_desc)
-            gsHints = Element(GS + 'encoded_hints')
+            gsHints = ElementTree.SubElement(gsCache, GS + 'encoded_hints')
             gsHints.text = cache.encoded_hints
-            gsCache.append(gsHints)
             if logs:
-                gsLogs = Element(GS + 'logs')
-                gsCache.append(gsLogs)
+                gsLogs = ElementTree.SubElement(gsCache, GS + 'logs')
                 for log in cache.getLogs(sort=True,
                                          descending=logOrderDesc,
                                          maxLen=maxLogs):
-                    gsLog = Element(GS + 'log', id=str(log.logId))
-                    gsLogs.append(gsLog)
-                    gsLogDate = Element(GS + 'date')
+                    gsLog = ElementTree.SubElement(gsLogs, GS + 'log',
+                                                   {'id':str(log.logId)})
+                    gsLogDate = ElementTree.SubElement(gsLog, GS + 'date')
                     gsLogDate.text = dateTimeToText(log.date)
-                    gsLog.append(gsLogDate)
-                    gsLogType = Element(GS + 'type')
+                    gsLogType = ElementTree.SubElement(gsLog, GS + 'type')
                     gsLogType.text = log.logType
-                    gsLog.append(gsLogType)
-                    gsLogFinder = Element(GS + 'finder', id=str(log.finder_id))
+                    gsLogFinder = ElementTree.SubElement(gsLog,
+                                                         GS + 'finder',
+                                                         {'id':str(log.finder_id)})
                     gsLogFinder.text = log.finder_name
-                    gsLog.append(gsLogFinder)
-                    gsLogText = Element(GS + 'text', encoded=str(log.encoded))
+                    gsLogText = ElementTree.SubElement(gsLog,
+                                                       GS + 'text',
+                                                       {'encoded':str(log.encoded)})
                     gsLogText.text = log.text
-                    gsLog.append(gsLogText)
             if tbs:
-                gsTbs = Element(GS + 'travelbugs')
-                gsCache.append(gsTbs)
+                gsTbs = ElementTree.SubElement(gsCache, GS + 'travelbugs')
                 for tb in cache.getTravelBugs():
-                    gsTb = Element(GS + 'travelbug', id=str(tb.id), ref=tb.ref)
-                    gsTbs.append(gsTb)
-                    gsTbName = Element(GS + 'name')
+                    gsTb = ElementTree(gsTbs,
+                                       GS +'travelbug',
+                                       {'id':str(tb.id),
+                                        'ref':tb.ref})
+                    gsTbName = ElementTree.SubElement(gsTb, GS + 'name')
                     gsTbName.text = tb.name
-                    gsTb.append(gsTbName)
         if addWpts:
             gpxExportAddWptProcess(root, cache)
 
-    try:
-        gpxSave(filename,root)
-        return True
-    except:
-        return False
+    #try:
+    gpxSave(filename,root)
+    return True
+    #except:
+    #    return False
 
 def gpxExportAddWptProcess(root, cache):
     for addWpt in cache.getAddWaypoints():
-        wpt = Element('wpt', lat=str(addWpt.lat), lon=str(addWpt.lon))
-        root.append(wpt)
-        time = Element('time')
+        wpt = ElementTree.SubElement(root, 'wpt', {'lat':str(addWpt.lat),
+                                                   'lon':str(addWpt.lon)})
+        time = ElementTree.SubElement(wpt, 'time')
         time.text = dateTimeToText(addWpt.time)
-        wpt.append(time)
-        name = Element('name')
+        name = ElementTree.SubElement(wpt, 'name')
         name.text = addWpt.code
-        wpt.append(name)
-        cmt = Element('cmt')
+        cmt = ElementTree.SubElement(wpt, 'cmt')
         cmt.text = addWpt.cmt
-        wpt.append(cmt)
-        desc = Element('desc')
+        desc = ElementTree.SubElement(wpt, 'desc')
         desc.text = addWpt.name
-        wpt.append(desc)
-        url = Element('url')
+        url = ElementTree.SubElement(wpt, 'url')
         url.text = addWpt.url
-        wpt.append(url)
-        urlname = Element('urlname')
+        urlname = ElementTree.SubElement(wpt, 'urlname')
         urlname.text = addWpt.name
-        wpt.append(urlname)
-        sym = Element('sym')
+        sym = ElementTree.SubElement(wpt, 'sym')
         sym.text = addWpt.sym
-        wpt.append(sym)
-        type = Element('type')
-        type.text = 'Waypoint|%s' % addWpt.sym
-        wpt.append(type)
+        wpttype = ElementTree.SubElement(wpt, 'type')
+        wpttype.text = 'Waypoint|%s' % addWpt.sym
 
 def gpxExportAddWpt(filename,caches):
     if len(caches) == 0:
@@ -625,12 +617,12 @@ def gpxInit(caches):
     '<bounds minlat="%f" minlon="%f" maxlat="%f" maxlon="%f" /></gpx>'\
      % (time,minLat,minLon,maxLat,maxLon)
 
-    return XML(gpx_base)
+    return ElementTree.fromstring(gpx_base)
 
 def gpxSave(filename,root):
     fid = open(filename,"w")
     fid.write("""<?xml version="1.0" encoding="utf-8"?>""")
-    ElementTree(root).write(fid,encoding="utf-8", pretty_print=True)
+    fid.write(ElementTree.tostring(root, encoding="utf-8"))
     fid.close()
 
 def zipLoad(filename,mode="update",userName="",userId=""):
@@ -753,4 +745,3 @@ def zipExport(filename,caches,gc=False,logs=False,tbs=False,addWpts=False,
 
     shutil.rmtree(tempDir)
     return ret1 and ret2
-

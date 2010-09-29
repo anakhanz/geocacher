@@ -3,6 +3,8 @@ import gettext
 import sys
 import os
 
+import logging
+
 if not hasattr(sys, "frozen") and 'wx' not in sys.modules and 'wxPython' not in sys.modules:
     import wxversion
     wxversion.ensureMinimal("2.8")
@@ -18,6 +20,8 @@ VERSION_STRING  = u'%s.%s.%s.%s' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,
                                     STATUS)
 
 VERSION_NUMBER  = u'%s.%s.%s' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER)
+
+logging.basicConfig(level=logging.WARN)
 
 version = VERSION_STRING
 __version__ = VERSION_NUMBER

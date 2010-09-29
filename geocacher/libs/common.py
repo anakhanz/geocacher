@@ -63,15 +63,15 @@ def getTextFromPath(root, relativePath, nameSpaces=None, default=None):
 
     if nameSpaces==None:
         try:
-            ret = root.xpath(relativePath)[0].text
-            logging.debug("'%s' found at path '%s'" % (ret,relativePath))
+            ret = root.find(relativePath).text
+            logging.debug("'%s' found at path: '%s'" % (ret,relativePath))
         except:
             ret = default
             logging.debug("'%s' path not found" % relativePath)
     else:
         try:
-            ret = root.xpath(relativePath, namespaces=nameSpaces)[0].text
-            logging.debug("'%s' found at path '%s'" % (ret,relativePath))
+            ret = root.find(relativePath, namespaces=nameSpaces).text
+            logging.debug("'%s' found at path: '%s'" % (ret,relativePath))
         except:
             ret = default
             logging.debug("'%s' path not found" % relativePath)
@@ -97,14 +97,18 @@ def getAttribFromPath(root, relativePath, attrib, nameSpaces=None, default=None)
 
     if nameSpaces==None:
         try:
-            ret = root.xpath(relativePath)[0].attrib[attrib]
+            ret = root.find(relativePath).attrib[attrib]
+            logging.debug("'%s' found at path: '%s', attribute: '%s'" % (ret,relativePath, attrib))
         except:
             ret = default
+            logging.debug("'%s' path or '%s' attribute not found" % (relativePath, attrib))
     else:
         try:
-            ret = root.xpath(relativePath, namespaces=nameSpaces)[0].attrib[attrib]
+            ret = root.find(relativePath, namespaces=nameSpaces).attrib[attrib]
+            logging.debug("'%s' found at path: '%s', attribute: '%s'" % (ret,relativePath, attrib))
         except:
             ret = default
+            logging.debug("'%s' path or '%s' attribute not found" % (relativePath, attrib))
     return ret
 
 def nl2br(s):
