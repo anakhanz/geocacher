@@ -28,7 +28,7 @@ appcopyright = 'Copyright 2009 Rob Wallace'
 developers = ['Rob Wallace']
 author = 'Rob Wallace'
 authoremail = 'rob@wallace.gen.nz'
-website = 'http://rnr.wallace.gen.nz/redmine/geocacher'
+website = 'http://projects.wallace.gen.nz/projects/geocacher'
 
 def we_are_frozen():
     """Returns whether we are frozen via py2exe.
