@@ -22,7 +22,7 @@ from geocacher.widgets.cacheGrid import CacheGrid
 from geocacher.libs.common import nl2br, listFiles
 from geocacher.libs.cacheStats import cacheStats
 from geocacher.libs.gpsbabel import GpsCom
-from geocacher.libs.gpx import gpxLoad, gpxExport, zipLoad, zipExport
+from geocacher.libs.gpx import Gpx
 from geocacher.libs.loc import locExport
 
 from geocacher.dialogs.cacheChanges import CacheChanges
@@ -528,7 +528,7 @@ class MainWindow(wx.Frame):
                 changes = {}
                 for path in paths:
                     self.pushStatus(_('Loading caches from file: %s')% path)
-                    changes[path] = self.LoadFile(path, geocacher.config().importMode)
+                    changes[path] = self.LoadFile(path)
                     self.popStatus()
                 self.displayImportedChanges(changes)
                 self.cacheGrid.ReloadCaches()
@@ -555,8 +555,8 @@ class MainWindow(wx.Frame):
                                  | wx.DD_DIR_MUST_EXIST)
 
         if dlg.ShowModal() == wx.ID_OK:
-            dir = dlg.GetPath()
-            geocacher.config().importFolder = dir
+            folder = dlg.GetPath()
+            geocacher.config().importFolder = folder
 
             options = [_('Update'),_('Replace')]
             dlg = wx.SingleChoiceDialog(self, _('Load option'),
@@ -575,40 +575,41 @@ class MainWindow(wx.Frame):
 
                 changes = {}
                 addWptFiles = []
-                for file in listFiles(dir):
-                    if file.rfind('-wpts') >= 0:
-                        addWptFiles.append(file)
+                files = listFiles(folder)
+                totalFiles = len(files)
+                currentFile = 0
+                for filename in files:
+                    if filename.rfind('-wpts') >= 0:
+                        addWptFiles.append(filename)
                     else:
-                        self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
-                        changes[file] = self.LoadFile(file, geocacher.config().importMode)
+                        currentFile += 1
+                        self.pushStatus(_('Loading caches from folder, processing file: %s (%i of %i)') % (filename, currentFile, totalFiles))
+                        changes[filename] = self.LoadFile(filename)
                         self.popStatus()
-                for file in addWptFiles:
-                    self.pushStatus(_('Loading caches from folder, processing file: %s') % file)
-                    changes[file] = self.LoadFile(file, geocacher.config().importMode)
+                for filename in addWptFiles:
+                    currentFile += 1
+                    self.pushStatus(_('Loading caches from folder, processing file: %s (%i of %i)') % (filename, currentFile, totalFiles))
+                    changes[filename] = self.LoadFile(filename)
                     self.popStatus()
                 self.displayImportedChanges(changes)
                 self.cacheGrid.ReloadCaches()
             dlg.Destroy()
             self.popStatus()
 
-    def LoadFile(self, path, mode):
+    def LoadFile(self, path):
         '''
         Handles the loading/importing of a waypoint file.
 
-        Arguments
+        Argument
         path: Path to the file to be loaded/imported.
-        mode" Mode to addthe file in (merge or Replace).
         '''
         ext = os.path.splitext(path)[1]
         sucess = False
+        gpx = Gpx()
         if ext == '.gpx':
-            sucess,changes = gpxLoad(path,mode=mode,
-                                     userId=geocacher.config().GCUserID,
-                                     userName=geocacher.config().GCUserName)
+            sucess,changes = gpx.load(path)
         elif ext == '.zip':
-            sucess,changes = zipLoad(path,mode=mode,
-                                     userId=geocacher.config().GCUserID,
-                                     userName=geocacher.config().GCUserName)
+            sucess,changes = gpx.zipLoad(path)
         else:
             changes = {}
             sucess = True
@@ -642,7 +643,8 @@ class MainWindow(wx.Frame):
         opts = ExportOptions(self, False)
         if opts.ShowModal() == wx.ID_OK:
             opts.SaveConf()
-            path = opts.GetPath()
+            config = geocacher.config()
+            path = config.exportFile
             self.popStatus()
             self.pushStatus(_('Exporting caches to file: %s') % path)
             if os.path.isfile(path):
@@ -663,40 +665,17 @@ class MainWindow(wx.Frame):
                                   caption = _('Nothing to export'),
                                   style = wx.OK | wx.ICON_ERROR)
             else:
+                gpx = Gpx()
                 if ext == '.loc':
-                    ret = locExport(path, caches,
-                                    correct    = opts.GetAdjWpts(),
-                                    corMark    = opts.GetAdjWptSufix())
+                    ret = locExport(path, caches)
                 elif ext == '.gpx':
-                    ret = gpxExport(path, caches,
-                                    full       = opts.GetType() == 'full',
-                                    simple     = opts.GetType() == 'simple',
-                                    gc         = opts.GetGc(),
-                                    logs       = opts.GetLogs(),
-                                    tbs        = opts.GetTbs(),
-                                    addWpts    = opts.GetAddWpts(),
-                                    correct    = opts.GetAdjWpts(),
-                                    corMark    = opts.GetAdjWptSufix(),
-                                    maxLogs    = opts.GetMaxLogs(),
-                                    logOrderDesc = opts.GetLogsDecendingSort())
+                    ret = gpx.export(path, caches)
                 elif ext == '.zip':
-                    geocacher.config().exportSepAddWpts = opts.GetSepAddWpts()
-                    ret = zipExport(path, caches,
-                                    full       = opts.GetType() == 'full',
-                                    simple     = opts.GetType() == 'simple',
-                                    gc         = opts.GetGc(),
-                                    logs       = opts.GetLogs(),
-                                    tbs        = opts.GetTbs(),
-                                    addWpts    = opts.GetAddWpts(),
-                                    sepAddWpts = opts.GetSepAddWpts(),
-                                    correct    = opts.GetAdjWpts(),
-                                    corMark    = opts.GetAdjWptSufix(),
-                                    maxLogs    = opts.GetMaxLogs(),
-                                    logOrderDesc = opts.GetLogsDecendingSort())
+                    ret = gpx.zipExport(path, caches)
                 else:
                     ret = True
                     wx.MessageBox(parent = self,
-                                  message = _('Error exporting to file: %s\n file type not supported') % path,
+                                  message = _('Error exporting to file: %s\n file type not supported') % config.exportPath,
                                   caption = _('Way point export Error'),
                                   style = wx.OK | wx.ICON_ERROR)
                 if not ret:

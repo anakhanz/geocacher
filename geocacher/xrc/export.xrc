@@ -266,6 +266,21 @@
 										</object>
 									</object>
 								</object>
+								<object class="sizeritem">
+									<option>0</option>
+									<flag>wxALL|wxEXPAND</flag>
+									<border>5</border>
+									<object class="wxRadioBox" name="versionRadioBox">
+										<style>wxRA_SPECIFY_ROWS</style>
+										<label>GPX Version</label>
+										<selection>0</selection>
+										<content>
+											<item>1.0</item>
+											<item>1.0.1</item>
+										</content>
+										<dimension>1</dimension>
+									</object>
+								</object>
 							</object>
 						</object>
 					</object>

@@ -402,6 +402,19 @@ class Config(object):
         self.exportPath()
         return self.config.WriteInt("LogOrder", i)
 
+    def getExportGpxVersion(self):
+        self.exportPath()
+        return self.config.ReadInt("GpxVersion", 0)
+
+    def setExportGpxVersion(self, i):
+        self.exportPath()
+        return self.config.WriteInt("GpxVersion", i)
+
+    def getExportGpxVersionStr(self):
+        self.exportPath()
+        Versions = ['1.0', '1.0.1']
+        return Versions[self.config.ReadInt("GpxVersion", 0)]
+
     def getImportFolder(self):
         self.config.SetPath("/Import")
         return self.config.Read("ImportFolder", wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get()))
@@ -473,6 +486,8 @@ class Config(object):
     exportLimitLogs    = property(getExportLimitLogs,   setExportLimitLogs)
     exportMaxLogs      = property(getExportMaxLogs,     setExportMaxLogs)
     exportLogOrder     = property(getExportLogOrder,    setExportLogOrder)
+    exportGpxVersion   = property(getExportGpxVersion,  setExportGpxVersion)
+    exportGpxVerStr    = property(getExportGpxVersionStr)
     importFolder       = property(getImportFolder,      setImportFolder)
     importFile         = property(getImportFile,        setImportFile)
     importMode         = property(getImportMode,        setImportMode)

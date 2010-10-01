@@ -5,33 +5,33 @@ from lxml.etree import Element,ElementTree
 import os
 import string
 
+import geocacher
+
 from geocacher.libs.common import getTextFromPath,getAttribFromPath
 
-def locExport(filename,caches,correct=True,corMark='-A'):
+def locExport(filename,caches):
     '''
     Exports the given caches to the given file in the .loc format.
 
     Arguments
     filename: Path to the file to export the cache information to
     caches:   List of cache objects to be exported
-
-    Keyword Arguments
-    correct: If true use the corrected cordinates for exporting
-    corMark: String to append to the cache code if the cordinates are corrected
     '''
+    config = geocacher.config()
+
     if len(caches) == 0:
         return True
     root = Element("loc",version="1.0", src="Geocacher")
     for cache in caches:
         waypoint = Element("waypoint")
         root.append(waypoint)
-        if correct and cache.corrected:
-            name = Element("name", id=cache.code + corMark)
+        if config.exportAdjWpts and cache.corrected:
+            name = Element("name", id=cache.code + config.exportAdjWptSufix)
         else:
             name = Element("name", id=cache.code)
         name.text = cache.name + " by " + cache.placed_by
         waypoint.append(name)
-        if correct:
+        if config.exportAdjWpts:
             coord = Element("coord",
                             lat='%f' % cache.currentLat,
                             lon='%f' % cache.currentLon)

@@ -60,6 +60,7 @@ class ExportOptions(wx.Dialog):
         self.limitLogs = Xrc.XRCCTRL(self, 'limitLogsCheckBox')
         self.maxLogs = Xrc.XRCCTRL(self, 'limitLogsSpin')
         self.logOrder = Xrc.XRCCTRL(self, 'logSortRadioBox')
+        self.gpxVersion = Xrc.XRCCTRL(self, 'versionRadioBox')
 
         self.Bind(wx.EVT_FILEPICKER_CHANGED, self.OnPathChanged, self.path)
         self.Bind(wx.EVT_RADIOBOX, self.OnChangeType, self.exType)
@@ -129,6 +130,7 @@ class ExportOptions(wx.Dialog):
         if not self.limitLogs.GetValue():
             self.maxLogs.Disable()
         self.logOrder.SetSelection(geocacher.config().exportLogOrder)
+        self.gpxVersion.SetSelection(geocacher.config().exportGpxVersion)
 
     def OnPathChanged(self, event=None):
         '''
@@ -235,119 +237,34 @@ class ExportOptions(wx.Dialog):
         else:
             self.maxLogs.Disable()
 
-    def GetDisplayed(self):
-        '''
-        Returns True if the "Displayed" filter option is checked
-        '''
-        return self.displayed.GetValue()
-
-    def GetSelected(self):
-        '''
-        Returns True if the "Selected" filter option is checked
-        '''
-        return self.selected.GetValue()
-
-    def GetUserFlag(self):
-        '''
-        Returns True if the "User Flag" filter option is checked
-        '''
-        return self.userFlag.GetValue()
-
-    def GetPath(self):
-        '''
-        Returns the user selected path if not in GPS mode otherwise None
-        '''
-        if self.gps:
-            return None
-        else:
-            return self.path.GetPath()
-
-    def GetType(self):
-        '''
-        Returns the selected export type
-        '''
-        return self.types[self.exType.GetSelection()]
-
-    def GetGc(self):
-        '''
-        Returns True if the geocaching.com extensions are enabled
-        '''
-        return self.gc.GetValue()
-
-    def GetLogs(self):
-        '''
-        Returns True if Exporting of logs is enabled
-        '''
-        return self.logs.GetValue()
-
-    def GetTbs(self):
-        '''
-        Returns True if exporting of Travel Bugs is enabled
-        '''
-        return self.tbs.GetValue()
-
-    def GetAddWpts(self):
-        '''
-        Returns True if exporting of additional way points is enabled
-        '''
-        return self.addWpts.GetValue()
-
-    def GetSepAddWpts(self):
-        '''
-        Returns True if the additional way points are to be exported to a
-        separate file
-        '''
-        return self.sepAddWpts.GetValue()
-
-    def GetAdjWpts(self):
-        '''
-        Returns True if using adjusted way points is enabled
-        '''
-        return self.adjWpts.GetValue()
-
-    def GetAdjWptSufix(self):
-        '''
-        Returns True if exporting of additional way points is enabled
-        '''
-        return self.adjWptSufix.GetValue()
-
-    def GetMaxLogs(self):
-        '''
-        Returns True if exporting of additional way points is enabled
-        '''
-        if self.limitLogs.GetValue():
-            return self.maxLogs.GetValue()
-        else:
-            return None
-
-    def GetLogsDecendingSort(self):
-        '''
-        Returns True if the logs are sorteed in a desending order
-        '''
-        return self.logOrder.GetSelection() == 0
-
     def SaveConf(self):
         '''
         Saves the values form the dialog to the configuration structure
         '''
-        geocacher.config().exportFilterDisp = self.displayed.GetValue()
-        geocacher.config().exportFilterSel = self.selected.GetValue()
-        geocacher.config().exportFilterUser = self.userFlag.GetValue()
+        config = geocacher.config()
+        config.exportFilterDisp = self.displayed.GetValue()
+        config.exportFilterSel = self.selected.GetValue()
+        config.exportFilterUser = self.userFlag.GetValue()
 
         if not self.gps:
-            geocacher.config().exportFile = self.path.GetPath()
+            config.exportFile = self.path.GetPath()
 
-        geocacher.config().exportScope = self.types[self.exType.GetSelection()]
+        config.exportScope = self.types[self.exType.GetSelection()]
+        simple = config.exportScope == self.types[0]
+        full = config.exportScope == self.types[1]
 
-        geocacher.config().exportGc = self.gc.GetValue()
-        geocacher.config().exportLogs = self.logs.GetValue()
-        geocacher.config().exportTbs = self.tbs.GetValue()
+        config.exportGc = (self.gc.GetValue() and (not simple)) or full
+        config.exportLogs = (self.logs.GetValue() and (not simple)) or full
+        config.exportTbs = (self.tbs.GetValue() and (not simple)) or full
 
-        geocacher.config().exportAddWpts = self.addWpts.GetValue()
-        geocacher.config().exportSepAddWpts = self.sepAddWpts.GetValue()
+        config.exportAddWpts = (self.addWpts.GetValue() and (not simple)) or full
+        config.exportSepAddWpts = self.sepAddWpts.GetValue()
 
-        geocacher.config().exportAdjWpts = self.adjWpts.GetValue()
-        geocacher.config().exportAdjWptSufix = self.adjWptSufix.GetValue()
-        geocacher.config().exportLimitLogs = self.limitLogs.GetValue()
-        geocacher.config().exportMaxLogs = self.maxLogs.GetValue()
-        geocacher.config().exportLogOrder = self.logOrder.GetSelection()
+        config.exportAdjWpts = self.adjWpts.GetValue()
+        config.exportAdjWptSufix = self.adjWptSufix.GetValue()
+
+        config.exportLimitLogs = self.limitLogs.GetValue()
+        config.exportMaxLogs = self.maxLogs.GetValue()
+        config.exportLogOrder = self.logOrder.GetSelection()
+
+        config.exportGpxVersion = self.gpxVersion.GetSelection()
