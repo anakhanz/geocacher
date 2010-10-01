@@ -583,7 +583,7 @@ class MainWindow(wx.Frame):
                         addWptFiles.append(filename)
                     else:
                         currentFile += 1
-                        self.pushStatus(_('Loading caches from folder, processing file: %s (%i of %i)') % (filename, currentFile, totalFiles))
+                        self.pushStatus(_('Loading caches from file: %s (%i of %i)') % (filename, currentFile, totalFiles))
                         changes[filename] = self.LoadFile(filename)
                         self.popStatus()
                 for filename in addWptFiles:
@@ -805,17 +805,8 @@ class MainWindow(wx.Frame):
                                   style = wx.OK | wx.ICON_ERROR)
             else:
                 fd,tmpFile = tempfile.mkstemp()
-                if gpxExport(tmpFile, caches,
-                            full       = opts.GetType() == 'full',
-                            simple     = opts.GetType() == 'simple',
-                            gc         = opts.GetGc(),
-                            logs       = opts.GetLogs(),
-                            tbs        = opts.GetTbs(),
-                            addWpts    = opts.GetAddWpts(),
-                            correct    = opts.GetAdjWpts(),
-                            corMark    = opts.GetAdjWptSufix(),
-                            maxLogs    = opts.GetMaxLogs(),
-                            logOrderDesc = opts.GetLogsDecendingSort()):
+                gpx = Gpx()
+                if gpx.export(tmpFile, caches,):
                     gpsCom = GpsCom(gps=geocacher.config().gpsType,
                                     port=geocacher.config().gpsConnection)
                     ok, message = gpsCom.gpxToGps(tmpFile)

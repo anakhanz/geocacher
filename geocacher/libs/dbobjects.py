@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 
+import os.path
 import sys
 import sqlite3
 
@@ -41,6 +42,87 @@ LOG_TYPES = ["Found it",
              "Archive (no show)",
              "Attended"]
 
+ATTRIBUTES = ["Unknown",#0
+              "Unknown",#1
+              "Unknown",#2
+              "Unknown",#3
+              "Unknown",#4
+              "Unknown",#5
+              "Recommended for kids",#6
+              "Takes less than an hour",#7
+              "Unknown",#8
+              "Unknown",#9
+              "Unknown",#10
+              "Unknown",#11
+              "Unknown",#12
+              "Unknown",#13
+              "Unknown",#14
+              "Unknown",#15
+              "Unknown",#16
+              "Unknown",#17
+              "Unknown",#18
+              "Unknown",#19
+              "Unknown",#20
+              "Unknown",#21
+              "Unknown",#22
+              "Unknown",#23
+              "Wheelchair accessible",#24
+              "Unknown",#25
+              "Public transportation",#26
+              "Available at all times",#27
+              "Unknown",#28
+              "Unknown",#29
+              "Unknown",#30
+              "Unknown",#31
+              "Unknown",#32
+              "Unknown",#33
+              "Unknown",#34
+              "Unknown",#35
+              "Unknown",#36
+              "Unknown",#37
+              "Campfires",#38
+              ]
+
+ATTRIB_ICO = ["Unknown",#0
+              "Unknown",#1
+              "Unknown",#2
+              "Unknown",#3
+              "Unknown",#4
+              "Unknown",#5
+              "kids",#6
+              "onehour",#7
+              "Unknown",#8
+              "Unknown",#9
+              "Unknown",#10
+              "Unknown",#11
+              "Unknown",#12
+              "Unknown",#13
+              "Unknown",#14
+              "Unknown",#15
+              "Unknown",#16
+              "Unknown",#17
+              "Unknown",#18
+              "Unknown",#19
+              "Unknown",#20
+              "Unknown",#21
+              "Unknown",#22
+              "Unknown",#23
+              "wheelchair",#24
+              "Unknown",#25
+              "public",#26
+              "available",#27
+              "Unknown",#28
+              "Unknown",#29
+              "Unknown",#30
+              "Unknown",#31
+              "Unknown",#32
+              "Unknown",#33
+              "Unknown",#34
+              "Unknown",#35
+              "Unknown",#36
+              "Unknown",#37
+              "campfires",#38
+              ]
 
 class Cache(object):
     def __init__(self, cid=minint):
@@ -57,7 +139,6 @@ class Cache(object):
         cur.execute('select id from caches where id=?', (cid, ))
         if cur.fetchone() is None:
             cur.execute("INSERT INTO Caches(id, code) VALUES(?, '')", (cid,))
-            #cur.execute("INSERT INTO Caches(id, code, lat, lon, name, url, locked, user_date, gpx_date, placed,placed_by, owner, owner_id, container, difficulty, terrain, type, available, archived, state, country, short_desc, short_desc_html, long_desc, long_desc_html, encoded_hints, ftf, found, found_date, dnf, dnf_date, own_log_id, source, corrected, clat, clon, cnote, user_comments, user_flag, user_data1, user_data2, user_data3, user_data4) VALUES(?, '', 0.0, 0.0, '', '', 0, -0.1, -0.1, -0.1, '', '', 0, '', 1.0, 1.0, '', 1, 0, '', '', '', 0, '', 0, '', 0, 0, -0.1, 0, -0.1, 0, '', 0, 0.0, 0.0, '', '', '', '', '', '', '')", (cid,))
         cur.execute("SELECT id, code, lat, lon, name, url, locked, user_date, gpx_date, placed,placed_by, owner, owner_id, container, difficulty, terrain, type, available, archived, state, country, short_desc, short_desc_html, long_desc, long_desc_html, encoded_hints, ftf, found, found_date, dnf, dnf_date, own_log_id, source, corrected, clat, clon, cnote, user_comments, user_flag, user_data1, user_data2, user_data3, user_data4 FROM Caches WHERE id=?", (cid,))
         row = cur.fetchone()
         if type(row) is not sqlite3.dbapi2.Row:
@@ -275,17 +356,54 @@ class Cache(object):
         log.save()
         return log
 
+    def getAttributes(self):
+        '''Returns a list of the attributes for the cache'''
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT id, cache_id FROM Attributes WHERE cache_id = ? ORDER BY id" , (self.id,))
+        attributes = []
+        for row in cur.fetchall():
+            attributes.append(Attribute(row[0], row[1]))
+        return attributes
+
+    def getAttributeIds(self):
+        '''Returns a list of the id's of the caches attributes'''
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT id FROM Attributes WHERE cache_id = ? ORDER BY id" , (self.id,))
+        return rows2list(cur.fetchall())
+
+    def getAttributeById(self,attribid):
+        '''Returns the attribute with the given id if found, otherwise "None"'''
+        assert type(attribid) is int
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT id FROM Attributes WHERE cache_id = ? AND id = ?", (self.id, attribid,))
+        if cur.fetchone() is None:
+            return None
+        else:
+            return Attribute(attribid, self.id)
+
+    def hasAttributes(self):
+        '''Returns treu if the cache has attributes associated with it'''
+        return len(self.getAttributes()) > 0
+
+    def addAttribute(self, attribid, inc, description):
+        '''Adds a attribute to the cache with the given information'''
+        attribute = Attribute(attribid, self.id)
+        attribute.inc = inc
+        attribute.description = description
+        attribute.save()
+        return attribute
+
     def getTravelBugs(self):
         '''Returns a list of the travel bugs in the cache'''
         cur = geocacher.db().cursor()
         cur.execute("SELECT id FROM Travelbugs WHERE cache_id = ? ORDER BY ref" , (self.id,))
-        bugs=[]
+        bugs = []
         for row in cur.fetchall():
             bugs.append(TravelBug(row[0]))
         return bugs
 
     def getTravelBugRefs(self):
-        '''Returns a list of th ref's of the travel bugs in the cache'''
+        '''Returns a list of the ref's of the travel bugs in the cache'''
         cur = geocacher.db().cursor()
         cur.execute("SELECT ref FROM Travelbugs WHERE cache_id = ? ORDER BY ref" , (self.id,))
         return rows2list(cur.fetchall())
@@ -401,6 +519,45 @@ class Log(object):
     def delete(self):
         cur = geocacher.db().cursor()
         cur.execute("DELETE FROM Logs WHERE id=?", (self.id,))
+
+class Attribute(object):
+    def __init__(self, attribid, cacheid):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT id, cache_id FROM Attributes WHERE id=? AND cache_id=?", (attribid, cacheid))
+        if cur.fetchone() is None:
+            cur.execute("INSERT INTO Attributes (id, inc, cache_id, description) VALUES (?, ?, ?, ?)",
+                        (attribid, True, cacheid, ''))
+        cur.execute("SELECT id, inc, cache_id, description FROM Attributes WHERE id=? AND cache_id=?", (attribid, cacheid))
+        row = cur.fetchone()
+        if type(row) is sqlite3.dbapi2.Row:
+            self.attribid    = row[0]
+            self.inc         = row[1]
+            self.cache_id    = row[2]
+            self.description = row[3]
+        else:
+            raise geocacher.InvalidID('Invalid Attribute/Cache ID pair: %d/%d' % (attribid, cacheid))
+
+    def save(self):
+        cur = geocacher.db().cursor()
+        cur.execute("DELETE FROM Attributes WHERE id=? AND cache_id=?",
+                    (self.attribid, self.cache_id))
+        cur.execute("INSERT INTO Attributes (id, inc, cache_id, description) VALUES (?, ?, ?, ?)",
+                    (self.attribid, self.inc, self.cache_id, self.description))
+
+    def delete(self):
+        cur = geocacher.db().cursor()
+        cur.execute("DELETE FROM Attributes WHERE id=? AND cache_id=?",
+                    (self.attribid, self.cache_id))
+
+    def _getIcon(self):
+        if self.inc:
+            suffix = '-yes'
+        else:
+            suffix = '-no'
+        return os.path.join('attributes',
+                            ATTRIB_ICO[self.attribid] + suffix + '.gif')
+
+    icon = property (_getIcon)
 
 class TravelBug(object):
     def __init__(self, tbid=minint):

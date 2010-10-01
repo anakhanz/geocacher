@@ -3,6 +3,7 @@
 #import datetime.datetime
 
 import datetime
+import logging
 import os
 import os.path
 import sqlite3
@@ -72,40 +73,31 @@ class Database(object):
         try:
             cur.execute("select version from version")
             row = cur.fetchone()
-            vname = 'statements_v%03d' % row[0]
+            vnum = row[0]
+            vname = 'statements_v%03d' % vnum
+            logging.debug('Database version name is: %s' % vname)
             for stgrp in self.allstatements[self.allstatements.index(vname)+1:]:
                 stmts = Database.__dict__[stgrp]
-                self.sqlexec(stmts, debug)
+                self.sqlexec(stmts)
                 vnum = int(stgrp[-3:])
                 cur.execute("UPDATE version SET version=?", (vnum, ))
                 self.database.commit()
+            logging.debug('Database version is now %i' % vnum)
         except sqlite3.OperationalError:
+            logging.debug('Trying database build from scratch')
             for stgrp in self.allstatements:
                 stmts = Database.__dict__[stgrp]
-                self.sqlexec(stmts, debug)
+                self.sqlexec(stmts)
                 vnum = int(stgrp[-3:])
                 cur.execute("UPDATE version SET version=?", (vnum, ))
                 self.database.commit()
+            logging.debug('Database version is now %i' % vnum)
 
-    def _getVersion(self, item):
-        assert type(item) == str or type(item) == unicode
-        sql = "SELECT version FROM Versions WHERE name=?"
-        data = self.c.execute(sql, (version,)).fetchall()
-        if len(data) == 0:
-            version = 0.0
-            sql = "INSERT INTO Versions VALUES(?, ?)"
-            self.c.execute(sql, (item, version,))
-        else:
-            version = float(data[0][0])
-        return version
-
-    def sqlexec(self, statements, debug=False):
+    def sqlexec(self, statements):
         cur = self.cursor()
         for stmt in statements:
-            if debug:
-                print "---------------------------------"
-                print stmt
-                print "---------------------------------"
+            separator = '\n---------------------------------\n'
+            logging.debug('SQL Exec' + separator + stmt + separator)
             cur.execute(stmt)
 
     def maintdb(self):
@@ -272,6 +264,17 @@ class Database(object):
         INSERT INTO Locations(name, lat, lon, comment)
         VALUES('Default', 0.0, 0.0, '')
         """
+    ]
+    statements_v002 = [
+        # Attributes.cache_id: int, links to Cache.id
+        """
+        CREATE TABLE Attributes (
+            id INTEGER,
+            inc BOOL,
+            cache_id INTEGER,
+            description TEXT)
+        """,
+        "CREATE INDEX attributes_cache_id ON Attributes(cache_id)"
     ]
 
     def getCacheList(self):

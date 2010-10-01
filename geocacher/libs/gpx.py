@@ -222,6 +222,51 @@ class Gpx(object):
                 if cache.encoded_hints != hints:
                     cacheUpdates['encoded_hints'] = [hints,cache.encoded_hints]
                     cache.encoded_hints = hints
+
+                if gpxVer == '1.0.1':
+                    attribsUpdates = {}
+
+                    wptAttribIds = []
+                    for wptAttrib in wpt.findall("gs:cache//gs:attributes//gs:attribute", NS):
+                        attribId = int(wptAttrib.attrib['id'])
+                        attribInc = textToBool(wptAttrib.attrib['inc'])
+                        attribDesc = wptAttrib.text
+                        wptAttribIds.append(attribId)
+
+                        attribUpdates = {}
+
+                        attrib = cache.getAttributeById(attribId)
+
+                        if attrib is None:
+                            logging.debug('Attribute %i not found in existing data,  creating' % attribId)
+                            attribUpdates['inc'] = [attribInc, '']
+                            attribUpdates['Description'] = [attribDesc, '']
+
+                            attrib = cache.addAttribute(attribId, attribInc, attribDesc)
+
+                        else:
+                            if attribInc != attrib.inc:
+                                attribUpdates['inc'] = [attribInc, attrib.inc]
+                                attrib.inc = attribInc
+                            if attribDesc != attrib.description:
+                                attribUpdates['Description'] = [attribDesc, '']
+                                attrib.description = attribDesc
+
+                        if len(attribUpdates) > 0:
+                            attrib.save()
+                            attribsUpdates[attribId] = attribUpdates
+
+                    # Go through the cache attribs and delete any that are not
+                    #listed in the wpt
+                    for cacheAttribId in cache.getAttributeIds():
+                        if not(cacheAttribId in wptAttribIds):
+                            toDelete = cache.getAttributeById(cacheAttribId)
+                            tbUpdates[cacheAttribId] = [_('Removed'),'']
+                            toDelete.delete()
+
+            if len(attribsUpdates) > 0:
+                cacheUpdates['Attributes'] = attribsUpdates
+
             # Always update Logs and travel bugs
             foundUpdated=False
             logsUpdates = {}
@@ -435,10 +480,10 @@ class Gpx(object):
         '''
         assert os.path.isdir(os.path.split(filename)[0])
 
-        GS = self.GS
         config = geocacher.config()
 
         self.setNamespace(config.exportGpxVerStr)
+        GS = 'groundspeak:'
 
         if len(caches) == 0:
             return True
@@ -521,6 +566,15 @@ class Gpx(object):
                 gsLong_desc.text = cache.long_desc
                 gsHints = ElementTree.SubElement(gsCache, GS + 'encoded_hints')
                 gsHints.text = cache.encoded_hints
+
+                if config.exportGpxVerStr == '1.0.1':
+                    gsAttribs = ElementTree.SubElement(gsCache, GS + 'attributes')
+                    for attrib in cache.getAttributes():
+                        gsAttrib = ElementTree.SubElement(gsAttribs, GS + 'attribute',
+                                                          {'id':str(attrib.attribid),
+                                                           'inc':str(attrib.inc)})
+                        gsAttrib.text = attrib.description
+
                 if config.exportLogs:
                     gsLogs = ElementTree.SubElement(gsCache, GS + 'logs')
                     if config.exportLimitLogs:

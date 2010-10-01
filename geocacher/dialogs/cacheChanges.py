@@ -17,8 +17,8 @@ class CacheChanges (wx.Dialog):
         changes: Dictioinary containing the change s to be displayed
         '''
 
-        exceptions = ['change type','Logs','Travel Bugs','Add Wpts',
-                       'gpx_date', 'source']
+        exceptions = ['change type','Attributes','Logs','Travel Bugs',
+                      'Add Wpts','gpx_date', 'source']
 
         wx.Dialog.__init__(self,parent,id,
             _('Changes from Import'),size = (700,400),
@@ -72,6 +72,11 @@ class CacheChanges (wx.Dialog):
                 self.processFields(cacheNode,
                                    changes[filename][cacheCode],
                                    exceptions)
+                if 'Attributes' in changes[filename][cacheCode].keys():
+                    self.processAttributes(cacheNode,
+                                        changes[filename]
+                                               [cacheCode]
+                                               ['Attributes'])
                 if 'Add Wpts' in changes[filename][cacheCode].keys():
                     self.processAddWpts(cacheNode,
                                         changes[filename]
@@ -89,6 +94,21 @@ class CacheChanges (wx.Dialog):
                                             ['Logs'])
             self.tree.SortChildren(fileNode)
         self.tree.SortChildren(self.root)
+
+    def processAttributes(self,parent,attribChanges):
+        '''
+        Process the given list of changes for the Attributes and adds them to the tree.
+
+        Arguments
+        parent:        Parent node to add the attributes branch to.
+        attribChanges: Attribute changes to be added
+        '''
+        attribsNode = self.addBranch(parent, _('Attributes'))
+        for attrib in attribChanges.keys():
+            description = self.cache.getAttributeById(attrib).description
+            attribNode = self.addBranch(attribsNode,'#'+str(attrib)+' '+description)
+            self.processFields(attribNode, attribChanges[attrib])
+        self.tree.SortChildren(attribsNode)
 
     def processLogs(self,parent,logChanges):
         '''
