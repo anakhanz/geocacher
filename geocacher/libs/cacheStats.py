@@ -425,6 +425,57 @@ class cacheStats(object):
         html += self.tCell("Caches found which are now archived:")
         html += self.cCell("<b>%i</b>, (%0.2f %%)" % (archived, (float(archived)/float(self.found))*100))
         html += "</tr>\n"
+        cur.execute("SELECT found_date FROM Caches WHERE found ORDER BY found_date")
+        data = cur.fetchall()
+        slump = 0
+        slumpStart = None
+        slumpEnd = None
+        streak = 1
+        curStreak = 1
+        streakStart = None
+        streakEnd = None
+        previous = None
+        timeDiff = None
+        for row in data:
+            current = row[0].date()
+            if previous is None:
+                #Special case for first row
+                curStreakStart = current
+                streakStart = current
+                streakEnd = current
+            else:
+                # all other rows
+                timeDiff = (current - previous).days
+                # Slump
+                if timeDiff > slump:
+                    slump = timeDiff
+                    slumpStart = previous
+                    slumpEnd = current
+                # Streak
+                if timeDiff == 1:
+                    #Add a day to the Streak
+                    curStreak += 1
+                elif timeDiff != 0:
+                    # Streak broken
+                    if curStreak > streak:
+                        # New Longest streak (ended on prevous item)
+                        streak = curStreak
+                        streakStart = curStreakStart
+                        streakEnd = previous
+                    # Reset current streak
+                    curStreak = 1
+                    curStreakStart = current
+            previous = current
+        html += "<tr>\n"
+        html += self.tCell("Longest Streak:")
+        html += self.cCell("<b>%i</b> consecutive days wit a find from %s to %s" % (
+            streak, streakStart.strftime('%x'), streakEnd.strftime('%x')))
+        html += "</tr>\n"
+        html += "<tr>\n"
+        html += self.tCell("Longest Slump:")
+        html += self.cCell("<b>%i</b> consecutive days without a find from %s to %s" % (
+            slump, slumpStart.strftime('%x'), slumpEnd.strftime('%x')))
+        html += "</tr>\n"
         html += "</table>\n"
         html += "<br /><br />\n"
 
@@ -573,7 +624,6 @@ class cacheStats(object):
             assert align in ['left', 'center', 'right']
             ret += " align='%s'" % align
         ret += " >%s</td>\n" %content
-        print ret
         return ret
 
     def cacheLink(self, cache):
@@ -588,4 +638,3 @@ if __name__ == "__main__":
     fid.write(stats.html())
     fid.close()
     webbrowser.open(path)
-    print 'Done'
