@@ -422,6 +422,7 @@ class cacheStats(object):
 
     def numbers(self):
         cur = geocacher.db().cursor()
+        dateFormat = geocacher.config().dateFormat
         html = self.titleWide('Some Numbers')
         html += "<table width='750' style='text-align: left;'>\n"
         html += "<col width='250px' />\n"
@@ -475,13 +476,15 @@ class cacheStats(object):
         html += self.tCell("Most Westerly Cache Found:")
         html += self.cCell("<b>%s</b>, %s %s %s" % (self.formatLon(row[0]), row[1], self.cacheLink(row[2]), self.flag(row[3])))
         html += "</tr>\n"
-        cur.execute("SELECT strftime(?, placed), name, code, country FROM Caches WHERE found = 1 ORDER BY placed ASC", (geocacher.config().dateFormat,))
+        cur.execute("SELECT strftime(?, placed), name, code, country FROM Caches WHERE found = 1 ORDER BY placed ASC",
+                    (dateFormat,))
         row = cur.fetchone()
         html += "<tr>\n"
         html += self.tCell("Oldest Cache Found:")
         html += self.cCell("<b>%s</b>, %s %s %s" % (row[0], row[1], self.cacheLink(row[2]), self.flag(row[3])))
         html += "</tr>\n"
-        cur.execute("SELECT strftime(?, placed), name, code, country FROM Caches WHERE found = 1 ORDER BY placed DESC", (geocacher.config().dateFormat,))
+        cur.execute("SELECT strftime(?, placed), name, code, country FROM Caches WHERE found = 1 ORDER BY placed DESC",
+                    (dateFormat,))
         row = cur.fetchone()
         html += "<tr>\n"
         html += self.tCell("Youngest Cache Found:")
@@ -493,7 +496,7 @@ class cacheStats(object):
         html += self.tCell("Caches found which are now archived:")
         html += self.cCell("<b>%i</b>, (%0.2f %%)" % (archived, (float(archived)/float(self.found))*100))
         html += "</tr>\n"
-        cur.execute("SELECT found_date FROM Caches WHERE found ORDER BY found_date")
+        cur.execute("SELECT found_date FROM Caches WHERE found = 1 ORDER BY found_date")
         data = cur.fetchall()
         slump = 0
         slumpStart = None
@@ -536,13 +539,13 @@ class cacheStats(object):
             previous = current
         html += "<tr>\n"
         html += self.tCell("Longest Streak:")
-        html += self.cCell("<b>%i</b> consecutive days wit a find from %s to %s" % (
-            streak, streakStart.strftime('%x'), streakEnd.strftime('%x')))
+        html += self.cCell("<b>%i</b> consecutive days with a find from %s to %s" % (
+            streak, streakStart.strftime(dateFormat), streakEnd.strftime(dateFormat)))
         html += "</tr>\n"
         html += "<tr>\n"
         html += self.tCell("Longest Slump:")
         html += self.cCell("<b>%i</b> consecutive days without a find from %s to %s" % (
-            slump, slumpStart.strftime('%x'), slumpEnd.strftime('%x')))
+            slump, slumpStart.strftime(dateFormat), slumpEnd.strftime(dateFormat)))
         html += "</tr>\n"
         html += "</table>\n"
         html += "<br /><br />\n"
