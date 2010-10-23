@@ -8,6 +8,13 @@ import geocacher
 from geocacher.libs.iso3166 import country2code
 from geocacher.libs.latlon import latToStr, lonToStr
 
+def roundUp(f):
+    '''Returns int always rounded up'''
+    if round(f) < f:
+        return int(f) +1
+    else:
+        return int(f)
+
 if __name__ == "__main__":
     def _(s):
         return s
@@ -101,6 +108,7 @@ class cacheStats(object):
         html += """<br /><br />\n"""
         html += self.numbers()
         html += self.milestones()
+        html += self.findsByOwner()
         html += self.twoUp(self.findsByType(), self.findsByContainer())
         html += self.twoUp(self.findsByDifficulty(), self.findsByTerrain())
         html += self.findsByTerrainDifficulty()
@@ -115,16 +123,16 @@ class cacheStats(object):
         return html
 
     def twoUp(self, left, right):
-        html = """<table border='0'>\n"""
-        html += """<tr>\n"""
-        html += """<td valign='top'>\n"""
+        html = "<table border='0'>\n"
+        html += "<tr>\n"
+        html += "<td valign='top'>\n"
         html += left
-        html += """</td>"""
-        html += """<td valign='top'>\n"""
+        html += "</td>"
+        html += "<td valign='top'>\n"
         html += right
-        html += """</td>"""
-        html += """</tr>"""
-        html += """</table>"""
+        html += "</td>"
+        html += "</tr>"
+        html += "</table>\n"
         return html
 
 
@@ -181,6 +189,31 @@ class cacheStats(object):
             data.append([MONTHS[int(row[0])-1], row[1]])
         html = self.titleNarrow('Finds by Month')
         html += self.pieGraph(data)
+        html += """<br /><br />\n"""
+        return html
+
+    def findsByOwner(self):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT owner, owner_id, COUNT(owner) AS cnt FROM Caches WHERE found = 1 GROUP BY owner ORDER BY cnt DESC")
+        rows =  cur.fetchall()
+        data = []
+        maxVal = 0
+        i = 0
+        while i < 20 and i < len(rows):
+            row = rows[i]
+            i += 1
+            owner = "%i - <a href='http://www.geocaching.com/profile/?id=%i'>%s</a>" % (i, row[1], row[0])
+            if i < 10:
+                owner = '&nbsp;&nbsp;' + owner
+            data.append([owner,
+                         row[2]])
+            if row[2] > maxVal:
+                maxVal = row[2]
+        html = self.titleWide('Finds By Owner')
+        html += self.horizTable(data, maxVal, 50, 'Owner', True)
+        numOthers = len(rows) - i
+        if numOthers > 0:
+            html += "<br /><i>%s has also found caches placed by <b>%i</b> other people</i>" % (self.userName, numOthers)
         html += """<br /><br />\n"""
         return html
 
@@ -246,8 +279,6 @@ class cacheStats(object):
         cur = geocacher.db().cursor()
         cur.execute('SELECT type, COUNT(type) AS cnt FROM Caches WHERE found = 1 GROUP BY type ORDER BY cnt DESC')
         rows =  cur.fetchall()
-        html = self.titleNarrow('Finds by Type')
-        #html += self.pieGraph(data)
         data = []
         maxVal = 0
         for row in rows:
@@ -255,20 +286,24 @@ class cacheStats(object):
                          row[1]])
             if row[1] > maxVal:
                 maxVal = row[1]
-        html += self.horizTable(data, maxVal, 130)
+        html = self.titleNarrow('Finds by Type')
+        html += self.horizTable(data, maxVal, 130, 'Type')
         html += """<br /><br />\n"""
         return html
 
-    def horizTable(self, data, maxVal, maxLength, pool=None):
+    def horizTable(self, data, maxVal, maxLength, label="&nbsp;", dualCol=False, pool=None):
         if pool is None:
             pool = self.found
-        html = "<table border='0' summary='' width='375' style='text-align: left;'>\n"
-        html += "<tr>\n"
-        html += self.hrCell('&nbsp;')
-        html += self.hrCell('Number')
-        html += self.hrCell('Percent')
-        html += self.hrCell('&nbsp;')
-        html += "<tr>\n"
+        left = "<table border='0' summary='' width='375' style='text-align: left;'>\n"
+        left += "<tr>\n"
+        left += self.hrCell(label)
+        left += self.hrCell('Number')
+        left += self.hrCell('Percent')
+        left += self.hrCell('&nbsp;')
+        left += "<tr>\n"
+        if dualCol:
+            right = left
+        nextLeft = True
         for row in data:
             title = row[0]
             value = row[1]
@@ -277,13 +312,23 @@ class cacheStats(object):
                 color = 'red'
             else:
                 color = 'blue'
-            html += "<tr>\n"
-            html += self.tCell(title)
-            html += self.cCell('%i' % value)
-            html += self.cCell("% 0.2f %%" % percentage)
-            html += self.cCell(self.chartBar(value, maxVal, maxLength, color, False, 15), maxLength)
-            html += "</tr>\n"
-        html += "</table>"
+            rowhtml = "<tr>\n"
+            rowhtml += self.tCell(title)
+            rowhtml += self.cCell('%i' % value, align='right')
+            rowhtml += self.cCell("% 0.2f %%" % percentage, align='right')
+            rowhtml += self.cCell(self.chartBar(value, maxVal, maxLength, color, False, 15), maxLength)
+            rowhtml += "</tr>\n"
+            if nextLeft:
+                left += rowhtml
+            else:
+                right += rowhtml
+            nextLeft = nextLeft ^ dualCol
+        left += "</table>"
+        if dualCol:
+            right += "</table>"
+            return self.twoUp(left, right)
+        else:
+            return left
 
         return html
 
