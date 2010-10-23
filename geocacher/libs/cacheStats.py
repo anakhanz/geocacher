@@ -100,6 +100,7 @@ class cacheStats(object):
         html += """<br />Statistics generated on %s\n""" % date
         html += """<br /><br />\n"""
         html += self.numbers()
+        html += self.milestones()
         html += self.twoUp(self.findsByType(), self.findsByContainer())
         html += self.twoUp(self.findsByDifficulty(), self.findsByTerrain())
         html += self.findsByTerrainDifficulty()
@@ -351,6 +352,73 @@ class cacheStats(object):
         html += "&chdl=Number%20of%20times%20finds/day%20has%20been%20achieved"
         html += "&chdlp=t' />"
         return html
+
+    def milestones(self):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT code, found_date FROM Caches WHERE found = 1 ORDER BY found_date")
+        rows = cur.fetchall()
+        dateFormat = geocacher.config().dateFormat
+        html = self.titleWide('Milestones')
+        html += "<table width='750' style='text-align: left;'>\n"
+        html += "<tr>\n"
+        html += self.hrCell('Milestone')
+        html += self.hrCell('Date')
+        html += self.hrCell('Interval')
+        html += self.hrCell('&nbsp;')
+        html += self.hrCell('Code')
+        html += self.hrCell('&nbsp;')
+        html += self.hrCell('Cache Name')
+        html += "</tr>\n"
+        row, prevDate = self.mileStoneRow(rows[0][0], 1)
+        html += row
+        index = 100
+        numFound = len(rows)
+        while index < numFound:
+            row, prevDate =  self.mileStoneRow(rows[index][0], index, prevDate)
+            html += row
+            index += 100
+        row, prevDate = self.mileStoneRow(rows[numFound-1][0], numFound, prevDate)
+        html += row
+        html += "</table>\n"
+        firstDay = rows[0][1].date()
+        lastDay = rows[numFound-1][1].date()
+        elapsedDays = (lastDay - firstDay).days +1
+        elapsedRate = float(numFound)/float(elapsedDays)
+        cur.execute("SELECT COUNT(*) FROM (SELECT DISTINCT DATE(found_date) FROM Caches WHERE found = 1)")
+        cacheDays = cur.fetchone()[0]
+        cacheRate = float(numFound)/float(cacheDays)
+        elapsedNext = roundUp((index - numFound)/elapsedRate)
+        cacheNext = roundUp((index - numFound)/cacheRate)
+        nextDate = lastDay + datetime.timedelta(days=elapsedNext)
+        html += "<i><br />%s should reach <b>%i</b> finds in <b>%i</b> days (<b>%i</b> Caching days) on <b>%s</b> </i><br />\n" % (self.userName, index, elapsedNext, cacheNext, nextDate.strftime(geocacher.config().dateFormat))
+        index += 100
+        elapsedNext = roundUp((index - numFound)/elapsedRate)
+        cacheNext = roundUp((index - numFound)/cacheRate)
+        nextDate = lastDay + datetime.timedelta(days=elapsedNext)
+        html += "and <b>%i</b> finds in <b>%i</b> days (<b>%i</b> Caching days) on <b>%s</b> </i><br />\n" % (index, elapsedNext, cacheNext, nextDate.strftime(geocacher.config().dateFormat))
+        html += """<br /><br />\n"""
+        return html
+
+    def mileStoneRow(self, code, milestone, prevDate=None):
+        cache = geocacher.db().getCacheByCode(code)
+        curDate = cache.found_date.date()
+        if prevDate is None:
+            interval = ''
+        else:
+            interval = '%i days' % (curDate - prevDate).days
+        html = "<tr>\n"
+        html += self.tCell("<b>%i</b>" % milestone, align='right')
+        html += self.cCell("<A href='http://www.geocaching.com/seek/log.aspx?LID=%i'>%s</a>" %
+                            (cache.own_log_id,
+                             cache.found_date.strftime(geocacher.config().dateFormat)))
+        html += self.cCell(interval, align='right')
+        html += self.cCell(self.flag(cache.country))
+        html += self.cCell(self.cacheLink(cache.code))
+        html += self.cCell(self.cacheIcon(cache.type))
+        html += self.tCell(cache.name)
+        html += "</tr>\n"
+        return html, curDate
+
 
     def numbers(self):
         cur = geocacher.db().cursor()
