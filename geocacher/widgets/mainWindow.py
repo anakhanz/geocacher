@@ -583,7 +583,8 @@ class MainWindow(wx.Frame):
                         addWptFiles.append(filename)
                     else:
                         currentFile += 1
-                        self.pushStatus(_('Loading caches from file: %s (%i of %i)') % (filename, currentFile, totalFiles))
+                        self.pushStatus(_('Loading caches from file: %s (%i of %i)') %
+                                        (filename[len(folder)+1:], currentFile, totalFiles))
                         changes[filename] = self.LoadFile(filename)
                         self.popStatus()
                 for filename in addWptFiles:
