@@ -5,8 +5,11 @@ Module to build cache stats
 import datetime
 
 import geocacher
+from geocacher.libs.common import textToDateTime
 from geocacher.libs.iso3166 import country2code
 from geocacher.libs.latlon import latToStr, lonToStr
+
+from geocacher.libs.pygooglechart.pygooglechart import *
 
 def roundUp(f):
     '''Returns int always rounded up'''
@@ -39,6 +42,19 @@ MONTHS = [_('January'),
           _('October'),
           _('November'),
           _('December')]
+
+SMONTHS = [_('Jan'),
+           _('Feb'),
+           _('Mar'),
+           _('Apr'),
+           _('May'),
+           _('Jun'),
+           _('Jul'),
+           _('Aug'),
+           _('Sep'),
+           _('Oct'),
+           _('Nov'),
+           _('Dec')]
 
 POSSIBLE_STARS = [1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0]
 
@@ -106,6 +122,8 @@ class cacheStats(object):
         html += """<br />\n"""
         html += """<br />Statistics generated on %s\n""" % date
         html += """<br /><br />\n"""
+        html += self.findsByMonthCumulative()
+        html += self.findsByMonthDetailed()
         html += self.numbers()
         html += self.milestones()
         html += self.findsByOwner()
@@ -190,6 +208,245 @@ class cacheStats(object):
         html = self.titleNarrow('Finds by Month')
         html += self.pieGraph(data)
         html += """<br /><br />\n"""
+        return html
+
+    def findsByMonthDetailed(self):
+        maxVal = self.monthMaxFinds()
+        minDate = self.firstCacheDate()
+        maxDate = self.lastCacheDate()
+        buttons = []
+        detail = ""
+        allButton = """<span style='cursor:pointer; border: 1px solid #000000' onmousedown="var s=(getElementById('tgl').style.display != 'none' ? 'none' : ''); """
+        for year in self.cacheYears():
+            yearCacheCount = self.yearFinds(year)
+            yearDayCount = self.yearCacheDays(year)
+            yearMaxVal = self.monthMaxFindsYear(year)
+
+            yearStart = datetime.date(year,1, 1)
+            yearEnd = datetime.date(year, 12, 31)
+            if minDate.year == year:
+                yearStart = minDate
+            if maxDate.year == year:
+                yearEnd = maxDate
+            yearDays = (yearEnd - yearStart).days +1
+            yearWeeks = yearDays / 7
+            if yearDays % 7 > 0:
+                yearWeeks += 1
+            yearMonths = (yearEnd.month - yearStart.month) + 1
+
+            buttons.append("""<span style='cursor:pointer; border: 1px solid #000000' onmousedown="document.getElementById('%i').style.display = (getElementById('%i').style.display != 'none' ? 'none' : '');"><i><b>&nbsp; %i &nbsp; </b></i></span>""" % (year, year, year))
+            allButton += "document.getElementById('%i').style.display=s; " % year
+
+            finds = "<tr align='center' valign='bottom' style='font-family: Arial narrow, Arial, sans-serif; font-size: 10px; color: black; text-align: center;'>\n"
+            finds += "<td style='height: 92px'>&nbsp;</td>"
+            months = "<tr>" + self.tCell(_("Month:"))
+            days = "<tr>" + self.tCell(_("Days Caching:"))
+            for month in range(1,13):
+                cacheCount = self.monthFinds(year, month)
+                dayCount = self.monthCacheDays(year, month)
+                if cacheCount == maxVal:
+                    color = 'red'
+                elif cacheCount == yearMaxVal:
+                    color = 'yellow'
+                else:
+                    color = 'green'
+
+                finds += "<td style='width: 25px'>"
+                if cacheCount > 0:
+                    finds += "%i<br />" % cacheCount
+                    finds += self.chartBar(cacheCount, maxVal, 80, color, True, 25)
+                else:
+                    finds += "&nbsp;"
+                finds += "</td>\n"
+                months += self.tCell(SMONTHS[month-1], align='center')
+                if dayCount > 0:
+                    days += self.tCell("%i" % dayCount, align='center')
+                else:
+                    days += self.tCell("&nbsp;")
+            summary = "<td  rowspan='4' valign='bottom'>\n"
+            summary += "<table border='0' style='font-family: Arial, sans-serif; font-size: 13px; text-align: left'>\n"
+            summary += "<tr>\n"
+            summary += self.tCell("Total finds", align='left')
+            summary += self.hrCell('%i' % yearCacheCount, align='right')
+            summary += '</tr>\n'
+            summary += "<tr>\n"
+            summary += self.tCell("Days caching", align='left')
+            summary += self.hrCell('%i' % yearDayCount, align='right')
+            summary += '</tr>\n'
+            summary += "<tr>\n"
+            summary += self.tCell("Average finds per caching day", align='left')
+            summary += self.hrCell('%0.1f' % (float(yearCacheCount)/float(yearDayCount)), align='right')
+            summary += '</tr>\n'
+            summary += "<tr>\n"
+            summary += self.tCell("Overall finds per day", align='left')
+            summary += self.hrCell('%0.1f' % (float(yearCacheCount)/float(yearDays)), align='right')
+            summary += '</tr>\n'
+            summary += "<tr>\n"
+            summary += self.tCell("Average finds per week", align='left')
+            summary += self.hrCell('%0.1f' % (float(yearCacheCount)/float(yearWeeks)), align='right')
+            summary += '</tr>\n'
+            summary += "<tr>\n"
+            summary += self.tCell("Average finds per month", align='left')
+            summary += self.hrCell('%0.1f' % (float(yearCacheCount)/float(yearMonths)), align='right')
+            summary += '</tr>\n'
+            summary += "</table>\n"
+            summary += "</td>\n"
+            finds += summary + "</tr>\n"
+            months += "</tr>\n"
+            days += "</tr>\n"
+            detail += "<div id='%i' style='display:block'>\n" % year
+            detail += "<table border='0'>\n"
+            detail += "<tr>\n"
+            detail += self.hrCell('%i' % year, align='center', colspan=14)
+            detail += "</tr>\n"
+            detail += finds
+            detail += months
+            detail += days
+            detail += "</table>\n"
+            detail += "<br />\n"
+            detail += "</div>"
+        allButton += """document.getElementById('tgl').style.display=s; "><i><b>&nbsp; All &nbsp;</b></i></span>\n<br /><br />\n"""
+        buttons.append(allButton)
+        html = self.titleWide('Finds by Month')
+        html += "<div id='tgl' style='display:none'></div>\n"
+        html += "\n &nbsp; ".join(buttons)
+        html += detail
+        html += """<br /><br />\n"""
+        return html
+
+    def cacheYears(self):
+        years = []
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT DISTINCT strftime('%Y', found_date) AS yr FROM Caches WHERE found = 1")
+        for row in cur.fetchall():
+            years.append(int(row[0]))
+        return years
+
+    def firstCacheDate(self):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT MIN(found_date) FROM Caches WHERE found = 1")
+        return textToDateTime(cur.fetchone()[0]).date()
+
+    def lastCacheDate(self):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT MAX(found_date) FROM Caches WHERE found = 1")
+        return textToDateTime(cur.fetchone()[0]).date()
+
+
+    def monthFinds(self, year, month):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT COUNT(m) AS cnt FROM (SELECT strftime('%Y%m', found_date) AS m FROM Caches WHERE found = 1 AND m=? )", ("%i%02i" % (year, month),))
+        return cur.fetchone()[0]
+
+    def monthCacheDays(self, year, month):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT COUNT(d) AS cnt FROM (SELECT strftime('%Y%m', found_date) AS m, strftime('%Y%m%d', found_date) AS d FROM Caches WHERE found = 1 AND m=? GROUP BY d)", ("%i%02i" % (year, month),))
+        return cur.fetchone()[0]
+
+    def monthMaxFindsYear(self, year):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT MAX(cnt) FROM(SELECT m, COUNT(m) AS cnt FROM (SELECT strftime('%m', found_date) AS m,  strftime('%Y', found_date) AS y FROM Caches WHERE found = 1 AND y=?) GROUP BY m ORDER BY m)", (str(year),))
+        return cur.fetchone()[0]
+
+    def monthMaxFinds(self):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT MAX(cnt) FROM(SELECT m, COUNT(m) AS cnt FROM (SELECT strftime('%Y %m', found_date) AS m FROM Caches WHERE found = 1) GROUP BY m)")
+        return cur.fetchone()[0]
+
+    def yearFinds(self, year):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT COUNT(y) AS cnt FROM (SELECT strftime('%Y', found_date) AS y FROM Caches WHERE found = 1 AND y=? )", ("%i" % year,))
+        return cur.fetchone()[0]
+
+    def yearCacheDays(self, year):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT COUNT(d) AS cnt FROM (SELECT strftime('%Y', found_date) AS y, strftime('%Y%m%d', found_date) AS d FROM Caches WHERE found = 1 AND y=? GROUP BY d)", ("%i" % year,))
+        return cur.fetchone()[0]
+
+    def findsByMonthCumulative(self):
+        cur = geocacher.db().cursor()
+        cur.execute("SELECT y,m, count(ym) FROM (SELECT STRFTIME('%Y',found_date) AS y, STRFTIME('%m',found_date) AS m, STRFTIME('%Y%m',found_date) AS ym FROM Caches WHERE found = 1) GROUP BY ym ORDER BY ym")
+        rows = cur.fetchall()
+        prev_year = int(rows[0][0])
+        prev_month = int(rows[0][1])-1
+        prev_totals_x = 0
+        prev_totals_y = 0
+        prev_yearly_y = 0
+        labels=['%i' % prev_year]
+        totals_x=[]
+        totals_y=[]
+        yearly_x=[]
+        yearly_y=[]
+        yearly_max = 0
+        years=[]
+        point_num = 0
+        markers=[]
+        for row in rows:
+            year = int(row[0])
+            month = int(row[1])
+            change = int(row[2])
+            if year == prev_year:
+                labels.append('')
+                totals_x.append(prev_totals_x + (month - prev_month))
+            else:
+                labels.append('%i' % year)
+                if prev_month != 12:
+                    totals_x.append(prev_totals_x + (12 - prev_month))
+                    totals_y.append(prev_totals_y)
+                    yearly_x.append(prev_totals_x  + (12 - prev_month))
+                    yearly_y.append(prev_yearly_y)
+                    point_num += 1
+                totals_x.append(prev_totals_x + (12 - prev_month) + month)
+                years.append([yearly_x, yearly_y])
+                yearly_x = [prev_totals_x  + (12 - prev_month)]
+                yearly_y = [0]
+                prev_yearly_y = 0
+                markers.append(point_num-1)
+            totals_y.append(prev_totals_y + change)
+            yearly_x.append(totals_x[-1])
+            yearly_y.append(prev_yearly_y + change)
+            prev_year = year
+            prev_month = month
+            prev_totals_y = totals_y[-1]
+            prev_totals_x = totals_x[-1]
+            prev_yearly_y = yearly_y[-1]
+            point_num += 1
+            if prev_yearly_y > yearly_max:
+                yearly_max = prev_yearly_y
+        years.append([yearly_x,yearly_y])
+        yearly_factor = float(totals_y[-1])/float(yearly_max)
+        # Ajdust yearlies
+        for y in range(0,len(years)):
+            for i in range(0,len(years[y][1])):
+                years[y][1][i] = int(float(years[y][1][i]) * yearly_factor)
+
+        colours = ['0000ff']
+        chart = XYLineChart(740, 300)
+        chart.fill_solid('bg', "dedeee")
+
+        chart.add_data(totals_x)
+        chart.add_data(totals_y)
+        chart.set_line_style(0,2,1,0)
+        index = 1
+        for [yearly_x, yearly_y] in years:
+            chart.add_data(yearly_x)
+            chart.add_data(yearly_y)
+            chart.set_line_style(index,2,2,4)
+            index += 1
+            colours.append('ff0000')
+        chart.set_axis_range(0,'r',0,self.found)
+        chart.set_axis_style(0,'0000ff')
+        chart.set_axis_range(1,'y',0,yearly_max)
+        chart.set_axis_style(1,'ff0000')
+        chart.add_fill_simple('76A4FBB0',0)
+        for marker in markers:
+            chart.add_marker(0,marker,'v','6060FF','1')
+        chart.set_colours(colours)
+        chart.set_grid(0,10.46,4,4)
+
+        chart.set_axis_labels('x',labels)
+        html = self.titleWide("Cumulative Finds by Month")
+        html += "<img src='" + chart.get_url() + "' />\n\n"
         return html
 
     def findsByOwner(self):
@@ -372,35 +629,36 @@ class cacheStats(object):
         chxl2 = []
         for finds in range(1, maxFinds+1):
             cur.execute("SELECT COUNT(finds) AS cnt FROM (SELECT COUNT(found_date) as finds from Caches WHERE found = 1 GROUP BY found_date) WHERE finds = ?", (finds, ))
-            chd.append(str((cur.fetchone()[0]*100)/maxCount))
+            #chd.append(str((cur.fetchone()[0]*100)/maxCount))
+            chd.append(cur.fetchone()[0])
             chxl0.append(str(finds))
             if finds == maxFinds/2:
-                chxl2.append('Caches%20Found%20In%20a%20Day')
+                chxl2.append('Caches Found In a Day')
             else:
                 chxl2.append('')
+
         if maxCount % 5 == 0:
             axisMax = maxCount
         else:
             axisMax = (maxCount/5 +1) * 5
         tickSpacing = (100/float(axisMax))*2.5
-        html = self.titleWide('Finds per Day')
-        html += "<img src='http://chart.apis.google.com/chart?cht=bvs&chs=740x300"
-        html += "&chxs=0,,9|1,,9" # axis label format
-        html += "&chbh=a" # Bar width use all avaliable
-        html += "&chco=0044BB" # Bar colours
-        html += "&chf=bg,s,dedeee" # Background fill
-        html += "&chg=0,%0.1f,3,3,0,0" % tickSpacing
-        html += "&chxt=x,y,x" # use x,y labels
-        html += "&chxr=1,0,%i,5" % axisMax
-        html += "&chd=t:" + ",".join(chd) # chart labels
-        html += "&chxl=0:|" + "|".join(chxl0) + "|2:|" + "|".join(chxl2) # data series labels
-        html += "&chdl=Number%20of%20times%20finds/day%20has%20been%20achieved"
-        html += "&chdlp=t' />"
-        return html
+        chart = StackedVerticalBarChart(740, 300, x_range=(0,maxCount))
+        chart.set_colours(["0044BB"])
+        chart.set_axis_labels('x', chxl0)
+        chart.set_axis_labels('x', chxl2)
+        chart.set_axis_range(2,'y',0,axisMax,5)
+        chart.set_axis_style(0,font_size=9)
+        chart.set_axis_style(2,font_size=9)
+        chart.set_grid(0, "%0.1f" % tickSpacing,3,3)
+        chart.set_legend(["Number of times finds/day has been achieved"])
+        chart.set_legend_position('t')
+        chart.fill_solid('bg', "dedeee")
+        chart.add_data(chd)
+        return self.titleWide("Finds Per Day") + "<img src='" + chart.get_url() + "' />\n"
 
-    def milestones(self):
+    def milestones(self, jump=100):
         cur = geocacher.db().cursor()
-        cur.execute("SELECT code, found_date FROM Caches WHERE found = 1 ORDER BY found_date")
+        cur.execute("SELECT code, found_date FROM Caches WHERE found = 1 ORDER BY found_date, own_log_id")
         rows = cur.fetchall()
         dateFormat = geocacher.config().dateFormat
         html = self.titleWide('Milestones')
@@ -414,14 +672,17 @@ class cacheStats(object):
         html += self.hrCell('&nbsp;')
         html += self.hrCell('Cache Name')
         html += "</tr>\n"
-        row, prevDate = self.mileStoneRow(rows[0][0], 1)
-        html += row
-        index = 100
+        if jump > 1:
+            row, prevDate = self.mileStoneRow(rows[0][0], 1)
+            html += row
+        else:
+            prevDate = None
+        index = jump
         numFound = len(rows)
         while index < numFound:
-            row, prevDate =  self.mileStoneRow(rows[index][0], index, prevDate)
+            row, prevDate =  self.mileStoneRow(rows[index-1][0], index, prevDate)
             html += row
-            index += 100
+            index += jump
         row, prevDate = self.mileStoneRow(rows[numFound-1][0], numFound, prevDate)
         html += row
         html += "</table>\n"
@@ -436,7 +697,7 @@ class cacheStats(object):
         cacheNext = roundUp((index - numFound)/cacheRate)
         nextDate = lastDay + datetime.timedelta(days=elapsedNext)
         html += "<i><br />%s should reach <b>%i</b> finds in <b>%i</b> days (<b>%i</b> Caching days) on <b>%s</b> </i><br />\n" % (self.userName, index, elapsedNext, cacheNext, nextDate.strftime(geocacher.config().dateFormat))
-        index += 100
+        index += jump
         elapsedNext = roundUp((index - numFound)/elapsedRate)
         cacheNext = roundUp((index - numFound)/cacheRate)
         nextDate = lastDay + datetime.timedelta(days=elapsedNext)
@@ -598,59 +859,56 @@ class cacheStats(object):
         return html
 
 
-    def pieGraph(self, data):
-        chdl = []
-        chll = []
-        chcol = []
-        for row in data:
+    def pieGraph(self, raw_data):
+        data = []
+        labels = []
+        colors = []
+        for row in raw_data:
             label = row[0]
             percent = float(row[1])/float(self.found)*100
-            chdl.append('%0.1f' % percent)
-            chll.append('%s (%0.1f%%)' % (label, percent))
+            data.append(row[1])
+            labels.append('%s (%0.1f%%)' % (label, percent))
 
         c1 = '8080f0'
         c2 = '2020f0'
         cmax = 'ff0000'
-        mn, mx = self.findMinMaxPos(data)
+        mn, mx = self.findMinMaxPos(raw_data)
         odd = True
         for i in range(0,len(data)):
             if i == mx:
-                chcol.append(cmax)
+                colors.append(cmax)
             else:
                 if odd:
-                    chcol.append(c1)
+                    colors.append(c1)
                 else:
-                    chcol.append(c2)
+                    colors.append(c2)
                 odd = not odd
+        chart = PieChart3D(375,120)
+        chart.fill_solid('bg', "dedeee")
+        chart.add_data(data)
+        chart.set_pie_labels(labels)
+        chart.set_colours(colors)
+        return "<img src='" + chart.get_url() + "' />"
 
-        chd = ",".join(chdl)
-        chl = "|".join(chll)
-        chco = ",".join(chcol)
-
-        chart = "<img src='http://chart.apis.google.com/chart?cht=p3&chs=375x120&chf=bg,s,dedeee"
-        chart += "&chd=t:" + chd + "&chl=" + chl + "&chco=" + chco + "' />"
-
-        return chart
-
-    def radarChart(self, data, defaultLable):
+    def radarChart(self, raw_data, defaultLable):
         chdl = []
         chxll = []
         for b in ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']:
-            if b not in data.keys():
-                data[b] = [0, defaultLable]
-            chxll.append(b + ' (' + str(data[b][1]) + ')')
+            if b not in raw_data.keys():
+                raw_data[b] = [0, defaultLable]
+            chxll.append(b + ' (' + str(raw_data[b][1]) + ')')
         for b in ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N']:
-            chdl.append('%0.1f' % float(data[b][0]))
-        chd = ",".join(chdl)
-        chxl = "|".join(chxll)
-
-        chart = "<img src='http://chart.apis.google.com/chart?cht=r&chs=260x220&chco=0000FF"
-        chart += "&chls=3,3,0&chxt=x&chxr=0,0.0,360.0"
-        chart += "&chm=B,76A4FB80,0,0,0|h,808080,0,0.9,1|h,808080,0,0.5,1"
-        chart += "&chf=bg,s,dedeee"
-        chart += "&chd=t:" + chd + "&chxl=0:|" + chxl
-        chart += "' />"
-        return chart
+            chdl.append(raw_data[b][0])
+        chart = RadarChart(260,220, )
+        chart.fill_solid('bg', "dedeee")
+        chart.set_colours(['0000FF'])
+        chart.add_marker(0,0,'B','76A4FB',0)
+        chart.add_marker(0,0.5,'h','808080',1)
+        chart.add_marker(0,0.9,'h','808080',1)
+        chart.set_axis_labels('x', chxll)
+        chart.add_data(chdl)
+        chart.set_line_style(0,3,3,0)
+        return "<img src='" + chart.get_url() + "' />"
 
     def chartBar(self, value, maxVal, maxLengh, color='green', vertical=False, thickness=15):
         barLength = (value * maxLengh) / maxVal
@@ -750,7 +1008,7 @@ if __name__ == "__main__":
     import webbrowser
     path = os.path.abspath('test.html')
     stats = cacheStats()
-    fid = open(path,"w")
-    fid.write(stats.html())
+    fid = open(path,"wb")
+    fid.write(stats.html().encode( "utf-8" ))
     fid.close()
     webbrowser.open(path)
