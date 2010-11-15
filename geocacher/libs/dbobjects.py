@@ -43,85 +43,129 @@ LOG_TYPES = ["Found it",
              "Attended"]
 
 ATTRIBUTES = ["Unknown",#0
-              "Unknown",#1
-              "Unknown",#2
-              "Unknown",#3
-              "Unknown",#4
-              "Unknown",#5
+              "Dogs",#1
+              "Access or parking fee",#2
+              "Climbing gear",#3
+              "Boat",#4
+              "Scuba Gear",#5
               "Recommended for kids",#6
               "Takes less than an hour",#7
-              "Unknown",#8
-              "Unknown",#9
-              "Unknown",#10
-              "Unknown",#11
-              "Unknown",#12
-              "Unknown",#13
-              "Unknown",#14
-              "Unknown",#15
-              "Unknown",#16
-              "Unknown",#17
-              "Unknown",#18
-              "Unknown",#19
-              "Unknown",#20
-              "Unknown",#21
-              "Unknown",#22
-              "Unknown",#23
+              "Scenic View",#8
+              "Significant Hike",#9
+              "Difficult Climbing",#10
+              "May require wading",#11
+              "May require Swimming",#12
+              "Available at all times",#13
+              "Recommended at night",#14
+              "Available during winter",#15
+              "",#16
+              "Poison plants",#17
+              "Dangerous Animals",#18
+              "Ticks",#19
+              "Abandoned mines",#20
+              "Cliff / falling rocks",#21
+              "Hunting",#22
+              "Dangerous area",#23
               "Wheelchair accessible",#24
-              "Unknown",#25
+              "Parking available",#25
               "Public transportation",#26
-              "Available at all times",#27
-              "Unknown",#28
-              "Unknown",#29
-              "Unknown",#30
-              "Unknown",#31
-              "Unknown",#32
-              "Unknown",#33
-              "Unknown",#34
-              "Unknown",#35
-              "Unknown",#36
-              "Unknown",#37
+              "Drinking water nearby",#27
+              "Public restrooms nearby",#28
+              "Telephone nearby",#29
+              "Picnic tables nearby",#30
+              "Camping available",#31
+              "Bicycles",#32
+              "Motorcycles",#33
+              "Quads",#34
+              "Off-road vehicles",#35
+              "Snowmobiles",#36
+              "Horses",#37
               "Campfires",#38
+              "Thorns",#39
+              "Stealth required",#40
+              "Stroller accessible",#41
+              "Needs maintenance",#42
+              "Watch for livestock",#43
+              "Flashlight required",#44
+              "",#45
+              "Truck Driver/RV",#46
+              "Field Puzzle",#47
+              "UV Light Required",#48
+              "May Require Snowshoes",#49
+              "May Require Skiis",#50
+              "Special Tool Required",#51
+              "Night Cache",#52
+              "Park and Grab",#53
+              "Abandoned Structure",#54
+              "Short hike (less than 1km)",#55
+              "Medium hike (1km-10km)",#56
+              "Long Hike (+10km)",#57
+              "Fuel Nearby",#58
+              "Food Nearby",#59
+              "Wireless Beacon Required",#60
               ]
 
 ATTRIB_ICO = ["Unknown",#0
-              "Unknown",#1
-              "Unknown",#2
-              "Unknown",#3
-              "Unknown",#4
-              "Unknown",#5
+              "dogs",#1
+              "fee",#2
+              "rappelling",#3
+              "boat",#4
+              "scuba",#5
               "kids",#6
               "onehour",#7
-              "Unknown",#8
-              "Unknown",#9
-              "Unknown",#10
-              "Unknown",#11
-              "Unknown",#12
-              "Unknown",#13
-              "Unknown",#14
-              "Unknown",#15
-              "Unknown",#16
-              "Unknown",#17
-              "Unknown",#18
-              "Unknown",#19
-              "Unknown",#20
-              "Unknown",#21
-              "Unknown",#22
-              "Unknown",#23
+              "scenic",#8
+              "hiking",#9
+              "climbing",#10
+              "wading",#11
+              "swimming",#12
+              "available",#13
+              "night",#14
+              "winter",#15
+              "",#16
+              "poisonoak",#17
+              "snakes",#18
+              "ticks",#19
+              "mine",#20
+              "cliff",#21
+              "hunting",#22
+              "danger",#23
               "wheelchair",#24
-              "Unknown",#25
+              "parking",#25
               "public",#26
-              "available",#27
-              "Unknown",#28
-              "Unknown",#29
-              "Unknown",#30
-              "Unknown",#31
-              "Unknown",#32
-              "Unknown",#33
-              "Unknown",#34
-              "Unknown",#35
-              "Unknown",#36
-              "Unknown",#37
+              "water",#27
+              "restrooms",#28
+              "phone",#29
+              "picnic",#30
+              "camping",#31
+              "bicycles",#32
+              "motorcycles",#33
+              "quads",#34
+              "jeeps",#35
+              "snowmobiles",#36
+              "horses",#37
               "campfires",#38
+              "thorn",#39
+              "stealth",#40
+              "stroller",#41
+              "firstaid",#42
+              "cow",#43
+              "flashlight",#44
+              "",#45
+              "rv",#46
+              "field_puzzle",#47
+              "UV",#48
+              "snowshoes",#49
+              "skiis",#50
+              "s-tool",#51
+              "night",#52
+              "parkngrab",#53
+              "AbandonedBuilding",#54
+              "hike_short",#55
+              "hike_med",#56
+              "hike_long",#57
+              "fuel",#58
+              "food",#59
+              "wirelessbeacon",#60
               ]
 
 class Cache(object):
@@ -648,3 +692,30 @@ class Location(object):
     def delete(self):
         cur = geocacher.db().cursor()
         cur.execute("DELETE FROM Locations WHERE name=?", (self.origName,))
+
+if __name__ == "__main__":
+    import os.path
+    import webbrowser
+    path = os.path.abspath('test.html')
+    imgPath = os.path.join('..','gfx','default','attributes')
+    html = """<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Transitional//EN' 'http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd'>
+<html>
+<head>
+<meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+"""
+    html += """<title>Attribute Icons</title>\n"""
+    html += """</head>\n"""
+    html += """<body>\n"""
+    html += """<H1>Attribute Icons</H1>"""
+    for i in range(len(ATTRIBUTES)):
+        yes = os.path.join(imgPath, "%s-yes.gif" % ATTRIB_ICO[i])
+        no = os.path.join(imgPath, "%s-no.gif" % ATTRIB_ICO[i])
+        text = ATTRIBUTES[i]
+        html += """<p><img src="%s"/><img src="%s"/> %i %s</p>\n""" % (yes, no, i, text)
+
+    html += """</body\n"""
+    html += """ </html>"""
+    fid = open(path,"wb")
+    fid.write(html.encode( "utf-8" ))
+    fid.close()
+    webbrowser.open(path)

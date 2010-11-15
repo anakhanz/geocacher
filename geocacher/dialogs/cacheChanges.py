@@ -3,6 +3,8 @@
 import wx
 import  wx.gizmos   as  gizmos
 
+from geocacher.libs.dbobjects import ATTRIBUTES
+
 import geocacher
 
 class CacheChanges (wx.Dialog):
@@ -105,8 +107,7 @@ class CacheChanges (wx.Dialog):
         '''
         attribsNode = self.addBranch(parent, _('Attributes'))
         for attrib in attribChanges.keys():
-            description = self.cache.getAttributeById(attrib).description
-            attribNode = self.addBranch(attribsNode,'#'+str(attrib)+' '+description)
+            attribNode = self.addBranch(attribsNode,'#'+str(attrib)+' '+ ATTRIBUTES[attrib])
             self.processFields(attribNode, attribChanges[attrib])
         self.tree.SortChildren(attribsNode)
 
@@ -203,7 +204,7 @@ class CacheChanges (wx.Dialog):
         branchName:   Name of the node
         changeDetail: Detail of the canged to be displayed in the columns
         '''
-        leafNode = self.tree.AppendItem(parent, changeName)
+        leafNode = self.tree.AppendItem(parent, str(changeName))
         if type(changeDetail) == list:
             self.tree.SetItemText(leafNode,
                                   unicode(changeDetail[0]),1)
