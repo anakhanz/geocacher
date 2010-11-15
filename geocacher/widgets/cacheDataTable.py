@@ -317,7 +317,7 @@ FROM Caches c)
             cache.locked = value
         elif not cache.locked:
             if id == 'ftf':
-                changed = cache.ftf
+                changed = (cache.ftf != value)
                 cache.ftf = value
             elif id == 'user_data1':
                 changed = (cache.user_data1 != value)
