@@ -11,7 +11,7 @@ import geocacher
 class ImageRenderer(Grid.PyGridCellRenderer):
     def __init__(self, table):
         Grid.PyGridCellRenderer.__init__(self)
-        self._dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),'gfx')
+        self._dir = os.path.join(geocacher.getBasePath(),'gfx')
         self._themeDir = geocacher.config().iconTheme
         self.table = table
         self._images = {}

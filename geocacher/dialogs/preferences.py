@@ -104,8 +104,8 @@ class Preferences(wx.Dialog):
         label = wx.StaticText(panel,wx.ID_ANY,_('Icon Theme'))
         displayGrid.Add(label, (2,0))
         iconThemes=[]
-        for folder in os.listdir(os.path.join(os.path.curdir,'gfx')):
-            if os.path.isdir(os.path.join(os.path.curdir,'gfx',folder)):
+        for folder in os.listdir(os.path.join(geocacher.getBasePath(),'gfx')):
+            if os.path.isdir(os.path.join(geocacher.getBasePath(),'gfx',folder)):
                 iconThemes.append(folder)
             iconThemes.sort()
         iconTheme = geocacher.config().iconTheme
