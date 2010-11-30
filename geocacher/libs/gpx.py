@@ -342,7 +342,7 @@ class Gpx(object):
                                 cache.dnf = True
                             if cache.dnf_date != logDate:
                                 cacheUpdates['dnf_date'] = [logDate,cache.dnf_date]
-                                cache.found_date = logDate
+                                cache.dnf_date = logDate
                             foundUpdated = True
                         if foundUpdated:
                             if cache.own_log_id != logId:
