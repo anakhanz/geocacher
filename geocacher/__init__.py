@@ -14,12 +14,12 @@ import geocacher.libs.db
 
 MAJOR_VERSION   = 0 # major functionality change
 MINOR_VERSION   = 1 # minor functionality change
-BUILD_NUMBER    = 1 # problem/bug fix
+BUILD_NUMBER    = 2 # problem/bug fix
 STATUS          = 3 # 1 = alpha, 2 = beta, 3 = release candidate, 9 = final stable
-VERSION_STRING  = u'%s.%s.%s.%s' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,
+VERSION_STRING  = '%i.%i.%i.%i' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER,
                                     STATUS)
 
-VERSION_NUMBER  = u'%s.%s.%s' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER)
+VERSION_NUMBER  = '%i.%i.%i' % (MAJOR_VERSION,MINOR_VERSION,BUILD_NUMBER)
 
 logging.basicConfig(level=logging.WARN)
 

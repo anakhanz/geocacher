@@ -10,13 +10,6 @@ import sys
 import glob
 
 try:
-    from lxml.etree import Element,ElementTree
-except:
-    print "Without lxml, this program will fail. Aborting."
-    print "Get it at http://codespeak.net/lxml/"
-    sys.exit(1)
-
-try:
     import py2exe
 except ImportError, e:
     pass
