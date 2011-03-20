@@ -204,7 +204,7 @@ class CacheChanges (wx.Dialog):
         branchName:   Name of the node
         changeDetail: Detail of the canged to be displayed in the columns
         '''
-        leafNode = self.tree.AppendItem(parent, str(changeName))
+        leafNode = self.tree.AppendItem(parent, unicode(changeName).encode('utf-8'))
         if type(changeDetail) == list:
             self.tree.SetItemText(leafNode,
                                   unicode(changeDetail[0]),1)

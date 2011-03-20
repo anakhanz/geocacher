@@ -261,11 +261,11 @@ class Gpx(object):
                     for cacheAttribId in cache.getAttributeIds():
                         if not(cacheAttribId in wptAttribIds):
                             toDelete = cache.getAttributeById(cacheAttribId)
-                            tbUpdates[cacheAttribId] = [_('Removed'),'']
+                            attribsUpdates[cacheAttribId] = {_('Removed'):['','']}
                             toDelete.delete()
 
-            if len(attribsUpdates) > 0:
-                cacheUpdates['Attributes'] = attribsUpdates
+                    if len(attribsUpdates) > 0:
+                        cacheUpdates['Attributes'] = attribsUpdates
 
             # Always update Logs and travel bugs
             foundUpdated=False
