@@ -67,7 +67,7 @@ class Gpx(object):
             if gpxFilename == None:
                 sourceFile = os.path.abspath(filename)
             else:
-                sourceFile = gpxFilename
+                sourceFile = gpxFilename + ":" + os.path.basename(filename)
         else:
             return (False, fileUpdates)
         # Get the date the GPX file was created
@@ -379,15 +379,12 @@ class Gpx(object):
             if len(tbUpdates) > 0:
                 cacheUpdates['Travel Bugs'] = tbUpdates
 
+            # Always update the gpx date and source file name even if no changes
+            cache.gpx_date = gpxDate
+            cache.source = sourceFile
+            cache.save()
+
             if len(cacheUpdates) > 1:
-                if cache.gpx_date != gpxDate:
-                    cache.gpx_date = gpxDate
-                    if cacheUpdates['change type'] == 'update':
-                        cacheUpdates['gpx_date'] = [gpxDate,cache.gpx_date]
-                if cache.source != sourceFile:
-                    cache.source = sourceFile
-                    cacheUpdates['source'] = [sourceFile,cache.source]
-                cache.save()
                 fileUpdates[code] = cacheUpdates
 
         for wpt in extraWpts:
