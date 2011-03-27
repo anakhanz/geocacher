@@ -275,7 +275,10 @@ class Cache(object):
     def delete(self):
         cur = geocacher.db().cursor()
         cur.execute("DELETE FROM Caches WHERE id=?", (self.id,))
+        cur.execute("DELETE FROM Attributes WHERE cache_id=?", (self.id,))
         cur.execute("DELETE FROM Logs WHERE cache_id=?", (self.id,))
+        cur.execute("DELETE FROM Travelbugs WHERE cache_id=?", (self.id,))
+        cur.execute("DELETE FROM Waypoints WHERE cache_id=?", (self.id,))
 
     def getLogs(self, sort=True, descending=True, maxLen=None):
         '''
