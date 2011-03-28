@@ -26,6 +26,7 @@ from geocacher.libs.gpx import Gpx
 from geocacher.libs.loc import locExport
 
 from geocacher.dialogs.cacheChanges import CacheChanges
+from geocacher.dialogs.databaseCleanup import DatabaseCleanupOptions
 from geocacher.dialogs.export import ExportOptions
 from geocacher.dialogs.preferences import Preferences
 from geocacher.dialogs.viewHtml import ViewHtml
@@ -694,7 +695,12 @@ class MainWindow(wx.Frame):
         event: The event causing this function to be called.
         '''
         self.pushStatus(_("Maintaining Database"))
-        geocacher.db().maintdb()
+        opts = DatabaseCleanupOptions(self)
+        if opts.ShowModal() == wx.ID_OK:
+            opts.SaveConf()
+            geocacher.db().maintdb()
+            if geocacher.config().cleanupCacheAct != 'none' or geocacher.config().cleanupLog > 0:
+                self.cacheGrid.ReloadCaches()
         self.popStatus()
 
     def OnBackupDb(self, event=None): ### SQL

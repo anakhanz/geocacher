@@ -439,6 +439,54 @@ class Config(object):
         self.config.SetPath("/Import")
         return self.config.Write("ImportMode", s)
 
+    def getCleanupBackup(self):
+        self.config.SetPath("/Cleanup")
+        return self.config.ReadBool("Backup", True)
+
+    def setCleanupBackup(self, b):
+        self.config.SetPath("/Cleanup")
+        return self.config.WriteBool("Backup", b)
+
+    def getCleanupCacheAct(self):
+        self.config.SetPath("/Cleanup")
+        return self.config.Read("CacheAct", "delete")
+
+    def setCleanupCacheAct(self, s):
+        self.config.SetPath("/Cleanup")
+        return self.config.Write("CacheAct", s)
+
+    def getCleanupCacheAge(self):
+        self.config.SetPath("/Cleanup")
+        return self.config.ReadInt("CacheAge", 28)
+
+    def setCleanupCacheAge(self, i):
+        self.config.SetPath("/Cleanup")
+        return self.config.WriteInt("CacheAge", i)
+
+    def getCleanupLog(self):
+        self.config.SetPath("/Cleanup")
+        return self.config.ReadInt("Log", 180)
+
+    def setCleanupLog(self, i):
+        self.config.SetPath("/Cleanup")
+        return self.config.WriteInt("Log", i)
+
+    def getCleanupIndexes(self):
+        self.config.SetPath("/Cleanup")
+        return self.config.ReadBool("Indexes", True)
+
+    def setCleanupIndexes(self, b):
+        self.config.SetPath("/Cleanup")
+        return self.config.WriteBool("Indexes", b)
+
+    def getCleanupCompact(self):
+        self.config.SetPath("/Cleanup")
+        return self.config.ReadBool("Compact", True)
+
+    def setCleanupCompact(self, b):
+        self.config.SetPath("/Cleanup")
+        return self.config.WriteBool("Compact", b)
+
 
     mainWinSize        = property(getMainWinSize,       setMainWinSize)
     detailSplit        = property(getDetailSplitPos,    setDetailSplitPos)
@@ -491,3 +539,9 @@ class Config(object):
     importFolder       = property(getImportFolder,      setImportFolder)
     importFile         = property(getImportFile,        setImportFile)
     importMode         = property(getImportMode,        setImportMode)
+    cleanupBackup      = property(getCleanupBackup,     setCleanupBackup)
+    cleanupCacheAct    = property(getCleanupCacheAct,   setCleanupCacheAct)
+    cleanupCacheAge    = property(getCleanupCacheAge,   setCleanupCacheAge)
+    cleanupLog         = property(getCleanupLog,        setCleanupLog)
+    cleanupIndexes     = property(getCleanupIndexes,    setCleanupIndexes)
+    cleanupCompact     = property(getCleanupCompact,    setCleanupCompact)

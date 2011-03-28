@@ -307,7 +307,7 @@ class Cache(object):
         cur = geocacher.db().cursor()
         sql = "SELECT id FROM Logs WHERE cache_id = ?"
         if sort:
-            sql = sql + " ORDER BY date"
+            sql = sql + " ORDER BY log_date"
         if descending:
             sql = sql + " DESC"
         cur.execute(sql , (self.id,))
@@ -544,7 +544,7 @@ class Log(object):
         if cur.fetchone() is None:
             cur.execute("INSERT INTO Logs(id) VALUES (?)", (lid,))
             #cur.execute("INSERT INTO Logs(id, cache_id, date, type, finder_id, finder_name, encoded, text) VALUES (?, -1, -0.1, '', 0, '', 0, '')", (lid,))
-        cur.execute('SELECT id, cache_id, date, type, finder_id, finder_name, encoded, text FROM Logs WHERE id=?', (lid,))
+        cur.execute('SELECT id, cache_id, log_date, type, finder_id, finder_name, encoded, text FROM Logs WHERE id=?', (lid,))
         row = cur.fetchone()
         if type(row) is sqlite3.dbapi2.Row:
             self.logId       = row[0]
@@ -561,7 +561,7 @@ class Log(object):
     def save(self):
         cur = geocacher.db().cursor()
         cur.execute("DELETE FROM Logs WHERE id=?", (self.logId,))
-        cur.execute("INSERT INTO Logs(id, cache_id, date, type, finder_id, finder_name, encoded, text) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", (self.logId, self.cache_id, self.date, self.logType, self.finder_id, self.finder_name, self.encoded, self.text,))
+        cur.execute("INSERT INTO Logs(id, cache_id, log_date, type, finder_id, finder_name, encoded, text) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", (self.logId, self.cache_id, self.date, self.logType, self.finder_id, self.finder_name, self.encoded, self.text,))
 
     def delete(self):
         cur = geocacher.db().cursor()

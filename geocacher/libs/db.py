@@ -101,12 +101,46 @@ class Database(object):
             cur.execute(stmt)
 
     def maintdb(self):
+        config = geocacher.config()
+        if config.cleanupBackup:
+            print "Backing up"
+            self.backup()
         cur = self.cursor()
-        #cache901.notify('Recovering unused disk space')
-        cur.execute("vacuum")
-        #cache901.notify('Rebuilding database indices')
-        cur.execute("analyze")
+
+        if config.cleanupCacheAct == 'delete':
+            # delete caches which have not been seen in gpx files for
+            # config.cleanupCacheDays excluding caches we have found or own
+            sql = "DELETE FROM Caches WHERE gpx_date < date('now', '-%i day' ) AND owner != ? AND owner_id != ? AND found = 0 AND corrected = 0" % config.cleanupCacheAge
+            cur.execute(sql, (config.GCUserName, config.GCUserID,))
+
+        # need to archive unseen caches that we have found if in delete mode
+        if config.cleanupCacheAct in ['archive', 'delete']:
+            # mark caches which have not been seen in gpx files for
+            # config.cleanupCacheDays as archived and unavailable
+            sql = "UPDATE Caches SET available = 0, archived = 1 WHERE gpx_date < date('now', '-%i day' )" % config.cleanupCacheAge
+            cur.execute(sql)
+
+        # Cleanup any orphaned Attributes, Logs, Travelbugs and Waypoints
+        cur.execute("DELETE FROM Attributes WHERE cache_id NOT IN (SELECT id FROM Caches)")
+        cur.execute("DELETE FROM Logs WHERE cache_id NOT IN (SELECT id FROM Caches)")
+        cur.execute("DELETE FROM Travelbugs WHERE cache_id NOT IN (SELECT id FROM Caches)")
+        cur.execute("DELETE FROM Waypoints WHERE cache_id NOT IN (SELECT id FROM Caches)")
         self.commit()
+
+        if config.cleanupLog > 0:
+            # remove logs  older than config.cleanupLog days old except own
+            sql = "SELECT * FROM Logs WHERE finder_name != ? AND finder_id != ?  AND log_date < DATE('now', '-%i day')  AND cache_id NOT IN (SELECT id FROM Caches WHERE owner = ? OR owner_id = ?)" % config.cleanupLog
+            cur.execute(sql, (config.GCUserName, config.GCUserID,config.GCUserName, config.GCUserID,))
+
+        if config.cleanupCompact:
+            print "Vacuuming"
+            cur.execute("vacuum")
+            self.commit()
+
+        if config.cleanupIndexes:
+            print "Rebuilding indexes"
+            cur.execute("analyze")
+            self.commit()
 
     def backup(self):
         self.close()
@@ -119,7 +153,6 @@ class Database(object):
             dbfile = os.sep.join([dbpath, dbfile.encode('ascii')])
             arcname = "%s-%s.sqlite" % (os.path.splitext(os.path.split(dbfile)[1])[0], today)
             arcname = arcname.encode('ascii')
-            #cache901.notify('Backing up %s into %s' % (arcname, zfilename))
             z.write(dbfile, arcname, compress_type=zipfile.ZIP_DEFLATED)
         z.close()
         self.open()
@@ -275,6 +308,48 @@ class Database(object):
             description TEXT)
         """,
         "CREATE INDEX attributes_cache_id ON Attributes(cache_id)"
+    ]
+    statements_v003 = [
+        # Rename data column in logs table to log_date to avoid collision with
+        # date DB function
+        # Move existing Logs table to a tempoary location
+        "ALTER TABLE Logs RENAME TO Logs_tmp",
+        # Create the new table
+        # Logs.cache_id: int, links to Cache.id
+        # Logs.log_date: : datetime (reporesented by unix timestamp)
+        # Logs.encoded: boolean
+        """
+        CREATE TABLE Logs (
+            id INTEGER PRIMARY KEY,
+            cache_id INTEGER,
+            log_date TIMESTAMP,
+            type TEXT,
+            finder_id INTEGER,
+            finder_name TEXT,
+            encoded BOOL,
+            text TEXT)
+        """,
+        """
+        INSERT INTO Logs(id,
+                         cache_id,
+                         log_date,
+                         type,
+                         finder_id,
+                         finder_name,
+                         encoded,
+                         text)
+        SELECT id,
+               cache_id,
+               date,
+               type,
+               finder_id,
+               finder_name,
+               encoded,
+               text
+        FROM logs_tmp
+        """,
+        "DROP TABLE Logs_tmp",
+        "CREATE INDEX logs_cache_id ON Logs(cache_id)"
     ]
 
     def getCacheList(self):
