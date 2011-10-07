@@ -23,7 +23,6 @@ from geocacher.libs.common import nl2br, listFiles
 from geocacher.libs.cacheStats import cacheStats
 from geocacher.libs.gpsbabel import GpsCom
 from geocacher.libs.gpx import Gpx
-from geocacher.libs.loc import locExport
 
 from geocacher.dialogs.cacheChanges import CacheChanges
 from geocacher.dialogs.databaseCleanup import DatabaseCleanupOptions
@@ -357,7 +356,7 @@ class MainWindow(wx.Frame):
             self.statusbar.SetStatusText('',STATUS_SHOWN)
             descText = _('Select a Cache to display from the table above')
         else:
-            self.statusbar.SetStatusText(_('Veiwing cache: ')+newCache,STATUS_SHOWN)
+            self.statusbar.SetStatusText(_('Viewing cache: ')+newCache,STATUS_SHOWN)
             descText = '<h1>' + self.displayCache.code + ' - ' + self.displayCache.name + '</h1>'
             if self.displayCache.url != '':
                 descText = descText + '<p><a href="' + self.displayCache.url + '">View online page</a></p>'
