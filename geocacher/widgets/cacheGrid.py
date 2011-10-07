@@ -4,6 +4,7 @@ Module to implement the cache information grid
 '''
 
 from datetime import datetime
+import webbrowser
 
 import wx
 from wx.lib.pubsub import Publisher as Publisher
@@ -395,6 +396,9 @@ class CacheGrid(Grid.Grid):
         def cacheSetDnf(event, self=self, cache=cache):
             cacheAddLog(False)
 
+        def cacheViewBrowser(event, self=self, cache=cache):
+            webbrowser.open(cache.url)
+
         # Non row/col pop-up functions
         def sortByCodeAscending(event, self=self):
             '''Perform an ascending sort based on the cache code'''
@@ -411,24 +415,25 @@ class CacheGrid(Grid.Grid):
             Publisher.sendMessage('status.pop')
 
         # Menu
-        cacheDeleteID   = wx.NewId()
-        cacheArcID      = wx.NewId()
-        cacheUnArcID    = wx.NewId()
-        cacheAvailID    = wx.NewId()
-        cacheUnAvailID  = wx.NewId()
-        cacheCorrectID  = wx.NewId()
-        cacheRmCorrID   = wx.NewId()
-        cacheAddWptsID  = wx.NewId()
-        cacheViewLogsID = wx.NewId()
-        cacheViewBugsID = wx.NewId()
-        cacheAsHomeID   = wx.NewId()
-        cacheSetFoundID = wx.NewId()
-        cacheSetDnfID   = wx.NewId()
-        colDeleteID     = wx.NewId()
-        colSortAsID     = wx.NewId()
-        colSortDsID     = wx.NewId()
-        sortByCodeAsID  = wx.NewId()
-        sortByCodeDsID  = wx.NewId()
+        cacheDeleteID      = wx.NewId()
+        cacheArcID         = wx.NewId()
+        cacheUnArcID       = wx.NewId()
+        cacheAvailID       = wx.NewId()
+        cacheUnAvailID     = wx.NewId()
+        cacheCorrectID     = wx.NewId()
+        cacheRmCorrID      = wx.NewId()
+        cacheAddWptsID     = wx.NewId()
+        cacheViewLogsID    = wx.NewId()
+        cacheViewBugsID    = wx.NewId()
+        cacheAsHomeID      = wx.NewId()
+        cacheSetFoundID    = wx.NewId()
+        cacheSetDnfID      = wx.NewId()
+        cacheViewBrowserID = wx.NewId()
+        colDeleteID        = wx.NewId()
+        colSortAsID        = wx.NewId()
+        colSortDsID        = wx.NewId()
+        sortByCodeAsID     = wx.NewId()
+        sortByCodeDsID     = wx.NewId()
 
         # Build the pop-up menu
         menu = wx.Menu()
@@ -469,6 +474,7 @@ class CacheGrid(Grid.Grid):
             menu.Append(cacheAsHomeID, _('Add cache as Home location'))
             menu.Append(cacheSetFoundID, _('Set cache as Found'))
             menu.Append(cacheSetDnfID, _('Set cache as Did Not Find'))
+            menu.Append(cacheViewBrowserID, _('View Cache Webpage'))
 
         # Bind functions
         self.Bind(wx.EVT_MENU, cacheDelete, id=cacheDeleteID)
@@ -484,6 +490,7 @@ class CacheGrid(Grid.Grid):
         self.Bind(wx.EVT_MENU, cacheAsHome, id=cacheAsHomeID)
         self.Bind(wx.EVT_MENU, cacheSetFound, id=cacheSetFoundID)
         self.Bind(wx.EVT_MENU, cacheSetDnf, id=cacheSetDnfID)
+        self.Bind(wx.EVT_MENU, cacheViewBrowser, id=cacheViewBrowserID)
 
         self.Bind(wx.EVT_MENU, colDelete, id=colDeleteID)
         self.Bind(wx.EVT_MENU, colSortAscending, id=colSortAsID)
