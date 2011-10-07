@@ -100,10 +100,16 @@ dataFiles = find_data_files('geocacher','geocacher',[
     'gfx/*.gif',
     'gfx/*.ico',
     'gfx/*.jpg',
-    'gfx/*/*/*.png',
+    'gfx/*/*/*.png', 
     'gfx/*/*/*.gif',
     'gfx/*/*/*.ico',
     'gfx/*/*/*.jpg'])
+
+linDataFiles = [('/usr/share/applications', ["geocacher.desktop"]),
+                ('/usr/share/pixmaps', ["geocacher/gfx/treasure_chest.ico.png"])]
+
+if sys.platform[:3] == 'lin':
+    dataFiles = dataFiles + linDataFiles
 
 setup(
     name="geocacher",
@@ -130,8 +136,8 @@ setup(
                                            "ws2_32.dll", "gdi32.dll",
                                            "winmm.dll", "ws2help.dll",
                                            "mswsock.dll", "MSVCP90.dll"]
-        }
-    },
+                          }
+               },
     windows=[{'script': 'gcer'}],
     data_files=dataFiles,
 
@@ -147,6 +153,5 @@ setup(
         'Operating System :: Microsoft :: Windows',
         'Programming Language :: Python',
         'Topic :: Scientific/Engineering :: Information Analysis',
-    ],
+        ],
 )
-

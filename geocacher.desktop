@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Geocache Manager
+Comment=Manage your Geocaches and generate GPX files
+Categories=Graphics;
+Exec=gcer
+Icon=treasure_chest.ico
+StartupNotify=false
+Terminal=false
+Type=Application
+MimeType=application/x-ptoptimizer-script;
+X-Desktop-File-Install-Version=0.18
