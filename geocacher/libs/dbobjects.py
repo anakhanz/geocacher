@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 
+from datetime import datetime
 import os.path
 import sys
 import sqlite3
@@ -87,8 +88,8 @@ ATTRIBUTES = ["Unknown",#0
               "Needs maintenance",#42
               "Watch for livestock",#43
               "Flashlight required",#44
-              "",#45
-              "Truck Driver/RV",#46
+              "Lost and Found Cache",#45
+              "Truck Driver/RV Accessible",#46
               "Field Puzzle",#47
               "UV Light Required",#48
               "May Require Snowshoes",#49
@@ -103,6 +104,12 @@ ATTRIBUTES = ["Unknown",#0
               "Fuel Nearby",#58
               "Food Nearby",#59
               "Wireless Beacon Required",#60
+              "Is a patnership cache",#61
+              "Seasional Access Only",#62
+              "Recomended for Tourists",#63
+              "Tree Climbing Required",#64
+              "In front yard (with permission)",#65
+              "Teamwork required",#66
               ]
 
 ATTRIB_ICO = ["Unknown",#0
@@ -150,7 +157,7 @@ ATTRIB_ICO = ["Unknown",#0
               "firstaid",#42
               "cow",#43
               "flashlight",#44
-              "",#45
+              "landf",#45
               "rv",#46
               "field_puzzle",#47
               "UV",#48
@@ -166,6 +173,12 @@ ATTRIB_ICO = ["Unknown",#0
               "fuel",#58
               "food",#59
               "wirelessbeacon",#60
+              "partnership",#61
+              "seasonal",#62
+              "touristOK",#63
+              "treeclimbing",#64
+              "frontyard",#65
+              "teamwork",#66
               ]
 
 class Cache(object):
@@ -660,7 +673,7 @@ class Waypoint(object):
             self.cmt      = row[7]
             self.sym      = row[8]
         else:
-            raise geocacher.InvalidID('Invalid Waypoint Code: %d' % bid)
+            raise geocacher.InvalidID('Invalid Waypoint Code: %d' % id)
 
     def save(self):
         cur = geocacher.db().cursor()

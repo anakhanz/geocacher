@@ -107,7 +107,10 @@ class CacheChanges (wx.Dialog):
         '''
         attribsNode = self.addBranch(parent, _('Attributes'))
         for attrib in attribChanges.keys():
-            attribNode = self.addBranch(attribsNode,'#'+str(attrib)+' '+ ATTRIBUTES[attrib])
+            if attrib < len(ATTRIBUTES):
+                attribNode = self.addBranch(attribsNode,'#'+str(attrib)+' '+ ATTRIBUTES[attrib])
+            else:
+                attribNode = self.addBranch(attribsNode,'#'+str(attrib)+' '+ ATTRIBUTES[0])
             self.processFields(attribNode, attribChanges[attrib])
         self.tree.SortChildren(attribsNode)
 
@@ -202,7 +205,7 @@ class CacheChanges (wx.Dialog):
         Arguments
         parent:       Parent node to add the leaf node under
         branchName:   Name of the node
-        changeDetail: Detail of the canged to be displayed in the columns
+        changeDetail: Detail of the change to be displayed in the columns
         '''
         leafNode = self.tree.AppendItem(parent, unicode(changeName).encode('utf-8'))
         if type(changeDetail) == list:
