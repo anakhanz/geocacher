@@ -121,7 +121,7 @@ class Gpx(object):
                 cacheUpdates['change type'] = 'new'
                 cacheUpdates['lat'] = [lat,'']
                 cacheUpdates['lon'] = [lon,'']
-                cacheUpdates['id'] = [id,'']
+                cacheUpdates['ci'] = [id,'']
                 cacheUpdates['available'] = [available,'']
                 cacheUpdates['archived'] = [archived,'']
                 cacheUpdates['name'] = [name,'']
@@ -218,7 +218,6 @@ class Gpx(object):
                 if cache.long_desc_html != long_desc_html:
                     cacheUpdates['long_desc_html'] = [long_desc_html,
                                                       cache.long_desc_html]
-                    cache.long_desc_html != long_desc_html
                 if cache.encoded_hints != hints:
                     cacheUpdates['encoded_hints'] = [hints,cache.encoded_hints]
                     cache.encoded_hints = hints
@@ -272,7 +271,6 @@ class Gpx(object):
             logsUpdates = {}
             for wptLog in wpt.findall("gs:cache//gs:logs//gs:log", NS):
                 logId = int(getAttribFromPath(wptLog, '.', "id",NS))
-                #logId = int(wptLog.attrib["id"])
                 logDate = textToDateTime(getTextFromPath(wptLog, "gs:date",NS))
                 logType = getTextFromPath(wptLog, "gs:type",NS)
                 logFinderId = int(getAttribFromPath(wptLog, "gs:finder", "id", NS))
@@ -327,7 +325,7 @@ class Gpx(object):
                                                logFinderName == userName)):
                         logging.debug('User ID or Name match for log id %i' % logId)
                         if logType in ['Found it', 'Attended']:
-                            logging.debug('Log type is found or atttended')
+                            logging.debug('Log type is found or attended')
                             if not cache.found:
                                 cacheUpdates['found'] = [True,False]
                                 cache.found = True

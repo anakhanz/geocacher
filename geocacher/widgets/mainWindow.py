@@ -3,12 +3,9 @@
 Module to implement the main application window
 '''
 
-import logging
-import optparse
 import os
 import tempfile
 
-import wx
 import wx.lib.inspection
 from wx.lib.pubsub import Publisher as Publisher
 import wx.html as Html
@@ -411,7 +408,7 @@ class MainWindow(wx.Frame):
 
     def updateLocations(self):
         '''
-        Updates the location selector after a change to lt list of loactions.
+        Updates the location selector after a change to the list of locations.
         '''
         for i in range(0,self.selLocation.GetCount()):
             self.selLocation.Delete(0)
@@ -424,7 +421,7 @@ class MainWindow(wx.Frame):
         selected.
 
         Argument
-        name: name of the new home loaction to be used.
+        name: name of the new home location to be used.
         '''
         self.pushStatus(_('Updating home location to: %s') % name)
         self.selLocation.SetValue(name)
@@ -486,13 +483,13 @@ class MainWindow(wx.Frame):
                    "All files (*.*)|*.*"
 
         if os.path.isdir(geocacher.config().importFolder):
-            dir = geocacher.config().importFolder
+            directory = geocacher.config().importFolder
         else:
-            dir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
+            directory = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
 
         dlg = wx.FileDialog(
             self, message=_("Choose a file to load"),
-            defaultDir=dir,
+            defaultDir=directory,
             defaultFile="",
             wildcard=wildcard,
             style=wx.OPEN | wx.MULTIPLE
@@ -544,13 +541,13 @@ class MainWindow(wx.Frame):
         '''
         self.pushStatus(_('Loading caches from folder'))
         if os.path.isdir(geocacher.config().importFolder):
-            dir = geocacher.config().importFolder
+            directory = geocacher.config().importFolder
 
         else:
-            dir = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
+            directory = wx.StandardPaths.GetDocumentsDir(wx.StandardPaths.Get())
 
         dlg = wx.DirDialog(self, _('Select Folder to import waypoint files from'),
-                                 defaultPath=dir,
+                                 defaultPath=directory,
                                  style=wx.DD_DEFAULT_STYLE
                                  | wx.DD_DIR_MUST_EXIST)
 
@@ -667,9 +664,7 @@ class MainWindow(wx.Frame):
                                   style = wx.OK | wx.ICON_ERROR)
             else:
                 gpx = Gpx()
-                if ext == '.loc':
-                    ret = locExport(path, caches)
-                elif ext == '.gpx':
+                if ext == '.gpx':
                     ret = gpx.export(path, caches)
                 elif ext == '.zip':
                     ret = gpx.zipExport(path, caches)
@@ -727,7 +722,6 @@ class MainWindow(wx.Frame):
             wildcard="Zip (*.zip)|*.zip|",
             style=wx.OPEN
             )
-        error = False
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
             self.popStatus()
@@ -828,7 +822,7 @@ class MainWindow(wx.Frame):
         Keyword Argument
         event: The event causing this function to be called.
         '''
-        self.pushStatus(_('Loading new loaction form GPS'))
+        self.pushStatus(_('Loading new location form GPS'))
         gpsCom = GpsCom(gps=geocacher.config().gpsType,
                         port=geocacher.config().gpsConnection)
         ok, lat, lon, message = gpsCom.getCurrentPos()
@@ -844,10 +838,10 @@ class MainWindow(wx.Frame):
 
     def NewLocation(self, lat, lon, source, name=''):
         '''
-        Handles the creation of a new home loaction.
+        Handles the creation of a new home location.
 
         Arguments
-        lat:    Lattitude of the new location.
+        lat:    Latitude of the new location.
         lon:    Longitude of the new location.
         source: Text describing the source that the new location has come
                 from.
@@ -866,7 +860,7 @@ class MainWindow(wx.Frame):
         dlg.Destroy()
         if name in geocacher.db().getLocationNameList():
             dlg = wx.MessageDialog(self,
-                message=_('Are you sure you want to replace the existing laocation named ')+name,
+                message=_('Are you sure you want to replace the existing location named ')+name,
                 caption=_('Replace Existing Location'),
                 style=wx.YES_NO|wx.ICON_QUESTION)
             if dlg.ShowModal() == wx.ID_YES:
@@ -884,7 +878,7 @@ class MainWindow(wx.Frame):
 
     def OnSelLocation(self, event=None):
         '''
-        Handles the event from the select location toolbar item.
+        Handles the event from the select location tool bar item.
 
         Keyword Argument
         event: The event causing this function to be called.
@@ -894,10 +888,10 @@ class MainWindow(wx.Frame):
     def OnHideArchived(self, state):
         '''
         Handles the event from the toggling of the "Hide Archived"
-        toolbar or menu item.
+        tool bar or menu item.
 
         Argument
-        state: The state of the checkbox causing the function to be called.
+        state: The state of the check-box causing the function to be called.
         '''
         geocacher.config().filterArchived = state
         self.miHideArchived.Check(state)
@@ -907,7 +901,7 @@ class MainWindow(wx.Frame):
     def OnCbHideArchived(self, event=None):
         '''
         Handles the event from the toggling of the "Hide Archived"
-        toolbar item.
+        tool bar item.
 
         Keyword Argument
         event: The event causing this function to be called.
@@ -927,10 +921,10 @@ class MainWindow(wx.Frame):
     def OnHideDisabled(self, state):
         '''
         Handles the event from the toggling of the "Hide Disabled"
-        toolbar or menu item.
+        tool bar or menu item.
 
         Argument
-        state: The state of the checkbox causing the function to be called.
+        state: The state of the check box causing the function to be called.
         '''
         geocacher.config().filterDisabled = state
         self.miHideDisabled.Check(state)
@@ -940,7 +934,7 @@ class MainWindow(wx.Frame):
     def OnCbHideDisabled(self, event=None):
         '''
         Handles the event from the toggling of the "Hide Disabled"
-        toolbar item.
+        tool bar item.
 
         Keyword Argument
         event: The event causing this function to be called.
@@ -960,10 +954,10 @@ class MainWindow(wx.Frame):
     def OnHideFound(self, state):
         '''
         Handles the event from the toggling of the "Hide Found"
-        toolbar or menu item.
+        tool bar or menu item.
 
         Argument
-        state: The state of the checkbox causing the function to be called.
+        state: The state of the check box causing the function to be called.
         '''
         geocacher.config().filterFound = state
         self.miHideFound.Check(state)
@@ -973,7 +967,7 @@ class MainWindow(wx.Frame):
     def OnCbHideFound(self, event=None):
         '''
         Handles the event from the toggling of the "Hide Found"
-        toolbar item.
+        tool bar item.
 
         Keyword Argument
         event: The event causing this function to be called.
@@ -993,10 +987,10 @@ class MainWindow(wx.Frame):
     def OnHideMine(self, state):
         '''
         Handles the event from the toggling of the "Hide Mine"
-        toolbar or menu item.
+        tool bar or menu item.
 
         Argument
-        state: The state of the checkbox causing the function to be called.
+        state: The state of the check box causing the function to be called.
         '''
         geocacher.config().filterMine = state
         self.miHideMine.Check(state)
@@ -1006,7 +1000,7 @@ class MainWindow(wx.Frame):
     def OnCbHideMine(self, event=None):
         '''
         Handles the event from the toggling of the "Hide Mine
-        toolbar item.
+        tool bar item.
 
         Keyword Argument
         event: The event causing this function to be called.
@@ -1026,10 +1020,10 @@ class MainWindow(wx.Frame):
     def OnHideOverDist(self, state):
         '''
         Handles the event from the toggling of the "Hide Over Distance"
-        toolbar or menu item.
+        tool bar or menu item.
 
         Argument
-        state: The state of the checkbox causing the function to be called.
+        state: The state of the check box causing the function to be called.
         '''
         geocacher.config().filterOverDist = state
         self.miHideOverDist.Check(state)
@@ -1039,7 +1033,7 @@ class MainWindow(wx.Frame):
     def OnCbHideOverDist(self, event=None):
         '''
         Handles the event from the toggling of the "Hide Over Distance"
-        toolbar item.
+        tool bar item.
 
         Keyword Argument
         event: The event causing this function to be called.

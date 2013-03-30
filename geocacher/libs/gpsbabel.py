@@ -13,9 +13,9 @@ class GpsCom:
     def setPort(self,port):
         self.port = port
 
-    def gpxToGps(self, file):
+    def gpxToGps(self, fileName):
 
-        p = Popen(['gpsbabel','-i','gpx','-f',file,'-o',self.gps,'-F',self.port],stdout=PIPE, stderr=PIPE)
+        p = Popen(['gpsbabel','-i','gpx','-f',fileName,'-o',self.gps,'-F',self.port],stdout=PIPE, stderr=PIPE)
         stdout, stderr = p.communicate()
         return p.returncode==0,stderr+stdout
 

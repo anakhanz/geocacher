@@ -4,14 +4,11 @@
 
 import datetime
 import logging
-import os
 import os.path
 import sqlite3
 import shutil
 import tempfile
 import zipfile
-
-import wx
 
 import geocacher
 from geocacher.libs.common import rows2list
@@ -159,7 +156,6 @@ class Database(object):
 
     def restore(self, backup_file):
         self.close()
-        dbpath = geocacher.config().dbpath
         tempDir = tempfile.mkdtemp()
         sucess = False
         try:

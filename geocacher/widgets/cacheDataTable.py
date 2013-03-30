@@ -454,7 +454,7 @@ FROM Caches c)
         '''
         Returns True if the data in the cell at the given coordinates can be
         set using the given type.
-
+ 
         Arguments
         row:      Roe coordinate of the cell to be checked.
         col:      Column coordinate of the cell to be checked.

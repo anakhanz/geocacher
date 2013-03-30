@@ -7,7 +7,7 @@ import re
 def distance(lat1, lon1, lat2, lon2, miles = False):
     '''
     Takes a pair of coordinates and returns the distance between them in
-    Kilometers or Miles.
+    Kilometres or Miles.
 
     Arguments:
         lat1  - Latitude of the first pair of coordinates
@@ -15,7 +15,7 @@ def distance(lat1, lon1, lat2, lon2, miles = False):
         lat2  - Latitude of the second pair of coordinates
         lon2  - Longitude of the second pair of coordinates
     Keyword Argument:
-        miles - Sets the output unit to Miles instead of Kilometers if defined
+        miles - Sets the output unit to Miles instead of Kilometres if defined
                 as True
     '''
     # Convert to radians
@@ -132,14 +132,14 @@ def strToDeg (s, mode='pure'):
     elif re.match(reStart + '\d{1,3} [0-5]\d\.\d{2,}$', s):
         if not s[0].isdigit():
             s = s[1:]
-        deg, min = s.split(' ')
-        d = float(deg) + float(min)/60
+        deg, minute = s.split(' ')
+        d = float(deg) + float(minute)/60
     # hdd mm ss.s
     elif re.match(reStart + '\d{1,3} [0-5]\d [0-5]\d(\.\d+)?$', s):
         if not s[0].isdigit():
             s = s[1:]
-        deg, min, sec = s.split(' ')
-        d = float(deg) + float(min)/60 +float(sec)/360
+        deg, minute, sec = s.split(' ')
+        d = float(deg) + float(minute)/60 +float(sec)/360
     else:
         return None
     # Check to see if changing sign is necessary
@@ -153,14 +153,14 @@ def strToDeg (s, mode='pure'):
 
 def strToLon (s):
     '''
-    Reads a lon angle from the given string and returns it if valid, otherwise
+    Reads a longitude from the given string and returns it if valid, otherwise
     returns None
     '''
     return strToDeg(s, 'lon')
 
 def strToLat (s):
     '''
-    Reads a lat angle from the given string and returns it if valid, otherwise
+    Reads a latitude from the given string and returns it if valid, otherwise
     returns None
     '''
     return strToDeg(s, 'lat')
@@ -196,13 +196,13 @@ def degToStr (d, format='hdd.ddddd', mode='pure'):
 
     if format == 'hdd mm.mmm':
         deg = int(d)
-        min = (d -deg)*60.0
-        return '%s%02i %06.3f' % (sign,deg,min)
+        minute = (d -deg)*60.0
+        return '%s%02i %06.3f' % (sign,deg,minute)
     elif format == 'hdd mm ss.s':
         deg = int(d)
-        min = int((d-deg)*60)
-        sec = ((d-deg)*60.0-min)*60.0
-        return '%s%i %02i %04.1f' % (sign,deg,min,sec)
+        minute = int((d-deg)*60)
+        sec = ((d-deg)*60.0-minute)*60.0
+        return '%s%i %02i %04.1f' % (sign,deg,minute,sec)
     else: # assume hdd.ddddd
         return '%s%0.5f' % (sign,d)
 

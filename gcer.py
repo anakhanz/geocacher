@@ -23,8 +23,6 @@ try:
 except ImportError:
     pass
 
-import sys
-
 import geocacher
 
 if __name__ == "__main__":

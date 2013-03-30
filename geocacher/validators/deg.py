@@ -54,9 +54,8 @@ class DegValidator(wx.PyValidator):
         value = self.data.get(self.key, 0)
         if self.new:
             textCtrl.SetValue('')
-        else:
-            format = geocacher.config().coordinateFormat
-            textCtrl.SetValue(degToStr(value, format, self.mode))
+        else: 
+            textCtrl.SetValue(degToStr(value, geocacher.config().coordinateFormat, self.mode))
         return True
 
     def TransferFromWindow(self):

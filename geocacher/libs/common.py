@@ -5,9 +5,9 @@ import os
 import datetime
 from time import mktime
 
-def boolToText(bool):
+def boolToText(b):
     '''Converts a text string to a boolean'''
-    return str(bool)
+    return str(b)
 
 
 def textToBool(t):
@@ -114,33 +114,33 @@ def getAttribFromPath(root, relativePath, attrib, nameSpaces=None, default=None)
 def nl2br(s):
     return '<br />\n'.join(s.split('\n'))
 
-def listFiles(dir):
+def listFiles(folder):
     """
-    Recursivley builds and returns a list of valid image files in a given
+    Recursively builds and returns a list of valid image files in a given
     directory
 
     Keyword Arguments:
-    dir - Folder to recursivley list image files from
+    folder - Folder to recursively list image files from
     """
     fileList=[]
-    dirList = os.listdir(dir)
+    dirList = os.listdir(folder)
     dirList.sort()
     for name in dirList:
-        path = os.path.join(dir, name)
+        path = os.path.join(folder, name)
         if os.path.isfile( path):
             fileList.append(path)
         elif (os.path.isdir(path)):
             fileList += listFiles(path)
     return fileList
 
-def escape(str):
+def escape(s):
     # you can also use
     # from xml.sax.saxutils import escape
     # Caution: you have to escape '&' first!
-    str = str.replace(u'&',u'&amp;')
-    str = str.replace(u'<',u'&lt;')
-    str = str.replace(u'>',u'&gt;')
-    return str
+    s = s.replace(u'&',u'&amp;')
+    s = s.replace(u'<',u'&lt;')
+    s = s.replace(u'>',u'&gt;')
+    return s
 
 def dateCmp(x,y):
     '''Comparrison function for dates where some items may be of the 'None' type'''
